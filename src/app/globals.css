@@ -186,6 +186,17 @@ body::before {
     radial-gradient(55% 90% at 100% 110%, var(--blob-b, rgba(127, 183, 245, 0.5)) 0%, transparent 70%);
 }
 
+/* No celular, campos com 16px: abaixo disso o Safari do iPhone dá zoom ao focar
+   e a página fica ampliada e cortada. */
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select,
+  .input {
+    font-size: 16px;
+  }
+}
+
 /* Scrollbar discreta */
 * {
   scrollbar-width: thin;

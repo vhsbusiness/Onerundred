@@ -26,6 +26,10 @@ export const viewport: Viewport = {
   themeColor: "#0b0c0f",
   width: "device-width",
   initialScale: 1,
+  // Sem zoom por pinça/foco: comportamento de app. Os campos têm 16px no celular,
+  // que é o que evita o zoom automático do Safari ao tocar num input.
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: "cover",
 };
 
