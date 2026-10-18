@@ -120,6 +120,22 @@ fechar/abrir o cadastro de novos usuários.
 Implementação em `src/lib/auth.ts`, `src/lib/current-user.ts`, `src/lib/admin.ts`,
 `src/proxy.ts` e `src/app/api/auth/*`.
 
+## IA (OpenAI)
+
+Com `OPENAI_API_KEY` definida (e `OPENAI_MODEL`, padrão `gpt-5-mini`), o dashboard
+ganha o card **Análise do dia**: a IA lê as tarefas de hoje (prioridade, lista,
+estimativa, tempo cronometrado, atrasos), as sessões de trabalho, o histórico de
+14 dias e a distribuição de horários, e devolve nota explicada, sugestões, a ordem
+das próximas tarefas e horários de trabalho, pausas e sono. A primeira análise do
+dia é gerada sozinha ao abrir o dashboard; "Atualizar" gera outra (limite de 12 por
+dia por usuário).
+
+A cada análise a IA também reescreve a **memória de hábitos** do usuário
+(`AiMemory`): padrões de horário, ritmo, estimativas vs. realidade. Essa memória
+entra na análise seguinte, então o modelo vai conhecendo cada pessoa. Código em
+`src/lib/ai.ts`; rota `GET/POST /api/ai/insight`. Sem a chave, o card avisa que a
+IA está desativada e o resto do app funciona normalmente.
+
 ## Deploy no Railway
 
 1. Suba o repositório para o GitHub (sem `.env`; o `.gitignore` já cuida disso).
@@ -133,6 +149,7 @@ Implementação em `src/lib/auth.ts`, `src/lib/current-user.ts`, `src/lib/admin.
      Postgres; use o nome que o Railway deu ao banco). Ela precisa existir já
      no **build**, porque é ela que faz o `prisma generate` gerar o client
      Postgres.
+   - `OPENAI_API_KEY` e `OPENAI_MODEL` (opcional, padrão `gpt-5-mini`) para a IA.
    - `TZ` = `America/Sao_Paulo` (o dia "de hoje" das tarefas usa o fuso do
      servidor; o Railway roda em UTC).
 5. Aba **Settings → Networking → Generate Domain** para ter uma URL pública.
@@ -145,6 +162,5 @@ seguido de `npm run dev` (volte para `file:` e gere de novo ao terminar).
 
 ## Próximos passos planejados
 
-- Integração com a API da OpenAI para analisar as tarefas e sugerir percentuais,
-  horários de trabalho, pausas e sono.
+- Mais usos da IA: planejar a semana, revisar estimativas, relatório semanal.
 - Métricas de sono e rotina.

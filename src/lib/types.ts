@@ -147,3 +147,45 @@ export interface AdminOverview {
   openCards: number;
   settings: AppSettingsDTO;
 }
+
+/* ───────────── IA ───────────── */
+
+export interface AiNextTask {
+  cardId: string;
+  title: string;
+  reason: string;
+}
+
+export interface AiSchedule {
+  startWork: string;
+  stopWork: string;
+  breakAt: string[];
+  sleepAt: string;
+  wakeAt: string;
+  note: string;
+}
+
+export interface AiInsightContent {
+  score: number;
+  headline: string;
+  assessment: string;
+  suggestions: string[];
+  nextTasks: AiNextTask[];
+  schedule: AiSchedule;
+}
+
+export interface AiInsightDTO extends AiInsightContent {
+  id: string;
+  dayKey: string;
+  model: string;
+  createdAt: string;
+  /** Gerações restantes hoje para este usuário. */
+  remainingToday: number;
+}
+
+export interface AiStatusDTO {
+  enabled: boolean;
+  insight: AiInsightDTO | null;
+  remainingToday: number;
+  memory: string | null;
+}

@@ -55,3 +55,11 @@ subir o servidor pelo terminal e usar `onerundred`.
 - Primeiro usuário cadastrado = admin. Painel em `/admin` (`src/lib/admin.ts`).
   `AppSetting.allowRegistration` fecha o cadastro.
 - Rotas públicas: `/login` e `/api/auth/*`. A `Nav` some em `/login`.
+
+## IA
+
+- `src/lib/ai.ts`: monta o contexto do usuário (reusa `getDashboard`), chama a OpenAI
+  (chat completions com `json_schema` estrito) e grava `AiInsight` + `AiMemory`.
+- Modelo via `OPENAI_MODEL` (padrão `gpt-5-mini`; modelos gpt-5/o* não aceitam
+  `temperature`, usamos `reasoning_effort: low`). Limite: 12 análises/dia/usuário.
+- Nunca commitar a chave: fica em `.env` local e nas variáveis do Railway.

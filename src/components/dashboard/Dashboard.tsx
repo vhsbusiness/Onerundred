@@ -1,12 +1,12 @@
 "use client";
 
-import { Flame, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { formatPercent, http, TONE_PILL, TONE_TEXT } from "@/lib/client";
 import { scoreTone, type PeriodScore } from "@/lib/metrics";
 import { formatDayLong, formatDuration } from "@/lib/time";
 import type { DashboardDTO, WorkState } from "@/lib/types";
+import { AiInsightCard } from "./AiInsightCard";
 import { HistoryChart } from "./HistoryChart";
 import { TodayTasks } from "./TodayTasks";
 import { WorkTimer } from "./WorkTimer";
@@ -183,12 +183,8 @@ export function Dashboard() {
             />
           </div>
 
-          <div className="mt-6 flex items-center gap-2 rounded-full border border-line bg-black/20 px-4 py-2 text-sm text-ink-3">
-            <Flame size={14} className="text-orange" />
-            <span className="truncate">
-              Em breve: a IA vai ler suas tarefas e sugerir horários de trabalho, pausa e sono.
-            </span>
-            <Sparkles size={14} className="ml-auto shrink-0 text-ink-3" />
+          <div className="mt-6">
+            <AiInsightCard todayCards={data.todayCards} />
           </div>
 
           <div className="mt-5">

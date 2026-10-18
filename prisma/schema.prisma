@@ -22,6 +22,8 @@ model User {
   sessions     AuthSession[]
   workSessions WorkSession[]
   settings     Setting[]
+  aiInsights   AiInsight[]
+  aiMemory     AiMemory?
 }
 
 /// Sessão de login (o id é o token guardado no cookie)
@@ -122,4 +124,29 @@ model Setting {
 model AppSetting {
   key   String @id
   value String
+}
+
+/// Análise do dia gerada pela IA para um usuário
+model AiInsight {
+  id               String   @id @default(cuid())
+  userId           String
+  /// yyyy-MM-dd
+  dayKey           String
+  model            String
+  /// JSON com score, headline, assessment, suggestions, nextTasks, schedule
+  content          String
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  createdAt        DateTime @default(now())
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, dayKey])
+}
+
+/// Memória de hábitos do usuário, reescrita pela IA a cada análise
+model AiMemory {
+  userId    String   @id
+  summary   String
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

@@ -144,7 +144,8 @@ export function Nav() {
 
   return (
     <header className="sticky top-0 z-30 mb-6 pt-3">
-      <div className="card flex min-h-16 w-full flex-wrap items-center gap-x-6 gap-y-2 bg-surface/80 px-4 py-2.5 shadow-[0_18px_40px_-24px_rgba(0,0,0,0.9)] backdrop-blur-xl sm:px-5">
+      <div className="card w-full bg-surface/80 px-4 py-2.5 shadow-[0_18px_40px_-24px_rgba(0,0,0,0.9)] backdrop-blur-xl sm:px-5">
+        <div className="flex min-h-11 items-center gap-4 sm:gap-6">
         <Link href="/" className="shrink-0">
           <Logo />
         </Link>
@@ -171,8 +172,9 @@ export function Nav() {
           <span className="hidden text-sm text-ink-2 lg:inline">{formatDayLong(todayKey())}</span>
           {me && <UserMenu me={me} />}
         </div>
+        </div>
 
-        <nav className="flex basis-full gap-1 overflow-x-auto md:hidden">
+        <nav className="mt-2 flex gap-1 overflow-x-auto md:hidden">
         {allTabs.map((t) => {
           const active = t.href === "/" ? pathname === "/" : pathname.startsWith(t.href);
           return (
