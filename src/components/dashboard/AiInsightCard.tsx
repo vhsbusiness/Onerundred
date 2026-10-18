@@ -1,6 +1,6 @@
 "use client";
 
-import { Brain, Coffee, Moon, RefreshCw, Sparkles, Sun, Sunrise } from "lucide-react";
+import { Brain, ChevronDown, ChevronUp, Coffee, Moon, RefreshCw, Sparkles, Sun, Sunrise } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { http, TONE_PILL, TONE_TEXT } from "@/lib/client";
@@ -16,6 +16,28 @@ export function AiInsightCard({ todayCards }: { todayCards: TodayCard[] }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const autoTried = useRef(false);
+  const [collapsed, setCollapsed] = useState(false);
+
+  // Preferência de recolhido/expandido fica só neste navegador.
+  useEffect(() => {
+    try {
+      // Lê a preferência salva no navegador (fonte externa), uma vez ao montar.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCollapsed(localStorage.getItem("ai-insight-collapsed") === "1");
+    } catch {
+      /* sem localStorage */
+    }
+  }, []);
+  function toggleCollapsed() {
+    setCollapsed((c) => {
+      try {
+        localStorage.setItem("ai-insight-collapsed", c ? "0" : "1");
+      } catch {
+        /* sem localStorage */
+      }
+      return !c;
+    });
+  }
   const cardsCount = useRef(todayCards.length);
   useEffect(() => {
     cardsCount.current = todayCards.length;
@@ -77,8 +99,11 @@ export function AiInsightCard({ todayCards }: { todayCards: TodayCard[] }) {
           <Brain size={15} className="text-blue" /> Análise do dia
         </h3>
         {insight && <span className={TONE_PILL[tone]}>nota IA {insight.score}%</span>}
+        {collapsed && insight && (
+          <span className={`hidden truncate text-sm sm:inline ${TONE_TEXT[tone]}`}>{insight.headline}</span>
+        )}
         <div className="ml-auto flex items-center gap-2 text-xs text-ink-3">
-          {insight && <span>às {timeLabel(insight.createdAt)}</span>}
+          {insight && !collapsed && <span>às {timeLabel(insight.createdAt)}</span>}
           <button
             type="button"
             onClick={generate}
@@ -89,12 +114,21 @@ export function AiInsightCard({ todayCards }: { todayCards: TodayCard[] }) {
             <RefreshCw size={13} className={busy ? "animate-spin" : ""} />
             {busy ? "Analisando…" : insight ? "Atualizar" : "Gerar análise"}
           </button>
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            className="btn btn-ghost h-8 w-8 p-0"
+            aria-label={collapsed ? "Expandir análise" : "Recolher análise"}
+            title={collapsed ? "Expandir" : "Recolher"}
+          >
+            {collapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
+          </button>
         </div>
       </div>
 
-      {error && <p className="mt-3 text-sm text-red">{error}</p>}
+      {error && !collapsed && <p className="mt-3 text-sm text-red">{error}</p>}
 
-      {!insight && !error && (
+      {!insight && !error && !collapsed && (
         <p className="mt-3 text-sm text-ink-3">
           {busy
             ? "A IA está lendo suas tarefas, prioridades e tempo de trabalho…"
@@ -104,7 +138,7 @@ export function AiInsightCard({ todayCards }: { todayCards: TodayCard[] }) {
         </p>
       )}
 
-      {insight && (
+      {insight && !collapsed && (
         <div className={`mt-3 grid gap-4 lg:grid-cols-[1.4fr_1fr] ${busy ? "opacity-60" : ""}`}>
           <div className="space-y-3">
             <p className={`text-base font-semibold leading-snug ${TONE_TEXT[tone]}`}>{insight.headline}</p>

@@ -12,6 +12,7 @@ const tabs = [
   { href: "/quadros", label: "Quadros" },
   { href: "/metas", label: "Metas" },
   { href: "/sono", label: "Sono" },
+  { href: "/lazer", label: "Lazer" },
   { href: "/arquivadas", label: "Arquivadas" },
   { href: "/configuracoes", label: "Configurações" },
 ];

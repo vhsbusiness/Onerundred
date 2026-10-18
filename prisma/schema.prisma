@@ -26,6 +26,7 @@ model User {
   aiMemory     AiMemory?
   sleepLogs    SleepLog[]
   projects     Project[]
+  leisureLogs  LeisureLog[]
 }
 
 /// Sessão de login (o id é o token guardado no cookie)
@@ -208,4 +209,21 @@ model ProjectDay {
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, dayKey])
+}
+
+/// Bloco de lazer (ex.: jogos), de uma hora até outra
+model LeisureLog {
+  id        String    @id @default(cuid())
+  userId    String
+  /// yyyy-MM-dd do dia em que começou
+  dayKey    String
+  activity  String    @default("Jogos")
+  startAt   DateTime
+  /// null enquanto o cronômetro está rodando
+  endAt     DateTime?
+  note      String    @default("")
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, startAt])
 }

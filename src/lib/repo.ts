@@ -3,6 +3,7 @@ import { prisma } from "./db";
 import { ApiError } from "./errors";
 import { periodScore, workVerdict, type MetricCard } from "./metrics";
 import { autoMarkMissedDays } from "./projects";
+import { autoStopForgottenLeisure } from "./leisure";
 import {
   dayKey,
   dayRange,
@@ -179,6 +180,7 @@ export async function runMaintenance(): Promise<void> {
 
   await prisma.authSession.deleteMany({ where: { expiresAt: { lt: new Date() } } });
   await autoMarkMissedDays();
+  await autoStopForgottenLeisure();
 }
 
 /* ───────────────────────── Quadros ───────────────────────── */

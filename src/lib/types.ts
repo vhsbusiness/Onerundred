@@ -258,3 +258,32 @@ export interface ProjectDTO {
   daysElapsed: number;
   dayList: ProjectDayDTO[];
 }
+
+/* ───────────── Lazer ───────────── */
+
+export interface LeisureLogDTO {
+  id: string;
+  dayKey: string;
+  activity: string;
+  startAt: string;
+  endAt: string | null;
+  startTime: string;
+  endTime: string | null;
+  note: string;
+  durationMin: number;
+}
+
+export interface LeisureStats {
+  todayMin: number;
+  weekMin: number;
+  avg7Min: number;
+  byActivity7: { activity: string; minutes: number }[];
+  byDay14: { key: string; minutes: number }[];
+}
+
+export interface LeisurePageDTO {
+  logs: LeisureLogDTO[];
+  running: LeisureLogDTO | null;
+  stats: LeisureStats;
+  activities: string[];
+}
