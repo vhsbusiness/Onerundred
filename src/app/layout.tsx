@@ -36,7 +36,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full">
-        <div id="app" className="mx-auto flex min-h-dvh w-full max-w-[1480px] flex-col px-4 pb-24 sm:px-6 md:pb-10">
+        <div id="app" className="mx-auto flex min-h-dvh w-full max-w-[1480px] flex-col px-4 pb-24 sm:px-6 md:pb-10"
+          style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
           <Nav />
           <main className="flex-1">{children}</main>
         </div>

@@ -293,7 +293,10 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
   const doneCount = board.lists.reduce((a, l) => a + l.cards.filter((c) => c.completedAt).length, 0);
 
   return (
-    <div className="flex h-[calc(100dvh-11.5rem)] flex-col md:h-[calc(100dvh-7.5rem)]">
+    <div
+      className="flex flex-col [--board-offset:11.5rem] md:[--board-offset:7.5rem]"
+      style={{ height: "calc(100dvh - var(--board-offset) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))" }}
+    >
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Link href="/quadros?lista=1" className="btn btn-ghost h-8 px-2" aria-label="Todos os quadros" title="Todos os quadros">
           <ArrowLeft size={16} />

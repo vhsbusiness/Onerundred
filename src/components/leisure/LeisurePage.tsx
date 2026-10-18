@@ -3,6 +3,7 @@
 import { askConfirm } from "@/components/ui/ConfirmProvider";
 import { Gamepad2, Pause, Play, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { TimeField } from "@/components/ui/TimeField";
 import { elapsedSince, http, useNow } from "@/lib/client";
 import { formatClock, formatDuration, keyToDate, todayKey, weekdayShort } from "@/lib/time";
 import type { LeisureLogDTO, LeisurePageDTO } from "@/lib/types";
@@ -214,11 +215,11 @@ export function LeisurePage() {
             <div className="grid grid-cols-2 gap-2">
               <label className="block text-sm">
                 <span className="mb-1 block text-xs uppercase tracking-wide text-ink-3">De</span>
-                <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="input px-2" />
+                <TimeField value={startTime} onChange={setStartTime} />
               </label>
               <label className="block text-sm">
                 <span className="mb-1 block text-xs uppercase tracking-wide text-ink-3">Até</span>
-                <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="input px-2" />
+                <TimeField value={endTime} onChange={setEndTime} />
               </label>
             </div>
             <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Observação (opcional)" className="input" />

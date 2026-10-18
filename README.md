@@ -60,13 +60,15 @@ source ~/.nvm/nvm.sh
 
 Nenhuma ação usa as caixas nativas do navegador: confirmações e avisos passam
 pelo `ConfirmProvider` (`askConfirm` e `notify` em `src/components/ui/ConfirmProvider.tsx`),
-no mesmo visual do app. As porcentagens do dashboard mostram uma explicação ao
-passar o mouse.
+no mesmo visual do app. As porcentagens do dashboard mostram um balão de
+explicação ao passar o mouse (ou tocar). Campos de horário usam um seletor
+próprio (`TimeField`), não o nativo do navegador.
 
 ## Mobile
 
-Layout responsivo: no celular, um botão flutuante no canto inferior direito abre
-o menu com todas as abas e o "Sair"; botões de ação sempre
+Layout responsivo: no celular, barra inferior estilo app (Início, Quadros,
+Metas, Sono, Lazer); o resto fica no menu do avatar. Respeita a área segura do
+iPhone (entalhe) quando instalado na tela inicial. Botões de ação sempre
 visíveis no toque, listas do quadro com rolagem lateral e encaixe, e arrasto de
 tarefas por toque longo. Há manifesto PWA: no celular, "Adicionar à tela
 inicial" abre o app em tela cheia com o ícone do Onerundred.

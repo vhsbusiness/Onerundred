@@ -149,8 +149,8 @@ export function ListColumn({
   return (
     <section
       data-no-pan
-      className={`card flex max-h-full w-[86vw] max-w-[300px] shrink-0 snap-start flex-col transition md:w-[300px] ${
-        isOver ? "border-line-2 bg-surface-2" : ""
+      className={`card flex max-h-full w-[86vw] max-w-[300px] shrink-0 snap-start flex-col bg-[#111318] transition md:w-[300px] ${
+        isOver ? "border-line-2 bg-[#15181e]" : ""
       }`}
     >
       <header className="flex items-center gap-2 px-3 pb-2 pt-3">
@@ -333,7 +333,7 @@ export function ListColumn({
 
       <footer className="px-3 pb-3 pt-1">
         {adding ? (
-          <form onSubmit={addCard} onPaste={onPasteNewCard} className="space-y-2 rounded-xl border border-line-2 bg-surface-2 p-2">
+          <form onSubmit={addCard} onPaste={onPasteNewCard} className="space-y-2 rounded-xl border border-white/[0.12] bg-[#262b34] p-2">
             <input
               ref={addRef}
               value={title}

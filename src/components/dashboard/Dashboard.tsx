@@ -8,17 +8,20 @@ import { formatDayLong, formatDuration } from "@/lib/time";
 import type { AiStatusDTO, DashboardDTO, WorkState } from "@/lib/types";
 import { AiInsightCard } from "./AiInsightCard";
 import { HistoryChart } from "./HistoryChart";
+import { Tip } from "@/components/ui/Tip";
 import { TodayTasks } from "./TodayTasks";
 import { WorkTimer } from "./WorkTimer";
 
 function ScoreTile({ label, score, hint, help }: { label: string; score: PeriodScore; hint: string; help: string }) {
   const tone = scoreTone(score.score);
   return (
-    <div className="min-w-0 cursor-help" title={help}>
-      <div className={`text-[2rem] font-semibold leading-none tracking-tight tabular-nums ${TONE_TEXT[tone]}`}>
-        {formatPercent(score.score)}
-      </div>
-      <div className="mt-1.5 text-sm text-ink-2 underline decoration-dotted decoration-ink-3/60 underline-offset-4">{label}</div>
+    <div className="min-w-0">
+      <Tip text={help} className="cursor-help">
+        <div className={`text-[2rem] font-semibold leading-none tracking-tight tabular-nums ${TONE_TEXT[tone]}`}>
+          {formatPercent(score.score)}
+        </div>
+        <div className="mt-1.5 text-sm text-ink-2 underline decoration-dotted decoration-ink-3/60 underline-offset-4">{label}</div>
+      </Tip>
       <div className="mt-2">
         <span className={TONE_PILL[tone]}>{hint}</span>
       </div>
@@ -40,9 +43,11 @@ function PlainTile({
   help?: string;
 }) {
   return (
-    <div className={`min-w-0 ${help ? "cursor-help" : ""}`} title={help}>
-      <div className="text-[2rem] font-semibold leading-none tracking-tight tabular-nums">{value}</div>
-      <div className={`mt-1.5 text-sm text-ink-2 ${help ? "underline decoration-dotted decoration-ink-3/60 underline-offset-4" : ""}`}>{label}</div>
+    <div className="min-w-0">
+      <Tip text={help ?? ""} className={help ? "cursor-help" : ""}>
+        <div className="text-[2rem] font-semibold leading-none tracking-tight tabular-nums">{value}</div>
+        <div className={`mt-1.5 text-sm text-ink-2 ${help ? "underline decoration-dotted decoration-ink-3/60 underline-offset-4" : ""}`}>{label}</div>
+      </Tip>
       <div className="mt-2">
         <span className={pillClass}>{pill}</span>
       </div>
@@ -172,33 +177,33 @@ export function Dashboard({ initialData, initialAi }: { initialData?: DashboardD
               label="Hoje"
               score={data.today}
               hint={todayHint}
-              help="Nota de hoje: peso das tarefas concluídas hoje dividido pelo peso das concluídas mais as que ainda estão abertas (agendadas até hoje). Peso = prioridade da tarefa (Alta 3, Média 2, Baixa 1) × prioridade da lista (Alta ×1,5, Média ×1, Baixa ×0,5). Tarefas de amanhã não entram."
+              help="Quanto do que você planejou para hoje já foi concluído. Tarefas de prioridade alta valem mais, e o que ficou aberto puxa a nota para baixo. Tarefas de amanhã não contam hoje."
             />
             <ScoreTile
               label="Esta semana"
               score={data.week}
               hint={weekHint}
-              help="Nota da semana (segunda a domingo): peso das tarefas concluídas na semana dividido pelo peso das concluídas mais as que continuam abertas no fim da semana."
+              help="A mesma nota, olhando a semana inteira (segunda a domingo): o que você concluiu contra o que ficou em aberto."
             />
             <ScoreTile
               label="Este mês"
               score={data.month}
               hint={monthHint}
-              help="Nota do mês: peso das tarefas concluídas no mês dividido pelo peso das concluídas mais as que continuam abertas no fim do mês."
+              help="A mesma nota, olhando o mês inteiro: o que você concluiu contra o que ficou em aberto."
             />
             <PlainTile
               value={formatDuration(data.work.todayMs)}
               label="Trabalhado hoje"
               pill={data.work.verdict.label}
               pillClass={TONE_PILL[data.work.verdict.tone]}
-              help="Soma das sessões de trabalho de hoje (botão começar/pausar). O selo compara esse tempo com a soma das estimativas das tarefas de hoje ou, se não houver estimativas, com a sua meta diária das Configurações."
+              help="Tempo total das suas sessões de trabalho de hoje. O selo diz se você está abaixo, no ritmo ou acima do que planejou para o dia."
             />
             <PlainTile
               value={`${data.streak}d`}
               label="Sequência ≥ 70%"
               pill={data.streak > 0 ? "Mantenha o ritmo" : "Comece hoje"}
               pillClass={data.streak > 0 ? "pill pill-orange" : "pill"}
-              help="Quantos dias seguidos você fechou com nota de 70% ou mais. Dias sem nenhuma tarefa não quebram a sequência; hoje conta se já estiver em 70% ou mais."
+              help="Quantos dias seguidos você fechou com uma nota boa (70% ou mais). Dias sem tarefas não quebram a sequência."
             />
           </div>
 

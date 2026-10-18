@@ -3,6 +3,7 @@
 import { askConfirm } from "@/components/ui/ConfirmProvider";
 import { Moon, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { TimeField } from "@/components/ui/TimeField";
 import { http } from "@/lib/client";
 import { formatDuration, keyToDate, todayKey, weekdayShort } from "@/lib/time";
 import type { SleepLogDTO, SleepPageDTO } from "@/lib/types";
@@ -177,15 +178,15 @@ export function SleepPage() {
           <div className="grid grid-cols-3 gap-2">
             <label className="block text-sm">
               <span className="mb-1 block text-xs uppercase tracking-wide text-ink-3">Deitei</span>
-              <input type="time" value={bedTime} onChange={(e) => setBedTime(e.target.value)} className="input px-2" />
+              <TimeField value={bedTime} onChange={setBedTime} />
             </label>
             <label className="block text-sm">
               <span className="mb-1 block text-xs uppercase tracking-wide text-ink-3">Dormi</span>
-              <input type="time" value={sleepTime} onChange={(e) => setSleepTime(e.target.value)} className="input px-2" />
+              <TimeField value={sleepTime} onChange={setSleepTime} />
             </label>
             <label className="block text-sm">
               <span className="mb-1 block text-xs uppercase tracking-wide text-ink-3">Acordei</span>
-              <input type="time" value={wakeTime} onChange={(e) => setWakeTime(e.target.value)} className="input px-2" />
+              <TimeField value={wakeTime} onChange={setWakeTime} />
             </label>
           </div>
           <div>
