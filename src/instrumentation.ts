@@ -21,4 +21,7 @@ export async function register() {
   };
   g.__onerundredScheduler = setInterval(run, 5 * 60 * 1000);
   setTimeout(run, 15 * 1000);
+  console.log(
+    `[notificações] agendador iniciado (a cada 5 min; VAPID ${process.env.VAPID_PUBLIC_KEY ? "ok" : "AUSENTE"}; fuso ${process.env.TZ ?? "padrão"})`,
+  );
 }

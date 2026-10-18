@@ -209,14 +209,15 @@ export function Nav() {
     if (pathname === "/login") return;
     const load = () =>
       fetch("/api/auth/me", { cache: "no-store" })
-        .then((r) => (r.ok ? r.json() : null))
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error("falha"))))
         .then((d) => {
           const next: MeDTO | null = d?.user ?? null;
-          meCache = next;
+          // Só guarda no cache quando há usuário; erro ou sessão ausente tentam de novo na próxima página.
+          meCache = next ?? undefined;
           setMe(next);
         })
         .catch(() => {});
-    if (meCache === undefined) load();
+    if (!meCache) load();
     window.addEventListener("me-changed", load);
     return () => window.removeEventListener("me-changed", load);
   }, [pathname]);
