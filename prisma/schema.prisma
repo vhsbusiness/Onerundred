@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Board {
+  id        String   @id @default(cuid())
+  name      String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  lists     List[]
+}
+
+model List {
+  id       String @id @default(cuid())
+  boardId  String
+  name     String
+  position Int    @default(0)
+  /// 1 = alta, 2 = média, 3 = baixa
+  priority Int    @default(2)
+  /// normal | tomorrow | done
+  kind     String @default("normal")
+  board    Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards    Card[]
+
+  @@index([boardId])
+}
+
+model Card {
+  id               String        @id @default(cuid())
+  listId           String
+  title            String
+  description      String        @default("")
+  /// 1 = alta, 2 = média, 3 = baixa
+  priority         Int           @default(2)
+  position         Int           @default(0)
+  estimatedMinutes Int?
+  /// yyyy-MM-dd (dia para o qual a tarefa está agendada)
+  scheduledFor     String
+  createdAt        DateTime      @default(now())
+  completedAt      DateTime?
+  archivedAt       DateTime?
+  list             List          @relation(fields: [listId], references: [id], onDelete: Cascade)
+  sessions         TaskSession[]
+
+  @@index([listId])
+  @@index([scheduledFor])
+  @@index([completedAt])
+}
+
+/// Tempo gasto em uma tarefa específica
+model TaskSession {
+  id        String    @id @default(cuid())
+  cardId    String
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+  card      Card      @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([cardId])
+}
+
+/// Sessão de trabalho (botão iniciar/parar do dashboard)
+model WorkSession {
+  id        String    @id @default(cuid())
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+
+  @@index([startedAt])
+}
+
+model Setting {
+  key   String @id
+  value String
+}

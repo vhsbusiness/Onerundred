@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "onerundred",
+      "url": "http://localhost:3000"
+    },
+    {
+      "name": "onerundred-dev",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": [
+        "-c",
+        "export PATH=\"$HOME/.nvm/versions/node/v24.22.0/bin:$PATH\"; exec node node_modules/next/dist/bin/next dev -p ${PORT:-3000}"
+      ],
+      "port": 3000
+    }
+  ]
+}
