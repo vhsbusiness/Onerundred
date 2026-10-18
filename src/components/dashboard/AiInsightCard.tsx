@@ -1,6 +1,6 @@
 "use client";
 
-import { Brain, ChevronDown, ChevronUp, Coffee, Moon, RefreshCw, Sparkles, Sun, Sunrise } from "lucide-react";
+import { Brain, ChevronDown, ChevronUp, Coffee, Eye, Moon, RefreshCw, Sparkles, Sun, Sunrise } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { http, TONE_PILL, TONE_TEXT } from "@/lib/client";
@@ -61,7 +61,7 @@ export function AiInsightCard({ todayCards }: { todayCards: TodayCard[] }) {
       const s = await http.get<AiStatusDTO>("/api/ai/insight");
       setStatus(s);
       // A primeira análise do dia é gerada sozinha quando há tarefas e ainda não existe análise.
-      if (!autoTried.current && s.enabled && !s.insight && s.remainingToday > 0 && cardsCount.current > 0) {
+      if (!autoTried.current && s.enabled && s.observation.coreReady && !s.insight && s.remainingToday > 0 && cardsCount.current > 0) {
         autoTried.current = true;
         await generate();
       }
@@ -88,6 +88,9 @@ export function AiInsightCard({ todayCards }: { todayCards: TodayCard[] }) {
 
   const insight = status?.insight ?? null;
   const tone = scoreTone(insight?.score ?? null);
+  const observation = status?.observation ?? null;
+  const observing = Boolean(observation && !observation.coreReady);
+  const stillWatching = observation?.dimensions.filter((d) => !d.ready) ?? [];
 
   return (
     <section
@@ -98,7 +101,8 @@ export function AiInsightCard({ todayCards }: { todayCards: TodayCard[] }) {
         <h3 className="flex items-center gap-2 text-sm font-medium">
           <Brain size={15} className="text-blue" /> Análise do dia
         </h3>
-        {insight && <span className={TONE_PILL[tone]}>nota IA {insight.score}%</span>}
+        {insight && !observing && <span className={TONE_PILL[tone]}>nota IA {insight.score}%</span>}
+        {observing && <span className="pill pill-blue">observando</span>}
         {collapsed && insight && (
           <span className={`hidden truncate text-sm sm:inline ${TONE_TEXT[tone]}`}>{insight.headline}</span>
         )}
@@ -107,8 +111,8 @@ export function AiInsightCard({ todayCards }: { todayCards: TodayCard[] }) {
           <button
             type="button"
             onClick={generate}
-            disabled={busy || !status || status.remainingToday <= 0}
-            className="btn h-8 px-3 text-xs"
+            disabled={busy || !status || status.remainingToday <= 0 || observing}
+            className={`btn h-8 px-3 text-xs ${observing ? "hidden" : ""}`}
             title={status ? `${status.remainingToday} análises restantes hoje` : undefined}
           >
             <RefreshCw size={13} className={busy ? "animate-spin" : ""} />
@@ -126,9 +130,42 @@ export function AiInsightCard({ todayCards }: { todayCards: TodayCard[] }) {
         </div>
       </div>
 
+      {observing && observation && !collapsed && (
+        <div className="mt-3">
+          <p className="flex items-center gap-2 text-sm text-ink-2">
+            <Eye size={14} className="text-blue" />
+            A IA está observando seus hábitos antes de opinar. Use o app normalmente: a análise libera quando tarefas e tempo de trabalho tiverem dias suficientes.
+          </p>
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+            {observation.dimensions.map((d) => {
+              const pct = d.need === 0 ? 100 : Math.min(100, Math.round((d.have / d.need) * 100));
+              return (
+                <li key={d.key} className="rounded-xl border border-line bg-black/20 px-3 py-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium">{d.label}</span>
+                    <span className={d.ready ? "text-green" : "text-ink-3"}>
+                      {d.ready ? "pronto" : `${d.have} de ${d.need} ${d.unit}`}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                    <div className={`h-full rounded-full ${d.ready ? "bg-green-deep" : "bg-blue-deep"}`} style={{ width: `${pct}%` }} />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {!observing && stillWatching.length > 0 && !collapsed && (
+        <p className="mt-2 flex items-center gap-1.5 text-xs text-ink-3">
+          <Eye size={12} /> Ainda observando: {stillWatching.map((d) => `${d.label.toLowerCase()} (${d.have}/${d.need} ${d.unit})`).join(" · ")}
+        </p>
+      )}
+
       {error && !collapsed && <p className="mt-3 text-sm text-red">{error}</p>}
 
-      {!insight && !error && !collapsed && (
+      {!insight && !error && !collapsed && !observing && (
         <p className="mt-3 text-sm text-ink-3">
           {busy
             ? "A IA está lendo suas tarefas, prioridades e tempo de trabalho…"
@@ -138,7 +175,7 @@ export function AiInsightCard({ todayCards }: { todayCards: TodayCard[] }) {
         </p>
       )}
 
-      {insight && !collapsed && (
+      {insight && !collapsed && !observing && (
         <div className={`mt-3 grid gap-4 lg:grid-cols-[1.4fr_1fr] ${busy ? "opacity-60" : ""}`}>
           <div className="space-y-3">
             <p className={`text-base font-semibold leading-snug ${TONE_TEXT[tone]}`}>{insight.headline}</p>
@@ -207,12 +244,16 @@ export function AiInsightCard({ todayCards }: { todayCards: TodayCard[] }) {
                     <Coffee size={11} /> pausas {insight.schedule.breakAt.join(", ")}
                   </span>
                 )}
-                <span className="pill">
-                  <Moon size={11} /> dormir {insight.schedule.sleepAt}
-                </span>
-                <span className="pill">
-                  <Sunrise size={11} /> acordar {insight.schedule.wakeAt}
-                </span>
+                {insight.schedule.sleepAt && (
+                  <span className="pill">
+                    <Moon size={11} /> dormir {insight.schedule.sleepAt}
+                  </span>
+                )}
+                {insight.schedule.wakeAt && (
+                  <span className="pill">
+                    <Sunrise size={11} /> acordar {insight.schedule.wakeAt}
+                  </span>
+                )}
               </div>
               {insight.schedule.note && <p className="mt-1.5 text-[11px] text-ink-3">{insight.schedule.note}</p>}
             </div>

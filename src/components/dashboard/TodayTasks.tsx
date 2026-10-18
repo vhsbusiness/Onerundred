@@ -90,7 +90,7 @@ export function TodayTasks({
               <button
                 type="button"
                 onClick={() => timer(c)}
-                className={`btn h-8 w-8 shrink-0 p-0 ${running ? "pill-green border-green/40" : "opacity-0 group-hover:opacity-100"}`}
+                className={`btn h-8 w-8 shrink-0 p-0 ${running ? "pill-green border-green/40" : "md:opacity-0 md:group-hover:opacity-100"}`}
                 aria-label={running ? "Pausar cronômetro" : "Iniciar cronômetro"}
                 title={running ? "Pausar" : "Iniciar"}
               >
@@ -101,7 +101,7 @@ export function TodayTasks({
               <button
                 type="button"
                 onClick={() => toggleDone(c)}
-                className="btn h-8 w-8 shrink-0 p-0 opacity-0 group-hover:opacity-100"
+                className="btn h-8 w-8 shrink-0 p-0 md:opacity-0 md:group-hover:opacity-100"
                 aria-label="Reabrir"
                 title="Reabrir"
               >

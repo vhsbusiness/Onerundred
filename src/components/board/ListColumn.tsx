@@ -105,7 +105,7 @@ export function ListColumn({
   return (
     <section
       data-no-pan
-      className={`card flex max-h-full w-[300px] shrink-0 flex-col transition ${
+      className={`card flex max-h-full w-[86vw] max-w-[300px] shrink-0 snap-start flex-col transition md:w-[300px] ${
         isOver ? "border-line-2 bg-surface-2" : ""
       }`}
     >

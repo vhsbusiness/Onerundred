@@ -117,6 +117,26 @@ export interface MeDTO {
 
 export interface AppSettingsDTO {
   allowRegistration: boolean;
+  /** Período de observação da IA (dias/noites com dados) antes de analisar. */
+  aiMinDaysTasks: number;
+  aiMinDaysWork: number;
+  aiMinNightsSleep: number;
+  aiMinDaysLeisure: number;
+}
+
+export interface AiObservationDimension {
+  key: "tasks" | "work" | "sleep" | "leisure";
+  label: string;
+  have: number;
+  need: number;
+  ready: boolean;
+  unit: string;
+}
+
+export interface AiObservation {
+  dimensions: AiObservationDimension[];
+  /** Tarefas e trabalho prontos: libera a análise completa. */
+  coreReady: boolean;
 }
 
 export interface AdminUser {
@@ -188,6 +208,7 @@ export interface AiStatusDTO {
   insight: AiInsightDTO | null;
   remainingToday: number;
   memory: string | null;
+  observation: AiObservation;
 }
 
 /* ───────────── Sono ───────────── */

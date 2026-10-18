@@ -124,7 +124,7 @@ export function WorkTimer({ work, onChange }: { work: WorkState; onChange: (w: W
                       <button
                         type="button"
                         onClick={() => remove(s.id)}
-                        className="text-ink-3 opacity-0 transition hover:text-red group-hover:opacity-100"
+                        className="text-ink-3 md:opacity-0 transition hover:text-red md:group-hover:opacity-100"
                         aria-label="Apagar sessão"
                       >
                         <Trash2 size={14} />

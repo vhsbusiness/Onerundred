@@ -37,6 +37,8 @@ source ~/.nvm/nvm.sh
   obrigações diárias. Cada dia é marcado como feito ou não feito; dias sem
   marcação viram "não feito" na virada do dia (pode corrigir, com aviso para
   marcar feito só se cumpriu de verdade). Mostra sequência, % e calendário.
+- **Lazer** (`/lazer`): blocos de lazer (jogos, séries…) de que horas até que
+  horas, com cronômetro começar/parar, totais e gráfico de 14 dias.
 - **Sono** (`/sono`): registro de cada noite (deitei, dormi, acordei, qualidade),
   médias de 7 e 30 dias, hora média de deitar/acordar e gráfico das últimas 14
   noites. Os registros entram na análise da IA.
@@ -45,6 +47,14 @@ source ~/.nvm/nvm.sh
 - **Configurações** (`/configuracoes`): meta diária de trabalho.
 - **Contas**: cadastro aberto, login por e-mail ou usuário, dados isolados por conta.
 - **Admin** (`/admin`): painel do administrador (primeiro usuário cadastrado).
+
+## Mobile
+
+Layout responsivo com barra de navegação inferior no celular (Início, Quadros,
+Metas, Sono, Lazer; o resto fica no menu do usuário), botões de ação sempre
+visíveis no toque, listas do quadro com rolagem lateral e encaixe, e arrasto de
+tarefas por toque longo. Há manifesto PWA: no celular, "Adicionar à tela
+inicial" abre o app em tela cheia com o ícone do Onerundred.
 
 ## Regras de negócio
 
@@ -136,6 +146,12 @@ estimativa, tempo cronometrado, atrasos), as sessões de trabalho, o histórico 
 das próximas tarefas e horários de trabalho, pausas e sono. A primeira análise do
 dia é gerada sozinha ao abrir o dashboard; "Atualizar" gera outra (limite de 12 por
 dia por usuário).
+
+**Período de observação.** Antes de opinar, a IA observa cada dimensão por um
+mínimo de dias com dados (padrão: tarefas 5 dias, tempo de trabalho 5 dias, sono
+7 noites, lazer 7 dias; ajustável no painel Admin). Tarefas e trabalho liberam a
+análise completa; sono e lazer, enquanto não atingem o mínimo, ficam fora das
+conclusões. O card mostra o progresso de cada dimensão.
 
 A cada análise a IA também reescreve a **memória de hábitos** do usuário
 (`AiMemory`): padrões de horário, ritmo, estimativas vs. realidade. Essa memória

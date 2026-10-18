@@ -148,7 +148,7 @@ export function Dashboard() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Seu dia</h1>
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Seu dia</h1>
           <p className="text-sm text-ink-2">{formatDayLong(data.todayKey)}</p>
         </div>
         {data.runningTask && (

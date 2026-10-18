@@ -3,11 +3,14 @@ import { getAppSettings, updateAppSettings } from "@/lib/admin";
 
 export const GET = withAdmin(async () => json(await getAppSettings()));
 
+const NUMERIC = ["aiMinDaysTasks", "aiMinDaysWork", "aiMinNightsSleep", "aiMinDaysLeisure"] as const;
+
 export const PATCH = withAdmin(async (_admin, req: Request) => {
   const body = await readBody(req);
-  return json(
-    await updateAppSettings({
-      allowRegistration: body.allowRegistration === undefined ? undefined : Boolean(body.allowRegistration),
-    }),
-  );
+  const data: Record<string, unknown> = {};
+  if (body.allowRegistration !== undefined) data.allowRegistration = Boolean(body.allowRegistration);
+  for (const k of NUMERIC) {
+    if (body[k] !== undefined) data[k] = Number(body[k]);
+  }
+  return json(await updateAppSettings(data));
 });

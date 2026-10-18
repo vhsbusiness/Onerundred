@@ -61,7 +61,7 @@ export function CardBody({
               onTimer();
             }}
             className={`btn h-7 w-7 shrink-0 p-0 ${
-              running ? "pill-green border-green/40" : "opacity-0 group-hover:opacity-100"
+              running ? "pill-green border-green/40" : "md:opacity-0 md:group-hover:opacity-100"
             }`}
             aria-label={running ? "Pausar cronômetro" : "Iniciar cronômetro"}
             title={running ? "Pausar" : "Iniciar"}

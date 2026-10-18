@@ -216,7 +216,7 @@ export function ProjectsPage() {
     <div className="space-y-5">
       <MetasHeader />
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-ink-3">
           Crie um projeto de quantos dias quiser e marque, dia a dia, se cumpriu as obrigações. Dias não marcados até a virada do dia contam como não feitos.
         </p>

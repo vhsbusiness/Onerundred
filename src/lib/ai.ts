@@ -8,7 +8,8 @@ import { computeStats, listSleep } from "./sleep";
 import { listProjects } from "./projects";
 import { computeLeisureStats, listLeisure } from "./leisure";
 import { dayKey, dayRange, formatDuration, todayKey } from "./time";
-import type { AiInsightContent, AiInsightDTO, AiStatusDTO } from "./types";
+import type { AiInsightContent, AiInsightDTO, AiObservation, AiStatusDTO } from "./types";
+import { getAppSettings } from "./admin";
 
 /*
  * Camada de IA (OpenAI).
@@ -39,9 +40,52 @@ function openai(): OpenAI {
   return client;
 }
 
+/* ───────────── Período de observação ───────────── */
+
+/**
+ * Antes de opinar, a IA observa cada dimensão por um mínimo de dias COM dados
+ * (configurável pelo admin). Tarefas e trabalho liberam a análise completa;
+ * sono e lazer, enquanto não prontos, ficam fora das conclusões.
+ */
+export async function getObservation(userId: string): Promise<AiObservation> {
+  const settings = await getAppSettings();
+  const since = subDays(dayRange(todayKey()).start, 60);
+
+  const [cards, work, sleepCount, leisure] = await Promise.all([
+    prisma.card.findMany({
+      where: { list: { board: { userId } }, createdAt: { gte: since } },
+      select: { scheduledFor: true },
+    }),
+    prisma.workSession.findMany({ where: { userId, startedAt: { gte: since } }, select: { startedAt: true } }),
+    prisma.sleepLog.count({ where: { userId, wakeAt: { gte: since } } }),
+    prisma.leisureLog.findMany({ where: { userId, startAt: { gte: since }, endAt: { not: null } }, select: { dayKey: true } }),
+  ]);
+
+  const today = todayKey();
+  const taskDays = new Set(cards.map((c) => c.scheduledFor).filter((k) => k <= today)).size;
+  const workDays = new Set(work.map((w) => dayKey(w.startedAt))).size;
+  const leisureDays = new Set(leisure.map((l) => l.dayKey)).size;
+
+  const dim = (
+    key: AiObservation["dimensions"][number]["key"],
+    label: string,
+    have: number,
+    need: number,
+    unit: string,
+  ) => ({ key, label, have, need, ready: have >= need, unit });
+
+  const dimensions = [
+    dim("tasks", "Tarefas", taskDays, settings.aiMinDaysTasks, "dias"),
+    dim("work", "Tempo de trabalho", workDays, settings.aiMinDaysWork, "dias"),
+    dim("sleep", "Sono", sleepCount, settings.aiMinNightsSleep, "noites"),
+    dim("leisure", "Lazer", leisureDays, settings.aiMinDaysLeisure, "dias"),
+  ];
+  return { dimensions, coreReady: dimensions[0].ready && dimensions[1].ready };
+}
+
 /* ───────────── Contexto ───────────── */
 
-async function buildContext(userId: string) {
+async function buildContext(userId: string, observation: AiObservation) {
   const now = new Date();
   const today = todayKey();
   const dash = await getDashboard(userId);
@@ -109,6 +153,12 @@ async function buildContext(userId: string) {
     dash,
     memory: memory?.summary ?? null,
     payload: {
+      periodoDeObservacao: observation.dimensions.map((d) => ({
+        dimensao: d.label,
+        diasComDados: d.have,
+        minimo: d.need,
+        pronta: d.ready,
+      })),
       agora: now.toLocaleString("pt-BR", { weekday: "long", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }),
       metaDiariaMin: dash.work.dailyGoalMinutes,
       planejadoHojeMin: dash.work.plannedMinutes,
@@ -218,6 +268,7 @@ const responseSchema = {
 const SYSTEM_PROMPT = `Você é o analista de produtividade do Onerundred, um painel pessoal onde o usuário organiza tarefas em quadros (estilo Trello) com prioridade Alta/Média/Baixa, estima tempo, cronometra cada tarefa e registra sessões de trabalho.
 
 Regras:
+- periodoDeObservacao diz quais dimensões já têm dados suficientes. Sobre uma dimensão NÃO pronta (pronta=false) você não tira conclusões nem dá sugestões: diga no máximo que ainda está observando (ex.: "sono: 3 de 7 noites registradas"). Se sono não está pronto, devolva sleepAt e wakeAt como "" (vazios) e não fale de sono na note. Se lazer não está pronto, não comente lazer.
 - Responda em português do Brasil, direto e humano, sem bajulação e sem listas enormes.
 - A nota (score) deve refletir o peso das prioridades: tarefas Alta valem mais; tarefas atrasadas pesam contra; tempo trabalhado abaixo do planejado puxa para baixo; concluir cedo o que importa puxa para cima. Se não há tarefas nem trabalho, seja franco.
 - Em nextTasks use somente ids de tarefas abertas de hoje (feita=false), no máximo 3, da mais importante para a menos.
@@ -249,10 +300,11 @@ async function generationsToday(userId: string): Promise<number> {
 
 export async function getAiStatus(userId: string): Promise<AiStatusDTO> {
   const today = todayKey();
-  const [latest, used, memory] = await Promise.all([
+  const [latest, used, memory, observation] = await Promise.all([
     prisma.aiInsight.findFirst({ where: { userId, dayKey: today }, orderBy: { createdAt: "desc" } }),
     generationsToday(userId),
     prisma.aiMemory.findUnique({ where: { userId } }),
+    getObservation(userId),
   ]);
   const remaining = Math.max(0, MAX_GENERATIONS_PER_DAY - used);
   return {
@@ -260,6 +312,7 @@ export async function getAiStatus(userId: string): Promise<AiStatusDTO> {
     insight: latest ? serializeInsight(latest, remaining) : null,
     remainingToday: remaining,
     memory: memory?.summary ?? null,
+    observation,
   };
 }
 
@@ -270,7 +323,15 @@ export async function generateInsight(userId: string): Promise<AiInsightDTO> {
     throw new ApiError(429, `Limite de ${MAX_GENERATIONS_PER_DAY} análises por dia atingido`);
   }
 
-  const { payload } = await buildContext(userId);
+  const observation = await getObservation(userId);
+  if (!observation.coreReady) {
+    const pending = observation.dimensions
+      .filter((d) => (d.key === "tasks" || d.key === "work") && !d.ready)
+      .map((d) => `${d.label.toLowerCase()} ${d.have}/${d.need} ${d.unit}`)
+      .join(", ");
+    throw new ApiError(425, `A IA ainda está observando seus hábitos (${pending})`);
+  }
+  const { payload } = await buildContext(userId, observation);
   const model = modelName();
   const supportsReasoning = /^(gpt-5|o\d)/.test(model);
 

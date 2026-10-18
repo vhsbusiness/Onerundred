@@ -4,7 +4,8 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   closestCorners,
   useSensor,
   useSensors,
@@ -86,7 +87,9 @@ export function BoardView({ boardId }: { boardId: string }) {
   const now = useNow(anyRunning);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    // No toque, segurar 220 ms inicia o arrasto; antes disso o dedo rola a tela normalmente.
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
@@ -251,7 +254,7 @@ export function BoardView({ boardId }: { boardId: string }) {
   const doneCount = board.lists.reduce((a, l) => a + l.cards.filter((c) => c.completedAt).length, 0);
 
   return (
-    <div className="flex h-[calc(100dvh-7.5rem)] flex-col">
+    <div className="flex h-[calc(100dvh-11.5rem)] flex-col md:h-[calc(100dvh-7.5rem)]">
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Link href="/quadros?lista=1" className="btn btn-ghost h-8 px-2" aria-label="Todos os quadros" title="Todos os quadros">
           <ArrowLeft size={16} />
@@ -275,7 +278,7 @@ export function BoardView({ boardId }: { boardId: string }) {
           <button
             type="button"
             onClick={() => setEditingName(true)}
-            className="text-2xl font-semibold tracking-tight"
+            className="truncate text-xl font-semibold tracking-tight sm:text-2xl"
             title="Renomear quadro"
           >
             {board.name}
@@ -286,7 +289,7 @@ export function BoardView({ boardId }: { boardId: string }) {
 
         <div className="ml-auto flex items-center gap-2">
           <button type="button" onClick={() => setAddingList(true)} className="btn">
-            <Plus size={14} /> Nova lista
+            <Plus size={14} /> <span className="hidden sm:inline">Nova lista</span>
           </button>
           <button type="button" onClick={removeBoard} className="btn btn-ghost text-ink-3 hover:text-red" title="Excluir quadro">
             <Trash2 size={14} />
@@ -311,7 +314,7 @@ export function BoardView({ boardId }: { boardId: string }) {
           onMouseMove={onPanMove}
           onMouseUp={onPanEnd}
           onMouseLeave={onPanEnd}
-          className={`flex min-h-0 flex-1 items-start gap-4 overflow-x-auto pb-4 ${
+          className={`flex min-h-0 flex-1 snap-x snap-mandatory items-start gap-3 overflow-x-auto pb-4 md:snap-none md:gap-4 ${
             panning ? "cursor-grabbing select-none" : "cursor-grab"
           }`}
         >
@@ -330,7 +333,7 @@ export function BoardView({ boardId }: { boardId: string }) {
           ))}
 
           {addingList ? (
-            <form onSubmit={addList} data-no-pan className="card w-[300px] shrink-0 space-y-2 p-3">
+            <form onSubmit={addList} data-no-pan className="card w-[86vw] max-w-[300px] shrink-0 snap-start space-y-2 p-3 md:w-[300px]">
               <input
                 autoFocus
                 value={listName}
@@ -355,7 +358,7 @@ export function BoardView({ boardId }: { boardId: string }) {
               type="button"
               data-no-pan
               onClick={() => setAddingList(true)}
-              className="flex h-12 w-[300px] shrink-0 items-center justify-center gap-2 rounded-card border border-dashed border-line text-sm text-ink-3 transition hover:border-line-2 hover:text-ink"
+              className="flex h-12 w-[86vw] max-w-[300px] shrink-0 snap-start items-center justify-center gap-2 rounded-card border border-dashed border-line text-sm text-ink-3 transition hover:border-line-2 hover:text-ink md:w-[300px]"
             >
               <Plus size={15} /> Nova lista
             </button>

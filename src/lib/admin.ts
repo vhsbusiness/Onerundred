@@ -3,18 +3,37 @@ import { ApiError } from "./errors";
 import { sumSessions, dayRange, todayKey } from "./time";
 import type { AdminOverview, AdminUser, AppSettingsDTO } from "./types";
 
+const AI_DEFAULTS = { aiMinDaysTasks: 5, aiMinDaysWork: 5, aiMinNightsSleep: 7, aiMinDaysLeisure: 7 } as const;
+type AiMinKey = keyof typeof AI_DEFAULTS;
+
+function readInt(v: string | undefined, fallback: number): number {
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 0 && n <= 60 ? n : fallback;
+}
+
 export async function getAppSettings(): Promise<AppSettingsDTO> {
-  const row = await prisma.appSetting.findUnique({ where: { key: "allowRegistration" } });
-  return { allowRegistration: row ? row.value !== "false" : true };
+  const rows = await prisma.appSetting.findMany();
+  const map = new Map(rows.map((r) => [r.key, r.value]));
+  return {
+    allowRegistration: map.get("allowRegistration") !== "false",
+    aiMinDaysTasks: readInt(map.get("aiMinDaysTasks"), AI_DEFAULTS.aiMinDaysTasks),
+    aiMinDaysWork: readInt(map.get("aiMinDaysWork"), AI_DEFAULTS.aiMinDaysWork),
+    aiMinNightsSleep: readInt(map.get("aiMinNightsSleep"), AI_DEFAULTS.aiMinNightsSleep),
+    aiMinDaysLeisure: readInt(map.get("aiMinDaysLeisure"), AI_DEFAULTS.aiMinDaysLeisure),
+  };
+}
+
+async function setSetting(key: string, value: string) {
+  await prisma.appSetting.upsert({ where: { key }, create: { key, value }, update: { value } });
 }
 
 export async function updateAppSettings(data: Partial<AppSettingsDTO>): Promise<AppSettingsDTO> {
-  if (data.allowRegistration !== undefined) {
-    await prisma.appSetting.upsert({
-      where: { key: "allowRegistration" },
-      create: { key: "allowRegistration", value: String(data.allowRegistration) },
-      update: { value: String(data.allowRegistration) },
-    });
+  if (data.allowRegistration !== undefined) await setSetting("allowRegistration", String(data.allowRegistration));
+  for (const key of Object.keys(AI_DEFAULTS) as AiMinKey[]) {
+    const v = data[key];
+    if (v === undefined) continue;
+    if (!Number.isInteger(v) || v < 0 || v > 60) throw new ApiError(400, "Dias de observação devem ser de 0 a 60");
+    await setSetting(key, String(v));
   }
   return getAppSettings();
 }

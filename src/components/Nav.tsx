@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, ShieldCheck } from "lucide-react";
+import { Archive, Gamepad2, LayoutDashboard, LogOut, Moon, Settings, ShieldCheck, SquareKanban, Target } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -8,14 +8,17 @@ import { formatDayLong, todayKey } from "@/lib/time";
 import type { MeDTO } from "@/lib/types";
 
 const tabs = [
-  { href: "/", label: "Dashboard" },
-  { href: "/quadros", label: "Quadros" },
-  { href: "/metas", label: "Metas" },
-  { href: "/sono", label: "Sono" },
-  { href: "/lazer", label: "Lazer" },
-  { href: "/arquivadas", label: "Arquivadas" },
-  { href: "/configuracoes", label: "Configurações" },
+  { href: "/", label: "Dashboard", short: "Início", icon: LayoutDashboard },
+  { href: "/quadros", label: "Quadros", short: "Quadros", icon: SquareKanban },
+  { href: "/metas", label: "Metas", short: "Metas", icon: Target },
+  { href: "/sono", label: "Sono", short: "Sono", icon: Moon },
+  { href: "/lazer", label: "Lazer", short: "Lazer", icon: Gamepad2 },
+  { href: "/arquivadas", label: "Arquivadas", short: "Arquivo", icon: Archive },
+  { href: "/configuracoes", label: "Configurações", short: "Config.", icon: Settings },
 ];
+
+/** No mobile, a barra inferior mostra só as principais; o resto fica no menu do usuário. */
+const MOBILE_TABS = ["/", "/quadros", "/metas", "/sono", "/lazer"];
 
 export function Logo() {
   return (
@@ -107,6 +110,12 @@ function UserMenu({ me }: { me: MeDTO }) {
             <div className="truncate text-xs text-ink-3">@{me.username} · {me.email}</div>
           </div>
           <div className="my-1 border-t border-line" />
+          <Link href="/arquivadas" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/[0.06] md:hidden">
+            <Archive size={14} className="text-ink-3" /> Arquivadas
+          </Link>
+          <Link href="/configuracoes" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/[0.06] md:hidden">
+            <Settings size={14} className="text-ink-3" /> Configurações
+          </Link>
           {me.role === "admin" && (
             <Link
               href="/admin"
@@ -143,9 +152,39 @@ export function Nav() {
 
   if (pathname === "/login") return null;
 
-  const allTabs = me?.role === "admin" ? [...tabs, { href: "/admin", label: "Admin" }] : tabs;
+  const allTabs = me?.role === "admin" ? [...tabs, { href: "/admin", label: "Admin", short: "Admin", icon: ShieldCheck }] : tabs;
+  const mobileTabs = allTabs.filter((t) => MOBILE_TABS.includes(t.href));
+  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
   return (
+    <>
+    <nav
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-bg/85 px-2 pt-1.5 backdrop-blur-xl md:hidden"
+      style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6px)" }}
+      aria-label="Navegação principal"
+    >
+      <ul className="mx-auto flex max-w-md items-stretch justify-between">
+        {mobileTabs.map((t) => {
+          const Icon = t.icon;
+          const active = isActive(t.href);
+          return (
+            <li key={t.href} className="flex-1">
+              <Link
+                href={t.href}
+                className={`flex flex-col items-center gap-0.5 rounded-xl px-1 py-1.5 text-[11px] transition ${
+                  active ? "text-ink" : "text-ink-3"
+                }`}
+              >
+                <span className={`flex h-8 w-12 items-center justify-center rounded-full ${active ? "bg-white/[0.1]" : ""}`}>
+                  <Icon size={19} strokeWidth={active ? 2.2 : 1.8} />
+                </span>
+                {t.short}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
     <header className="sticky top-0 z-30 mb-6 pt-3">
       <div className="card w-full bg-surface/80 px-4 py-2.5 shadow-[0_18px_40px_-24px_rgba(0,0,0,0.9)] backdrop-blur-xl sm:px-5">
         <div className="flex min-h-11 items-center gap-4 sm:gap-6">
@@ -177,21 +216,8 @@ export function Nav() {
         </div>
         </div>
 
-        <nav className="mt-2 flex gap-1 overflow-x-auto md:hidden">
-        {allTabs.map((t) => {
-          const active = t.href === "/" ? pathname === "/" : pathname.startsWith(t.href);
-          return (
-            <Link
-              key={t.href}
-              href={t.href}
-              className={`rounded-full px-3 py-1 text-sm ${active ? "bg-white/[0.08] text-ink" : "text-ink-2"}`}
-            >
-              {t.label}
-            </Link>
-          );
-        })}
-        </nav>
       </div>
     </header>
+    </>
   );
 }

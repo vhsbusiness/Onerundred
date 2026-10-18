@@ -86,7 +86,7 @@ export function ArchiveList() {
                     <button
                       type="button"
                       onClick={() => reopen(c)}
-                      className="btn h-8 px-2.5 text-xs opacity-0 group-hover:opacity-100"
+                      className="btn h-8 px-2.5 text-xs md:opacity-0 md:group-hover:opacity-100"
                       title="Reabrir tarefa"
                     >
                       <RotateCcw size={13} /> Reabrir
@@ -94,7 +94,7 @@ export function ArchiveList() {
                     <button
                       type="button"
                       onClick={() => remove(c)}
-                      className="btn btn-ghost h-8 w-8 p-0 text-ink-3 opacity-0 hover:text-red group-hover:opacity-100"
+                      className="btn btn-ghost h-8 w-8 p-0 text-ink-3 md:opacity-0 hover:text-red md:group-hover:opacity-100"
                       aria-label="Excluir"
                     >
                       <Trash2 size={14} />

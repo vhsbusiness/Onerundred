@@ -1,6 +1,6 @@
 "use client";
 
-import { ShieldCheck, Trash2, UserCheck, UserX } from "lucide-react";
+import { Eye, ShieldCheck, Trash2, UserCheck, UserX } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { http } from "@/lib/client";
 import { formatDuration } from "@/lib/time";
@@ -59,6 +59,27 @@ export function AdminPanel() {
     } catch (e) {
       alert(e instanceof Error ? e.message : "Erro");
     }
+  }
+
+  const [obs, setObs] = useState<Record<string, string>>({});
+  const [obsSaved, setObsSaved] = useState(false);
+  const OBS_FIELDS = [
+    { key: "aiMinDaysTasks", label: "Tarefas", unit: "dias" },
+    { key: "aiMinDaysWork", label: "Tempo de trabalho", unit: "dias" },
+    { key: "aiMinNightsSleep", label: "Sono", unit: "noites" },
+    { key: "aiMinDaysLeisure", label: "Lazer", unit: "dias" },
+  ] as const;
+
+  async function saveObservation(e: React.FormEvent) {
+    e.preventDefault();
+    const payload: Record<string, number> = {};
+    for (const f of OBS_FIELDS) {
+      const v = obs[f.key] ?? String(overview?.settings[f.key] ?? "");
+      payload[f.key] = Number(v);
+    }
+    await act(() => http.patch("/api/admin/settings", payload));
+    setObsSaved(true);
+    setTimeout(() => setObsSaved(false), 2000);
   }
 
   function toggleRegistration() {
@@ -121,6 +142,34 @@ export function AdminPanel() {
           <Tile value={String(overview.openCards)} label="Tarefas abertas" />
           <Tile value={formatDuration(overview.workedTodayMs)} label="Trabalhado hoje (todos)" />
         </div>
+      </section>
+
+      <section className="card p-5">
+        <h2 className="flex items-center gap-2 text-sm font-medium text-ink-2">
+          <Eye size={15} className="text-blue" /> Período de observação da IA
+        </h2>
+        <p className="mt-1 text-xs text-ink-3">
+          Mínimo de dias com dados antes de a IA opinar em cada dimensão. Tarefas e tempo de trabalho liberam a análise completa; sono e lazer, enquanto não atingem o mínimo, ficam fora das conclusões. Zero desliga a observação daquela dimensão.
+        </p>
+        <form onSubmit={saveObservation} className="mt-4 flex flex-wrap items-end gap-3">
+          {OBS_FIELDS.map((f) => (
+            <label key={f.key} className="text-sm">
+              <span className="mb-1 block text-xs uppercase tracking-wide text-ink-3">
+                {f.label} ({f.unit})
+              </span>
+              <input
+                value={obs[f.key] ?? String(overview.settings[f.key])}
+                inputMode="numeric"
+                onChange={(e) => setObs((o) => ({ ...o, [f.key]: e.target.value.replace(/\D/g, "") }))}
+                className="input w-24"
+              />
+            </label>
+          ))}
+          <button type="submit" className="btn btn-primary">
+            Salvar
+          </button>
+          {obsSaved && <span className="pill pill-green">Salvo</span>}
+        </form>
       </section>
 
       <section className="card overflow-hidden">

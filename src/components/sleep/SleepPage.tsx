@@ -268,14 +268,14 @@ export function SleepPage() {
                       setNote(l.note);
                       window.scrollTo({ top: 0, behavior: "smooth" });
                     }}
-                    className="btn btn-ghost h-8 px-2 text-xs opacity-0 group-hover:opacity-100"
+                    className="btn btn-ghost h-8 px-2 text-xs md:opacity-0 md:group-hover:opacity-100"
                   >
                     Editar
                   </button>
                   <button
                     type="button"
                     onClick={() => remove(l)}
-                    className="btn btn-ghost h-8 w-8 p-0 text-ink-3 opacity-0 hover:text-red group-hover:opacity-100"
+                    className="btn btn-ghost h-8 w-8 p-0 text-ink-3 md:opacity-0 hover:text-red md:group-hover:opacity-100"
                     aria-label="Apagar"
                   >
                     <Trash2 size={14} />
