@@ -10,6 +10,7 @@ import type { MeDTO } from "@/lib/types";
 const tabs = [
   { href: "/", label: "Dashboard" },
   { href: "/quadros", label: "Quadros" },
+  { href: "/metas", label: "Metas" },
   { href: "/sono", label: "Sono" },
   { href: "/arquivadas", label: "Arquivadas" },
   { href: "/configuracoes", label: "Configurações" },

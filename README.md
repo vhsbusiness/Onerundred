@@ -29,10 +29,14 @@ source ~/.nvm/nvm.sh
 - **Sessão de trabalho**: botão iniciar/parar no dashboard. Compara o tempo
   trabalhado com a soma das estimativas das tarefas do dia (ou com a meta diária
   das configurações) e dá um veredito.
-- **Quadros** (`/quadros`): vários quadros; cada quadro tem listas com prioridade
+- **Quadros** (`/quadros`): abre direto no último quadro visto (`?lista=1` mostra todos); vários quadros; cada quadro tem listas com prioridade
   (Alta / Média / Baixa) e tipo (Normal, Amanhã, Feitas). Tarefas têm prioridade,
   estimativa em minutos, descrição, dia agendado e cronômetro. Arrastar e soltar
   entre listas.
+- **Metas › Projetos** (`/metas`): projeto de N dias com nome, descrição e
+  obrigações diárias. Cada dia é marcado como feito ou não feito; dias sem
+  marcação viram "não feito" na virada do dia (pode corrigir, com aviso para
+  marcar feito só se cumpriu de verdade). Mostra sequência, % e calendário.
 - **Sono** (`/sono`): registro de cada noite (deitei, dormi, acordei, qualidade),
   médias de 7 e 30 dias, hora média de deitar/acordar e gráfico das últimas 14
   noites. Os registros entram na análise da IA.

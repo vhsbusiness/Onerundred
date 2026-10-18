@@ -224,3 +224,37 @@ export interface SleepPageDTO {
   logs: SleepLogDTO[];
   stats: SleepStats;
 }
+
+/* ───────────── Metas: projetos ───────────── */
+
+export type ProjectDayStatus = "done" | "missed" | "pending" | "future";
+
+export interface ProjectDayDTO {
+  index: number;
+  dayKey: string;
+  status: ProjectDayStatus;
+  auto: boolean;
+  note: string;
+}
+
+export interface ProjectDTO {
+  id: string;
+  name: string;
+  description: string;
+  obligations: string[];
+  startDate: string;
+  endDate: string;
+  days: number;
+  createdAt: string;
+  archivedAt: string | null;
+  doneCount: number;
+  missedCount: number;
+  pendingCount: number;
+  futureCount: number;
+  /** % de dias feitos entre os dias já passados (inclui hoje se marcado). */
+  completion: number | null;
+  streak: number;
+  todayStatus: ProjectDayStatus | "ended" | "not-started";
+  daysElapsed: number;
+  dayList: ProjectDayDTO[];
+}

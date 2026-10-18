@@ -2,6 +2,7 @@ import { subDays } from "date-fns";
 import { prisma } from "./db";
 import { ApiError } from "./errors";
 import { periodScore, workVerdict, type MetricCard } from "./metrics";
+import { autoMarkMissedDays } from "./projects";
 import {
   dayKey,
   dayRange,
@@ -177,6 +178,7 @@ export async function runMaintenance(): Promise<void> {
   }
 
   await prisma.authSession.deleteMany({ where: { expiresAt: { lt: new Date() } } });
+  await autoMarkMissedDays();
 }
 
 /* ───────────────────────── Quadros ───────────────────────── */
@@ -199,6 +201,14 @@ export async function ensureDefaultBoard(userId: string): Promise<void> {
       },
     },
   });
+}
+
+/** Id do último quadro aberto pelo usuário, se ele ainda existir. */
+export async function lastBoardId(userId: string): Promise<string | null> {
+  const row = await prisma.setting.findUnique({ where: { userId_key: { userId, key: "lastBoardId" } } });
+  if (!row) return null;
+  const board = await prisma.board.findFirst({ where: { id: row.value, userId }, select: { id: true } });
+  return board?.id ?? null;
 }
 
 export async function listBoards(userId: string): Promise<BoardSummary[]> {
@@ -286,6 +296,11 @@ export async function getBoard(id: string, userId: string): Promise<BoardDTO> {
     },
   });
   if (!board) throw new ApiError(404, "Quadro não encontrado");
+  await prisma.setting.upsert({
+    where: { userId_key: { userId, key: "lastBoardId" } },
+    create: { userId, key: "lastBoardId", value: board.id },
+    update: { value: board.id },
+  });
   return {
     id: board.id,
     name: board.name,

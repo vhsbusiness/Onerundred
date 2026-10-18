@@ -204,14 +204,14 @@ export function BoardView({ boardId }: { boardId: string }) {
     if (!board) return;
     if (!confirm(`Excluir o quadro "${board.name}" com todas as listas e tarefas?`)) return;
     await http.del(`/api/boards/${boardId}`);
-    router.push("/quadros");
+    router.push("/quadros?lista=1");
   }
 
   if (error) {
     return (
       <div className="card p-6 text-sm text-red">
         {error} ·{" "}
-        <Link href="/quadros" className="underline">
+        <Link href="/quadros?lista=1" className="underline">
           voltar aos quadros
         </Link>
       </div>
@@ -233,7 +233,7 @@ export function BoardView({ boardId }: { boardId: string }) {
   return (
     <div className="flex h-[calc(100dvh-7.5rem)] flex-col">
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <Link href="/quadros" className="btn btn-ghost h-8 px-2" aria-label="Voltar">
+        <Link href="/quadros?lista=1" className="btn btn-ghost h-8 px-2" aria-label="Todos os quadros" title="Todos os quadros">
           <ArrowLeft size={16} />
         </Link>
         {editingName ? (

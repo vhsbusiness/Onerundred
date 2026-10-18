@@ -5,6 +5,7 @@ import { ApiError } from "./errors";
 import { PRIORITY_LABEL, asPriority } from "./metrics";
 import { getDashboard } from "./repo";
 import { computeStats, listSleep } from "./sleep";
+import { listProjects } from "./projects";
 import { dayKey, dayRange, formatDuration, todayKey } from "./time";
 import type { AiInsightContent, AiInsightDTO, AiStatusDTO } from "./types";
 
@@ -45,7 +46,7 @@ async function buildContext(userId: string) {
   const dash = await getDashboard(userId);
   const since = subDays(dayRange(today).start, 14);
 
-  const [workSessions, taskSessions, memory, tomorrowCards, sleepLogs] = await Promise.all([
+  const [workSessions, taskSessions, memory, tomorrowCards, sleepLogs, projects] = await Promise.all([
     prisma.workSession.findMany({
       where: { userId, startedAt: { gte: since } },
       orderBy: { startedAt: "asc" },
@@ -61,6 +62,7 @@ async function buildContext(userId: string) {
       take: 20,
     }),
     listSleep(userId, 14),
+    listProjects(userId),
   ]);
   const sleepStats = computeStats(sleepLogs);
 
@@ -125,6 +127,18 @@ async function buildContext(userId: string) {
       minutosTrabalhadosPorDia: workByDay,
       horasComSessaoDeTrabalho: hourHistogram,
       horasComFocoEmTarefa: focusHours,
+      metasProjetos: projects
+        .filter((p) => !p.archivedAt && p.todayStatus !== "ended")
+        .map((p) => ({
+          nome: p.name,
+          obrigacoes: p.obligations,
+          diaAtual: p.daysElapsed,
+          totalDias: p.days,
+          feitos: p.doneCount,
+          naoFeitos: p.missedCount,
+          sequencia: p.streak,
+          hojeMarcado: p.todayStatus,
+        })),
       sono: {
         noitesRegistradas14Dias: sleepLogs.length,
         mediaDormidoMin7Dias: sleepStats.avgDuration7,
@@ -197,6 +211,7 @@ Regras:
 - A nota (score) deve refletir o peso das prioridades: tarefas Alta valem mais; tarefas atrasadas pesam contra; tempo trabalhado abaixo do planejado puxa para baixo; concluir cedo o que importa puxa para cima. Se não há tarefas nem trabalho, seja franco.
 - Em nextTasks use somente ids de tarefas abertas de hoje (feita=false), no máximo 3, da mais importante para a menos.
 - Os horários (schedule) devem partir dos padrões reais do usuário (histogramas de horas, minutos por dia, registros de sono, memória) e ser realistas: jornada compatível com a meta diária, pausas a cada 90–120 min de trabalho, 7–8h de sono. Se houver registros de sono, use a hora real em que a pessoa acorda e dorme e comente se está dormindo pouco; sem registros, sugira e convide a registrar na aba Sono. Horários no formato HH:MM, 24h.
+- Se houver metas/projetos (metasProjetos) com o dia de hoje ainda "pending", lembre o usuário de cumprir e marcar; reconheça sequências longas; sem moralizar.
 - memorySummary é a memória de longo prazo deste usuário. Reescreva-a por completo a partir da memória anterior mais o que você aprendeu agora. Guarde padrões (horário em que rende mais, se subestima tempo, se acumula atrasos, dias fracos da semana), não detalhes do dia. Até 1200 caracteres.`;
 
 /* ───────────── Geração ───────────── */

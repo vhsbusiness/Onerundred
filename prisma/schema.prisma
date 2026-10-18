@@ -25,6 +25,7 @@ model User {
   aiInsights   AiInsight[]
   aiMemory     AiMemory?
   sleepLogs    SleepLog[]
+  projects     Project[]
 }
 
 /// Sessão de login (o id é o token guardado no cookie)
@@ -172,4 +173,39 @@ model SleepLog {
 
   @@unique([userId, dayKey])
   @@index([userId, wakeAt])
+}
+
+/// Meta do tipo "projeto": compromisso diário por N dias
+model Project {
+  id          String       @id @default(cuid())
+  userId      String
+  name        String
+  description String       @default("")
+  /// Obrigações diárias, uma por linha
+  obligations String       @default("")
+  /// yyyy-MM-dd do primeiro dia
+  startDate   String
+  days        Int
+  createdAt   DateTime     @default(now())
+  archivedAt  DateTime?
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checks      ProjectDay[]
+
+  @@index([userId])
+}
+
+/// Marcação de um dia do projeto
+model ProjectDay {
+  id        String   @id @default(cuid())
+  projectId String
+  /// yyyy-MM-dd
+  dayKey    String
+  done      Boolean
+  /// true quando foi marcado automaticamente como não feito na virada do dia
+  auto      Boolean  @default(false)
+  markedAt  DateTime @default(now())
+  note      String   @default("")
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, dayKey])
 }
