@@ -35,6 +35,9 @@ model User {
   notifLogs    NotificationLog[]
   reminders    Reminder[]
   aiUsage      AiUsage[]
+  memberships  BoardMember[]
+  invitesSent  BoardInvite[] @relation("InvitesSent")
+  invitesGot   BoardInvite[] @relation("InvitesGot")
 }
 
 /// Sessão de login (o id é o token guardado no cookie)
@@ -58,8 +61,41 @@ model Board {
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   lists     List[]
+  members   BoardMember[]
+  invites   BoardInvite[]
 
   @@index([userId])
+}
+
+/// Usuário com acesso a um quadro de outra pessoa
+model BoardMember {
+  id        String   @id @default(cuid())
+  boardId   String
+  userId    String
+  createdAt DateTime @default(now())
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([boardId, userId])
+  @@index([userId])
+}
+
+/// Convite para participar de um quadro (aparece no sininho do convidado)
+model BoardInvite {
+  id          String    @id @default(cuid())
+  boardId     String
+  fromUserId  String
+  toUserId    String
+  /// pending | accepted | declined
+  status      String    @default("pending")
+  createdAt   DateTime  @default(now())
+  respondedAt DateTime?
+  board       Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  from        User      @relation("InvitesSent", fields: [fromUserId], references: [id], onDelete: Cascade)
+  to          User      @relation("InvitesGot", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@unique([boardId, toUserId])
+  @@index([toUserId, status])
 }
 
 model List {

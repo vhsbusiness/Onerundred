@@ -142,6 +142,16 @@ npm run db:pg-migration -- <nome>        # migration Postgres em prisma/migratio
 `db:pg-migration` compara o schema atual com o último commitado (`git HEAD`),
 então rode-o **antes** de commitar a alteração do schema.
 
+## Quadros compartilhados
+
+No menu ⋯ do quadro, "Compartilhar quadro" abre a busca pelo @ do usuário e
+envia um convite. O convidado vê no sininho ao lado do avatar (e recebe push,
+se tiver notificações) e aceita ou recusa. Membros têm o mesmo acesso do dono
+às listas e tarefas; só o dono convida, remove membros e exclui o quadro;
+membros podem sair. Quadros compartilhados aparecem na lista com o selo
+"compartilhado por @dono" e suas tarefas entram nas métricas de quem participa.
+Código em `src/lib/sharing.ts`; o filtro de acesso é `boardAccess()` em `src/lib/repo.ts`.
+
 ## Contas e acesso
 
 Qualquer pessoa pode criar uma conta (nome, e-mail, usuário e senha) e entrar

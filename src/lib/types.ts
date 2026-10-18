@@ -39,11 +39,22 @@ export interface ListDTO {
   cards: CardDTO[];
 }
 
+export interface UserBrief {
+  id: string;
+  name: string;
+  username: string;
+  avatar: string | null;
+}
+
 export interface BoardDTO {
   id: string;
   name: string;
   position: number;
   createdAt: string;
+  owner: UserBrief;
+  isOwner: boolean;
+  members: UserBrief[];
+  pendingInvites: UserBrief[];
   lists: ListDTO[];
   /** Última ação em lote que pode ser desfeita (do usuário, em qualquer quadro). */
   lastUndo: { id: string; label: string } | null;
@@ -58,6 +69,9 @@ export interface BoardSummary {
   openCount: number;
   doneTodayCount: number;
   todayScore: number | null;
+  /** @ do dono, quando o quadro foi compartilhado com você. */
+  sharedBy: string | null;
+  memberCount: number;
 }
 
 export interface TodayCard extends CardDTO {
@@ -376,4 +390,14 @@ export interface ReminderDTO {
   repeat: "none" | "daily" | "weekly";
   active: boolean;
   lastSentAt: string | null;
+}
+
+/* ───────────── Convites de quadro ───────────── */
+
+export interface BoardInviteDTO {
+  id: string;
+  boardId: string;
+  boardName: string;
+  from: UserBrief;
+  createdAt: string;
 }

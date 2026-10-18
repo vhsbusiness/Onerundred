@@ -92,23 +92,28 @@ export function serializeCard(c: CardRow): CardDTO {
 
 const cardInclude = { sessions: true, images: { select: { id: true }, orderBy: { createdAt: "asc" } } } as const;
 
-/* ───────────────────────── Propriedade ───────────────────────── */
+/* ───────────────────────── Propriedade / acesso ───────────────────────── */
+
+/** Filtro Prisma: quadros que o usuário possui ou dos quais é membro. */
+export function boardAccess(userId: string) {
+  return { OR: [{ userId }, { members: { some: { userId } } }] };
+}
 
 async function ownedBoard(id: string, userId: string) {
-  const board = await prisma.board.findFirst({ where: { id, userId } });
+  const board = await prisma.board.findFirst({ where: { id, ...boardAccess(userId) } });
   if (!board) throw new ApiError(404, "Quadro não encontrado");
   return board;
 }
 
 async function ownedList(id: string, userId: string) {
-  const list = await prisma.list.findFirst({ where: { id, board: { userId } } });
+  const list = await prisma.list.findFirst({ where: { id, board: boardAccess(userId) } });
   if (!list) throw new ApiError(404, "Lista não encontrada");
   return list;
 }
 
 async function ownedCard(id: string, userId: string) {
   const card = await prisma.card.findFirst({
-    where: { id, list: { board: { userId } } },
+    where: { id, list: { board: boardAccess(userId) } },
     include: { list: true },
   });
   if (!card) throw new ApiError(404, "Tarefa não encontrada");
@@ -238,8 +243,8 @@ export async function undoLast(userId: string): Promise<{ label: string } | null
   if (payload.kind === "restoreCards") {
     const ops = [];
     for (const c of payload.cards) {
-      const exists = await prisma.card.findFirst({ where: { id: c.id, list: { board: { userId } } }, select: { id: true } });
-      const listOk = await prisma.list.findFirst({ where: { id: c.listId, board: { userId } }, select: { id: true } });
+      const exists = await prisma.card.findFirst({ where: { id: c.id, list: { board: boardAccess(userId) } }, select: { id: true } });
+      const listOk = await prisma.list.findFirst({ where: { id: c.listId, board: boardAccess(userId) }, select: { id: true } });
       if (!exists || !listOk) continue;
       ops.push(
         prisma.card.update({
@@ -256,13 +261,13 @@ export async function undoLast(userId: string): Promise<{ label: string } | null
     if (ops.length) await prisma.$transaction(ops);
   } else if (payload.kind === "unarchiveCards") {
     await prisma.card.updateMany({
-      where: { id: { in: payload.cardIds }, list: { board: { userId } } },
+      where: { id: { in: payload.cardIds }, list: { board: boardAccess(userId) } },
       data: { archivedAt: null },
     });
   } else if (payload.kind === "deleteList") {
-    await prisma.list.deleteMany({ where: { id: payload.listId, board: { userId } } });
+    await prisma.list.deleteMany({ where: { id: payload.listId, board: boardAccess(userId) } });
   } else if (payload.kind === "deleteCard") {
-    await prisma.card.deleteMany({ where: { id: payload.cardId, list: { board: { userId } } } });
+    await prisma.card.deleteMany({ where: { id: payload.cardId, list: { board: boardAccess(userId) } } });
   }
 
   await prisma.undoAction.delete({ where: { id: row.id } });
@@ -295,7 +300,7 @@ export async function ensureDefaultBoard(userId: string): Promise<void> {
 export async function lastBoardId(userId: string): Promise<string | null> {
   const row = await prisma.setting.findUnique({ where: { userId_key: { userId, key: "lastBoardId" } } });
   if (!row) return null;
-  const board = await prisma.board.findFirst({ where: { id: row.value, userId }, select: { id: true } });
+  const board = await prisma.board.findFirst({ where: { id: row.value, ...boardAccess(userId) }, select: { id: true } });
   return board?.id ?? null;
 }
 
@@ -306,9 +311,11 @@ export async function listBoards(userId: string): Promise<BoardSummary[]> {
   const { start, end } = dayRange(today);
 
   const boards = await prisma.board.findMany({
-    where: { userId },
+    where: boardAccess(userId),
     orderBy: { position: "asc" },
     include: {
+      user: { select: { username: true, name: true } },
+      _count: { select: { members: true } },
       lists: {
         include: { cards: { where: { archivedAt: null } } },
       },
@@ -335,6 +342,8 @@ export async function listBoards(userId: string): Promise<BoardSummary[]> {
       openCount,
       doneTodayCount,
       todayScore: periodScore(metricCards, start, end, today).score,
+      sharedBy: b.userId === userId ? null : b.user.username,
+      memberCount: b._count.members,
     };
   });
 }
@@ -363,14 +372,19 @@ export async function createBoard(userId: string, name: string): Promise<BoardSu
     openCount: 0,
     doneTodayCount: 0,
     todayScore: null,
+    sharedBy: null,
+    memberCount: 0,
   };
 }
 
 export async function getBoard(id: string, userId: string): Promise<BoardDTO> {
   await runMaintenance();
   const board = await prisma.board.findFirst({
-    where: { id, userId },
+    where: { id, ...boardAccess(userId) },
     include: {
+      user: { select: { id: true, name: true, username: true, avatar: true } },
+      members: { include: { user: { select: { id: true, name: true, username: true, avatar: true } } }, orderBy: { createdAt: "asc" } },
+      invites: { where: { status: "pending" }, include: { to: { select: { id: true, name: true, username: true, avatar: true } } } },
       lists: {
         orderBy: { position: "asc" },
         include: {
@@ -395,6 +409,10 @@ export async function getBoard(id: string, userId: string): Promise<BoardDTO> {
     position: board.position,
     createdAt: board.createdAt.toISOString(),
     lastUndo: await getLastUndo(userId),
+    owner: board.user,
+    isOwner: board.userId === userId,
+    members: board.members.map((m) => m.user),
+    pendingInvites: board.invites.map((i) => i.to),
     lists: board.lists.map(
       (l): ListDTO => ({
         id: l.id,
@@ -415,7 +433,8 @@ export async function updateBoard(id: string, userId: string, data: { name?: str
 }
 
 export async function deleteBoard(id: string, userId: string) {
-  await ownedBoard(id, userId);
+  const board = await prisma.board.findFirst({ where: { id, userId } });
+  if (!board) throw new ApiError(403, "Só o dono pode excluir o quadro");
   await prisma.board.delete({ where: { id } });
 }
 
@@ -627,7 +646,7 @@ export async function createCard(
 
 export async function getCard(id: string, userId: string): Promise<CardDTO> {
   const card = await prisma.card.findFirst({
-    where: { id, list: { board: { userId } } },
+    where: { id, list: { board: boardAccess(userId) } },
     include: cardInclude,
   });
   if (!card) throw new ApiError(404, "Tarefa não encontrada");
@@ -827,7 +846,7 @@ export async function removeCardImage(userId: string, cardId: string, imageId: s
 /** Lê a imagem (com checagem de dono) para servir pela rota /api/imagens/[id]. */
 export async function getCardImage(userId: string, imageId: string): Promise<{ data: string } | null> {
   const img = await prisma.cardImage.findFirst({
-    where: { id: imageId, card: { list: { board: { userId } } } },
+    where: { id: imageId, card: { list: { board: boardAccess(userId) } } },
     select: { data: true },
   });
   return img;
@@ -840,7 +859,7 @@ export async function startTaskTimer(userId: string, cardId: string): Promise<Ca
   const now = new Date();
   await prisma.$transaction([
     prisma.taskSession.updateMany({
-      where: { endedAt: null, card: { list: { board: { userId } } } },
+      where: { endedAt: null, card: { list: { board: boardAccess(userId) } } },
       data: { endedAt: now },
     }),
     prisma.taskSession.create({ data: { cardId, startedAt: now } }),
@@ -859,7 +878,7 @@ export async function stopTaskTimer(userId: string, cardId: string): Promise<Car
 
 export async function deleteTaskSession(userId: string, sessionId: string) {
   const session = await prisma.taskSession.findFirst({
-    where: { id: sessionId, card: { list: { board: { userId } } } },
+    where: { id: sessionId, card: { list: { board: boardAccess(userId) } } },
   });
   if (!session) throw new ApiError(404, "Sessão não encontrada");
   await prisma.taskSession.delete({ where: { id: sessionId } });
@@ -893,7 +912,7 @@ async function plannedMinutesForToday(userId: string): Promise<number> {
   const { start } = dayRange(today);
   const cards = await prisma.card.findMany({
     where: {
-      list: { board: { userId } },
+      list: { board: boardAccess(userId) },
       archivedAt: null,
       scheduledFor: { lte: today },
       OR: [{ completedAt: null }, { completedAt: { gte: start } }],
@@ -950,7 +969,7 @@ export async function pauseWork(userId: string): Promise<WorkState> {
   await prisma.$transaction([
     prisma.workSession.updateMany({ where: { userId, endedAt: null }, data: { endedAt: now } }),
     prisma.taskSession.updateMany({
-      where: { endedAt: null, card: { list: { board: { userId } } } },
+      where: { endedAt: null, card: { list: { board: boardAccess(userId) } } },
       data: { endedAt: now },
     }),
   ]);
@@ -986,7 +1005,7 @@ export async function getDashboard(userId: string): Promise<DashboardDTO> {
   const monthR = monthRange(now);
 
   const cards = await prisma.card.findMany({
-    where: { list: { board: { userId } } },
+    where: { list: { board: boardAccess(userId) } },
     include: { list: { include: { board: true } }, sessions: true, images: { select: { id: true } } },
   });
 
@@ -1042,7 +1061,7 @@ export async function getDashboard(userId: string): Promise<DashboardDTO> {
   }
 
   const runningSession = await prisma.taskSession.findFirst({
-    where: { endedAt: null, card: { list: { board: { userId } } } },
+    where: { endedAt: null, card: { list: { board: boardAccess(userId) } } },
     include: { card: { include: { list: true } } },
   });
 
@@ -1071,14 +1090,14 @@ export async function getDashboard(userId: string): Promise<DashboardDTO> {
 
 /** Apaga definitivamente todas as tarefas arquivadas do usuário. */
 export async function deleteAllArchived(userId: string): Promise<number> {
-  const r = await prisma.card.deleteMany({ where: { archivedAt: { not: null }, list: { board: { userId } } } });
+  const r = await prisma.card.deleteMany({ where: { archivedAt: { not: null }, list: { board: boardAccess(userId) } } });
   return r.count;
 }
 
 export async function listArchived(userId: string): Promise<ArchivedCard[]> {
   await runMaintenance();
   const cards = await prisma.card.findMany({
-    where: { archivedAt: { not: null }, list: { board: { userId } } },
+    where: { archivedAt: { not: null }, list: { board: boardAccess(userId) } },
     orderBy: { archivedAt: "desc" },
     include: { list: { include: { board: true } }, sessions: true, images: { select: { id: true } } },
     take: 500,

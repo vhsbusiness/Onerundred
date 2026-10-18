@@ -1,6 +1,5 @@
 "use client";
 
-import { askConfirm } from "@/components/ui/ConfirmProvider";
 import {
   DndContext,
   DragOverlay,
@@ -16,7 +15,7 @@ import {
   type UniqueIdentifier,
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { ArrowLeft, MoreHorizontal, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
+import { ArrowLeft, LogOut, MoreHorizontal, Pencil, Plus, Sparkles, Trash2, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -27,6 +26,9 @@ import { CardBody } from "./CardItem";
 import { CardModal } from "./CardModal";
 import { ImportModal } from "./ImportModal";
 import { CardContextMenu, type ContextMenuState } from "./CardContextMenu";
+import { ShareModal } from "./ShareModal";
+import { Avatar } from "@/components/profile/ProfilePage";
+import { askConfirm } from "@/components/ui/ConfirmProvider";
 import { ListColumn } from "./ListColumn";
 
 export function BoardView({ boardId, initialBoard }: { boardId: string; initialBoard?: BoardDTO }) {
@@ -40,6 +42,14 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
   );
   const [addingList, setAddingList] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [sharing, setSharing] = useState(false);
+
+  async function leaveBoard() {
+    if (!board) return;
+    if (!(await askConfirm({ title: "Sair do quadro", message: `Sair do quadro "${board.name}"? Você deixa de ver as tarefas dele.`, confirmLabel: "Sair", danger: true }))) return;
+    await http.del(`/api/boards/${boardId}/compartilhar`, { leave: true });
+    router.push("/quadros?lista=1");
+  }
   const [ctxMenu, setCtxMenu] = useState<ContextMenuState | null>(null);
   const closeCtxMenu = useCallback(() => setCtxMenu(null), []);
 
@@ -328,6 +338,16 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
         )}
         <span className="pill">{openCount} abertas</span>
         <span className="pill pill-green">{doneCount} feitas</span>
+        {(board.members.length > 0 || !board.isOwner) && (
+          <button type="button" onClick={() => setSharing(true)} className="flex items-center -space-x-1.5 rounded-full border border-line bg-white/[0.03] py-0.5 pl-0.5 pr-2" title="Participantes">
+            {[board.owner, ...board.members].slice(0, 4).map((u) => (
+              <span key={u.id} className="rounded-full ring-2 ring-surface">
+                <Avatar me={u} size={22} />
+              </span>
+            ))}
+            <span className="pl-3 text-xs text-ink-2">{board.members.length + 1}</span>
+          </button>
+        )}
 
         <div className="ml-auto flex items-center gap-2">
           <button type="button" onClick={() => setAddingList(true)} className="btn">
@@ -349,6 +369,16 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
                   type="button"
                   onClick={() => {
                     setBoardMenu(false);
+                    setSharing(true);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-white/[0.06]"
+                >
+                  <Users size={14} className="text-green" /> {board.isOwner ? "Compartilhar quadro" : "Participantes"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBoardMenu(false);
                     setImporting(true);
                   }}
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-white/[0.06]"
@@ -366,16 +396,29 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
                   <Pencil size={14} className="text-ink-3" /> Renomear quadro
                 </button>
                 <div className="my-1 border-t border-line" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBoardMenu(false);
-                    removeBoard();
-                  }}
-                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-red hover:bg-white/[0.06]"
-                >
-                  <Trash2 size={14} /> Excluir quadro
-                </button>
+                {board.isOwner ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBoardMenu(false);
+                      removeBoard();
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-red hover:bg-white/[0.06]"
+                  >
+                    <Trash2 size={14} /> Excluir quadro
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBoardMenu(false);
+                      leaveBoard();
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-red hover:bg-white/[0.06]"
+                  >
+                    <LogOut size={14} /> Sair do quadro
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -465,6 +508,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
       </DndContext>
 
       <ImportModal boardId={boardId} open={importing} onClose={() => setImporting(false)} onImported={load} />
+      <ShareModal board={board} open={sharing} onClose={() => setSharing(false)} onChanged={load} />
 
       <CardContextMenu
         state={ctxMenu}

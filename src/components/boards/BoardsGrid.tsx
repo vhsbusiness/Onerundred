@@ -89,6 +89,7 @@ export function BoardsGrid() {
                   <span className="pill">{b.openCount} abertas</span>
                   <span className="pill">{b.doneTodayCount} feitas hoje</span>
                   <span className="pill">{b.listCount} listas</span>
+                  {b.sharedBy ? <span className="pill pill-green">compartilhado por @{b.sharedBy}</span> : b.memberCount > 0 ? <span className="pill pill-green">{b.memberCount + 1} participantes</span> : null}
                 </div>
               </Link>
             );

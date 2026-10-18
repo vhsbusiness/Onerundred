@@ -3,7 +3,7 @@ import { subDays } from "date-fns";
 import { prisma } from "./db";
 import { ApiError } from "./errors";
 import { PRIORITY_LABEL, asPriority } from "./metrics";
-import { getDashboard } from "./repo";
+import { boardAccess, getDashboard } from "./repo";
 import { computeStats, listSleep } from "./sleep";
 import { listProjects } from "./projects";
 import { computeLeisureStats, listLeisure } from "./leisure";
@@ -53,7 +53,7 @@ export async function getObservation(userId: string): Promise<AiObservation> {
 
   const [cards, work, sleepCount, leisure] = await Promise.all([
     prisma.card.findMany({
-      where: { list: { board: { userId } }, createdAt: { gte: since } },
+      where: { list: { board: boardAccess(userId) }, createdAt: { gte: since } },
       select: { scheduledFor: true },
     }),
     prisma.workSession.findMany({ where: { userId, startedAt: { gte: since } }, select: { startedAt: true } }),
@@ -97,12 +97,12 @@ async function buildContext(userId: string, observation: AiObservation) {
       orderBy: { startedAt: "asc" },
     }),
     prisma.taskSession.findMany({
-      where: { startedAt: { gte: since }, card: { list: { board: { userId } } } },
+      where: { startedAt: { gte: since }, card: { list: { board: boardAccess(userId) } } },
       select: { startedAt: true, endedAt: true },
     }),
     prisma.aiMemory.findUnique({ where: { userId } }),
     prisma.card.findMany({
-      where: { list: { board: { userId } }, archivedAt: null, completedAt: null, scheduledFor: { gt: today } },
+      where: { list: { board: boardAccess(userId) }, archivedAt: null, completedAt: null, scheduledFor: { gt: today } },
       select: { title: true, priority: true, scheduledFor: true, estimatedMinutes: true },
       take: 20,
     }),

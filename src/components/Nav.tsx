@@ -2,6 +2,7 @@
 
 import { Archive, Bell, Gamepad2, LayoutDashboard, LogOut, Moon, Settings, ShieldCheck, SquareKanban, Target, UserRound } from "lucide-react";
 import { Avatar } from "@/components/profile/ProfilePage";
+import { InviteBell } from "@/components/InviteBell";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -49,7 +50,7 @@ function Clock() {
     const id = setInterval(tick, 30000);
     return () => clearInterval(id);
   }, []);
-  return <span className="hidden text-sm text-ink-2 tabular-nums lg:inline">{text || formatDayLong(todayKey())}</span>;
+  return <span className="hidden whitespace-nowrap text-sm text-ink-2 tabular-nums xl:inline">{text || formatDayLong(todayKey())}</span>;
 }
 
 function WorkIndicator() {
@@ -116,7 +117,7 @@ function UserMenu({ me }: { me: MeDTO }) {
         aria-label="Menu do usuário"
       >
         <Avatar me={me} size={28} />
-        <span className="hidden max-w-[140px] truncate sm:inline">{me.name}</span>
+        <span className="hidden max-w-[140px] truncate lg:inline">{me.name}</span>
       </button>
       {open && (
         <div className="absolute right-0 top-10 z-40 w-56 rounded-xl border border-line-2 bg-surface-3 p-1 text-sm shadow-2xl">
@@ -235,14 +236,14 @@ export function Nav() {
           <Logo />
         </Link>
 
-        <nav className="hidden items-center gap-1 rounded-full border border-line bg-white/[0.03] p-1 md:flex">
+        <nav className="hidden min-w-0 items-center gap-0.5 overflow-x-auto rounded-full border border-line bg-white/[0.03] p-1 md:flex xl:gap-1">
           {allTabs.map((t) => {
             const active = t.href === "/" ? pathname === "/" : pathname.startsWith(t.href);
             return (
               <Link
                 key={t.href}
                 href={t.href}
-                className={`rounded-full px-3.5 py-1.5 text-sm transition ${
+                className={`whitespace-nowrap rounded-full px-2.5 py-1.5 text-[13px] transition xl:px-3.5 xl:text-sm ${
                   active ? "bg-white/[0.08] text-ink" : "text-ink-2 hover:text-ink"
                 }`}
               >
@@ -252,9 +253,10 @@ export function Nav() {
           })}
         </nav>
 
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex shrink-0 items-center gap-3">
           <WorkIndicator />
           <Clock />
+          {me && <InviteBell />}
           {me && <UserMenu me={me} />}
         </div>
         </div>

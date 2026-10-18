@@ -7,6 +7,7 @@ import { periodScore, type MetricCard } from "./metrics";
 import { computeStats as sleepStats, listSleep } from "./sleep";
 import { computeLeisureStats, listLeisure } from "./leisure";
 import { listProjects } from "./projects";
+import { boardAccess } from "./repo";
 import { dayKey, dayRange, formatDuration, sumSessions, todayKey, weekRange } from "./time";
 import type { NotificationPrefsDTO, NotificationType } from "./types";
 
@@ -254,7 +255,7 @@ export async function evaluateUser(userId: string, now = new Date()): Promise<st
     const period = weekKey(now);
     if (!(await alreadySent(userId, "weekly", period))) {
       const cards = await prisma.card.findMany({
-        where: { list: { board: { userId } } },
+        where: { list: { board: boardAccess(userId) } },
         include: { list: { select: { priority: true } } },
       });
       const metric: MetricCard[] = cards.map((c) => ({ ...c, listPriority: c.list.priority }));
@@ -306,7 +307,7 @@ export async function evaluateUser(userId: string, now = new Date()): Promise<st
   // 5. Tarefas atrasadas: 09:00
   if (pref.overdue && inWindow(now, 9 * 60, 60) && !(await alreadySent(userId, "overdue", today))) {
     const n = await prisma.card.count({
-      where: { list: { board: { userId } }, archivedAt: null, completedAt: null, scheduledFor: { lt: today } },
+      where: { list: { board: boardAccess(userId) }, archivedAt: null, completedAt: null, scheduledFor: { lt: today } },
     });
     if (n > 0) {
       await sendToUser(userId, {
