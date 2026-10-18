@@ -265,18 +265,25 @@ function MobileMenu({
   );
 }
 
+/** Cache do usuário logado entre navegações (evita uma chamada por página). */
+let meCache: MeDTO | null | undefined;
+
 export function Nav() {
   const pathname = usePathname();
-  const [me, setMe] = useState<MeDTO | null>(null);
+  const [me, setMe] = useState<MeDTO | null>(meCache ?? null);
 
   useEffect(() => {
     if (pathname === "/login") return;
     const load = () =>
       fetch("/api/auth/me", { cache: "no-store" })
         .then((r) => (r.ok ? r.json() : null))
-        .then((d) => setMe(d?.user ?? null))
+        .then((d) => {
+          const next: MeDTO | null = d?.user ?? null;
+          meCache = next;
+          setMe(next);
+        })
         .catch(() => {});
-    load();
+    if (meCache === undefined) load();
     window.addEventListener("me-changed", load);
     return () => window.removeEventListener("me-changed", load);
   }, [pathname]);
@@ -290,7 +297,7 @@ export function Nav() {
     <>
     <MobileMenu tabs={allTabs} isActive={isActive} me={me} />
     <header className="sticky top-0 z-30 mb-6 pt-3">
-      <div className="card w-full bg-surface/80 px-4 py-2.5 shadow-[0_18px_40px_-24px_rgba(0,0,0,0.9)] backdrop-blur-xl sm:px-5">
+      <div className="card w-full bg-surface/90 px-4 py-2.5 shadow-[0_18px_40px_-24px_rgba(0,0,0,0.9)] backdrop-blur-md sm:px-5">
         <div className="flex min-h-11 items-center gap-4 sm:gap-6">
         <Link href="/" className="shrink-0">
           <Logo />

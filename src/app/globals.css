@@ -42,7 +42,6 @@ body {
     radial-gradient(1100px 560px at 8% -12%, rgba(245, 176, 110, 0.11), transparent 62%),
     radial-gradient(900px 520px at 100% -4%, rgba(127, 183, 245, 0.1), transparent 60%),
     radial-gradient(800px 520px at 52% 112%, rgba(139, 227, 166, 0.07), transparent 60%);
-  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -53,8 +52,7 @@ body::before {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.09;
-  mix-blend-mode: overlay;
+  opacity: 0.045;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 220px 220px;
 }
@@ -171,37 +169,17 @@ body::before {
   background-color: rgba(255, 255, 255, 0.06);
 }
 
-/* Blobs de gradiente borrado (estilo dos cards coloridos da referência) */
+/* Blobs de gradiente (estilo dos cards coloridos da referência).
+   Feitos com gradientes radiais, sem filter: blur, que pesa no celular. */
 @utility blob-surface {
   position: relative;
   /* clip (e não hidden): os blobs saem do card sem criar área rolável,
      então focar um botão na borda não desloca o conteúdo. */
   overflow: clip;
   isolation: isolate;
-}
-.blob-surface::before,
-.blob-surface::after {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  border-radius: 999px;
-  filter: blur(42px);
-  opacity: 0.55;
-  pointer-events: none;
-}
-.blob-surface::before {
-  width: 60%;
-  height: 90%;
-  left: -12%;
-  top: -30%;
-  background: var(--blob-a, var(--color-orange));
-}
-.blob-surface::after {
-  width: 55%;
-  height: 90%;
-  right: -10%;
-  bottom: -35%;
-  background: var(--blob-b, var(--color-blue));
+  background-image:
+    radial-gradient(60% 90% at 12% 0%, var(--blob-a, rgba(245, 176, 110, 0.5)) 0%, transparent 70%),
+    radial-gradient(55% 90% at 100% 110%, var(--blob-b, rgba(127, 183, 245, 0.5)) 0%, transparent 70%);
 }
 
 /* Scrollbar discreta */

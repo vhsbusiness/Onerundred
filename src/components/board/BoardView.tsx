@@ -15,7 +15,7 @@ import {
   type UniqueIdentifier,
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Sparkles, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -24,11 +24,12 @@ import { todayKey } from "@/lib/time";
 import type { BoardDTO, CardDTO } from "@/lib/types";
 import { CardBody } from "./CardItem";
 import { CardModal } from "./CardModal";
+import { ImportModal } from "./ImportModal";
 import { ListColumn } from "./ListColumn";
 
-export function BoardView({ boardId }: { boardId: string }) {
+export function BoardView({ boardId, initialBoard }: { boardId: string; initialBoard?: BoardDTO }) {
   const router = useRouter();
-  const [board, setBoard] = useState<BoardDTO | null>(null);
+  const [board, setBoard] = useState<BoardDTO | null>(initialBoard ?? null);
   const [error, setError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   // Tarefa aberta via URL (?card=ID) ou por clique
@@ -36,9 +37,10 @@ export function BoardView({ boardId }: { boardId: string }) {
     typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("card"),
   );
   const [addingList, setAddingList] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [listName, setListName] = useState("");
   const [editingName, setEditingName] = useState(false);
-  const [boardName, setBoardName] = useState("");
+  const [boardName, setBoardName] = useState(initialBoard?.name ?? "");
   const [panning, setPanning] = useState(false);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const panRef = useRef<{ x: number; left: number } | null>(null);
@@ -73,12 +75,12 @@ export function BoardView({ boardId }: { boardId: string }) {
   }, [boardId]);
 
   useEffect(() => {
-    // Busca inicial: o setState ocorre após o await, não de forma síncrona.
+    // Sem dados iniciais do servidor, busca ao montar (o setState ocorre após o await).
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    load();
+    if (!initialBoard) load();
     const id = setInterval(load, 60000);
     return () => clearInterval(id);
-  }, [load]);
+  }, [load, initialBoard]);
 
   const anyRunning = useMemo(
     () => board?.lists.some((l) => l.cards.some((c) => c.runningSince)) ?? false,
@@ -288,6 +290,9 @@ export function BoardView({ boardId }: { boardId: string }) {
         <span className="pill pill-green">{doneCount} feitas</span>
 
         <div className="ml-auto flex items-center gap-2">
+          <button type="button" onClick={() => setImporting(true)} className="btn" title="Trazer dados do Trello por print">
+            <Sparkles size={14} className="text-blue" /> <span className="hidden sm:inline">Trazer dados</span>
+          </button>
           <button type="button" onClick={() => setAddingList(true)} className="btn">
             <Plus size={14} /> <span className="hidden sm:inline">Nova lista</span>
           </button>
@@ -374,6 +379,8 @@ export function BoardView({ boardId }: { boardId: string }) {
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      <ImportModal boardId={boardId} open={importing} onClose={() => setImporting(false)} onImported={load} />
 
       {openCard && (
         <CardModal

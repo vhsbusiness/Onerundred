@@ -1,6 +1,6 @@
 import { prisma } from "./db";
 import { ApiError } from "./errors";
-import { sumSessions, dayRange, todayKey } from "./time";
+import { dayRange, sumSessions, todayKey } from "./time";
 import type { AdminOverview, AdminUser, AppSettingsDTO } from "./types";
 
 const AI_DEFAULTS = { aiMinDaysTasks: 3, aiMinDaysWork: 3, aiMinNightsSleep: 7, aiMinDaysLeisure: 7 } as const;
@@ -39,66 +39,22 @@ export async function updateAppSettings(data: Partial<AppSettingsDTO>): Promise<
 }
 
 export async function listUsers(): Promise<AdminUser[]> {
-  const { start, end } = dayRange(todayKey());
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "asc" },
-    include: {
-      boards: {
-        include: {
-          lists: {
-            include: {
-              cards: {
-                select: { completedAt: true, sessions: { select: { startedAt: true, endedAt: true } } },
-              },
-            },
-          },
-        },
-      },
-      workSessions: { select: { startedAt: true, endedAt: true } },
-      _count: { select: { sessions: true } },
-    },
+    include: { _count: { select: { sessions: true } } },
   });
-
-  return users.map((u) => {
-    let openCards = 0;
-    let doneCards = 0;
-    let doneToday = 0;
-    let taskMs = 0;
-    for (const b of u.boards) {
-      for (const l of b.lists) {
-        for (const c of l.cards) {
-          if (c.completedAt) {
-            doneCards += 1;
-            if (c.completedAt >= start && c.completedAt < end) doneToday += 1;
-          } else {
-            openCards += 1;
-          }
-          taskMs += sumSessions(c.sessions.filter((s) => s.endedAt));
-        }
-      }
-    }
-    const workedToday = sumSessions(u.workSessions.filter((s) => s.startedAt >= start));
-    const workedTotal = sumSessions(u.workSessions);
-    return {
-      id: u.id,
-      avatar: u.avatar,
-      name: u.name,
-      email: u.email,
-      username: u.username,
-      role: u.role as "user" | "admin",
-      active: u.active,
-      createdAt: u.createdAt.toISOString(),
-      lastLoginAt: u.lastLoginAt ? u.lastLoginAt.toISOString() : null,
-      boards: u.boards.length,
-      openCards,
-      doneCards,
-      doneToday,
-      workedTodayMs: workedToday,
-      workedTotalMs: workedTotal,
-      taskMs,
-      activeSessions: u._count.sessions,
-    };
-  });
+  return users.map((u) => ({
+    id: u.id,
+    avatar: u.avatar,
+    name: u.name,
+    email: u.email,
+    username: u.username,
+    role: u.role as "user" | "admin",
+    active: u.active,
+    createdAt: u.createdAt.toISOString(),
+    lastLoginAt: u.lastLoginAt ? u.lastLoginAt.toISOString() : null,
+    activeSessions: u._count.sessions,
+  }));
 }
 
 export async function getOverview(): Promise<AdminOverview> {

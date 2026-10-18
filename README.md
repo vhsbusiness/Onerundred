@@ -140,6 +140,13 @@ Implementação em `src/lib/auth.ts`, `src/lib/current-user.ts`, `src/lib/admin.
 
 ## IA (OpenAI)
 
+**Trazer dados do Trello.** Dentro de um quadro, o botão "Trazer dados" abre uma
+janela onde o usuário envia um print do Trello (ou de qualquer lista de tarefas).
+A IA lê a imagem (modelo com visão), mostra as listas e tarefas encontradas,
+marca o que já existe no quadro e cria só o que falta, com prioridade e tipo de
+lista inferidos. Tarefas já concluídas no print são opcionais. Rota
+`POST/PUT /api/boards/[id]/importar`; código em `src/lib/import.ts`.
+
 Com `OPENAI_API_KEY` definida (e `OPENAI_MODEL`, padrão `gpt-5-mini`), o dashboard
 ganha o card **Análise do dia**: a IA lê as tarefas de hoje (prioridade, lista,
 estimativa, tempo cronometrado, atrasos), as sessões de trabalho, o histórico de

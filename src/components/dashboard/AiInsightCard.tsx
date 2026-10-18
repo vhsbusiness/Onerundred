@@ -11,8 +11,8 @@ function timeLabel(iso: string) {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
-export function AiInsightCard({ todayCards }: { todayCards: TodayCard[] }) {
-  const [status, setStatus] = useState<AiStatusDTO | null>(null);
+export function AiInsightCard({ todayCards, initialStatus }: { todayCards: TodayCard[]; initialStatus?: AiStatusDTO }) {
+  const [status, setStatus] = useState<AiStatusDTO | null>(initialStatus ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const autoTried = useRef(false);
@@ -71,10 +71,19 @@ export function AiInsightCard({ todayCards }: { todayCards: TodayCard[] }) {
   }, [generate]);
 
   useEffect(() => {
-    // Busca inicial: o setState ocorre após o await, não de forma síncrona.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    load();
-  }, [load]);
+    // Com dados iniciais do servidor, só dispara a análise automática se couber; senão busca.
+    // (o setState ocorre após o await, não de forma síncrona)
+    const s = initialStatus;
+    if (s) {
+      if (!autoTried.current && s.enabled && s.observation.coreReady && !s.insight && s.remainingToday > 0 && cardsCount.current > 0) {
+        autoTried.current = true;
+        generate();
+      }
+    } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      load();
+    }
+  }, [load, generate, initialStatus]);
 
   const boardOf = (cardId: string) => todayCards.find((c) => c.id === cardId)?.boardId;
 

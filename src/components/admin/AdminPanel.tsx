@@ -179,18 +179,12 @@ export function AdminPanel() {
           <span className="pill">{users.length}</span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-sm">
+          <table className="w-full min-w-[640px] text-sm">
             <thead className="border-y border-line bg-black/20 text-left text-[11px] uppercase tracking-wide text-ink-3">
               <tr>
                 <th className="px-5 py-2 font-medium">Usuário</th>
                 <th className="px-3 py-2 font-medium">Papel</th>
                 <th className="px-3 py-2 font-medium">Último login</th>
-                <th className="px-3 py-2 font-medium text-right">Quadros</th>
-                <th className="px-3 py-2 font-medium text-right">Abertas</th>
-                <th className="px-3 py-2 font-medium text-right">Feitas</th>
-                <th className="px-3 py-2 font-medium text-right">Hoje</th>
-                <th className="px-3 py-2 font-medium text-right">Trab. hoje</th>
-                <th className="px-3 py-2 font-medium text-right">Trab. total</th>
                 <th className="px-5 py-2 font-medium text-right">Ações</th>
               </tr>
             </thead>
@@ -220,12 +214,6 @@ export function AdminPanel() {
                       </span>
                     </td>
                     <td className="px-3 py-3 text-ink-2 tabular-nums">{fmtDate(u.lastLoginAt)}</td>
-                    <td className="px-3 py-3 text-right tabular-nums">{u.boards}</td>
-                    <td className="px-3 py-3 text-right tabular-nums">{u.openCards}</td>
-                    <td className="px-3 py-3 text-right tabular-nums">{u.doneCards}</td>
-                    <td className="px-3 py-3 text-right tabular-nums">{u.doneToday}</td>
-                    <td className="px-3 py-3 text-right tabular-nums">{formatDuration(u.workedTodayMs)}</td>
-                    <td className="px-3 py-3 text-right tabular-nums">{formatDuration(u.workedTotalMs)}</td>
                     <td className="px-5 py-3">
                       <div className="flex items-center justify-end gap-1">
                         {u.role === "admin" ? (

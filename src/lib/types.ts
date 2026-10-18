@@ -150,13 +150,6 @@ export interface AdminUser {
   active: boolean;
   createdAt: string;
   lastLoginAt: string | null;
-  boards: number;
-  openCards: number;
-  doneCards: number;
-  doneToday: number;
-  workedTodayMs: number;
-  workedTotalMs: number;
-  taskMs: number;
   activeSessions: number;
 }
 
@@ -309,4 +302,32 @@ export interface LeisurePageDTO {
   running: LeisureLogDTO | null;
   stats: LeisureStats;
   activities: string[];
+}
+
+/* ───────────── Importar do Trello (print) ───────────── */
+
+export interface ImportPlanCard {
+  title: string;
+  priority: 1 | 2 | 3;
+  estimatedMinutes: number | null;
+  done: boolean;
+  /** Já existe uma tarefa com esse título no quadro. */
+  exists: boolean;
+}
+
+export interface ImportPlanList {
+  name: string;
+  kind: ListKind;
+  priority: 1 | 2 | 3;
+  /** Lista do quadro com o mesmo nome, se houver. */
+  existingListId: string | null;
+  cards: ImportPlanCard[];
+}
+
+export interface ImportPlan {
+  boardId: string;
+  lists: ImportPlanList[];
+  newLists: number;
+  newCards: number;
+  doneCards: number;
 }

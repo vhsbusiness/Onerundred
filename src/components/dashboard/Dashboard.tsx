@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { formatPercent, http, TONE_PILL, TONE_TEXT } from "@/lib/client";
 import { scoreTone, type PeriodScore } from "@/lib/metrics";
 import { formatDayLong, formatDuration } from "@/lib/time";
-import type { DashboardDTO, WorkState } from "@/lib/types";
+import type { AiStatusDTO, DashboardDTO, WorkState } from "@/lib/types";
 import { AiInsightCard } from "./AiInsightCard";
 import { HistoryChart } from "./HistoryChart";
 import { TodayTasks } from "./TodayTasks";
@@ -91,8 +91,8 @@ function SegmentedBar({ counts }: { counts: DashboardDTO["counts"] }) {
   );
 }
 
-export function Dashboard() {
-  const [data, setData] = useState<DashboardDTO | null>(null);
+export function Dashboard({ initialData, initialAi }: { initialData?: DashboardDTO; initialAi?: AiStatusDTO }) {
+  const [data, setData] = useState<DashboardDTO | null>(initialData ?? null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -105,9 +105,9 @@ export function Dashboard() {
   }, []);
 
   useEffect(() => {
-    // Busca inicial: o setState ocorre após o await, não de forma síncrona.
+    // Sem dados iniciais do servidor, busca ao montar (o setState ocorre após o await).
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    load();
+    if (!initialData) load();
     const id = setInterval(load, 60000);
     const onFocus = () => load();
     window.addEventListener("focus", onFocus);
@@ -115,7 +115,7 @@ export function Dashboard() {
       clearInterval(id);
       window.removeEventListener("focus", onFocus);
     };
-  }, [load]);
+  }, [load, initialData]);
 
   if (error) {
     return (
@@ -184,7 +184,7 @@ export function Dashboard() {
           </div>
 
           <div className="mt-6">
-            <AiInsightCard todayCards={data.todayCards} />
+            <AiInsightCard todayCards={data.todayCards} initialStatus={initialAi} />
           </div>
 
           <div className="mt-5">

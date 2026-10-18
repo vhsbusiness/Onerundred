@@ -122,8 +122,15 @@ async function ownedCard(id: string, userId: string) {
  *  3. move tarefas da lista "Amanhã" cujo dia chegou para a primeira lista normal do quadro;
  *  4. apaga sessões de login expiradas.
  */
+let lastMaintenanceAt = 0;
+let lastMaintenanceDay = "";
+
 export async function runMaintenance(): Promise<void> {
   const today = todayKey();
+  // Roda no máximo uma vez por minuto por instância (e sempre na virada do dia).
+  if (Date.now() - lastMaintenanceAt < 60_000 && lastMaintenanceDay === today) return;
+  lastMaintenanceAt = Date.now();
+  lastMaintenanceDay = today;
   const { start } = dayRange(today);
 
   await prisma.card.updateMany({
