@@ -45,6 +45,8 @@ export interface BoardDTO {
   position: number;
   createdAt: string;
   lists: ListDTO[];
+  /** Última ação em lote que pode ser desfeita (do usuário, em qualquer quadro). */
+  lastUndo: { id: string; label: string } | null;
 }
 
 export interface BoardSummary {

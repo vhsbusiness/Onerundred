@@ -1,9 +1,9 @@
 import { ApiError, json, readBody, requireString, withUser } from "@/lib/api";
-import { archiveAllCards, copyList, moveAllCards } from "@/lib/repo";
+import { archiveAllCards, copyList, moveAllCards, pullByPriority } from "@/lib/repo";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-/** action: "copy" | "moveCards" (toListId) | "archiveCards" */
+/** action: "copy" | "moveCards" (toListId) | "archiveCards" | "pullPriority" (priority) */
 export const POST = withUser(async (user, req: Request, ctx: Ctx) => {
   const { id } = await ctx.params;
   const body = await readBody(req);
@@ -14,7 +14,12 @@ export const POST = withUser(async (user, req: Request, ctx: Ctx) => {
       return json({ moved: await moveAllCards(id, requireString(body.toListId, "toListId"), user.id) });
     case "archiveCards":
       return json({ archived: await archiveAllCards(id, user.id) });
+    case "pullPriority": {
+      const p = Number(body.priority);
+      if (p !== 1 && p !== 2 && p !== 3) throw new ApiError(400, "priority deve ser 1, 2 ou 3");
+      return json({ moved: await pullByPriority(id, p, user.id) });
+    }
     default:
-      throw new ApiError(400, "action deve ser copy, moveCards ou archiveCards");
+      throw new ApiError(400, "action deve ser copy, moveCards, archiveCards ou pullPriority");
   }
 });

@@ -1,8 +1,9 @@
 "use client";
 
+import { askConfirm } from "@/components/ui/ConfirmProvider";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { Archive, ArrowLeft, ArrowRight, Check, Copy, FolderInput, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { Archive, ArrowLeft, ArrowRight, Check, Copy, FolderInput, Magnet, MoreHorizontal, Plus, Trash2, Undo2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { http, priorityUi } from "@/lib/client";
 import { imagesFromClipboard, toImageDataUrl } from "@/lib/images";
@@ -26,6 +27,8 @@ export function ListColumn({
   onOpenCard,
   onTimer,
   onCardContextMenu,
+  lastUndo,
+  onUndo,
 }: {
   list: ListDTO;
   lists: ListDTO[];
@@ -37,10 +40,13 @@ export function ListColumn({
   onOpenCard: (card: CardDTO) => void;
   onTimer: (card: CardDTO) => void;
   onCardContextMenu?: (e: React.MouseEvent, card: CardDTO) => void;
+  lastUndo?: { id: string; label: string } | null;
+  onUndo?: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: list.id, data: { type: "list" } });
   const [menu, setMenu] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
+  const [pullOpen, setPullOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(list.name);
   const [adding, setAdding] = useState(false);
@@ -65,6 +71,7 @@ export function ListColumn({
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenu(false);
         setMoveOpen(false);
+        setPullOpen(false);
       }
     };
     document.addEventListener("mousedown", onDoc);
@@ -99,6 +106,7 @@ export function ListColumn({
   async function action(body: Record<string, unknown>) {
     setMenu(false);
     setMoveOpen(false);
+    setPullOpen(false);
     await http.post(`/api/lists/${list.id}/acoes`, body);
     onChanged();
   }
@@ -106,12 +114,12 @@ export function ListColumn({
   async function archiveAll() {
     const n = list.cards.length;
     if (n === 0) return;
-    if (!confirm(`Arquivar as ${n} tarefas de "${list.name}"? Elas ficam na aba Arquivadas.`)) return;
+    if (!(await askConfirm({ title: "Arquivar tarefas", message: `Arquivar as ${n} tarefas de "${list.name}"? Elas ficam na aba Arquivadas.`, confirmLabel: "Arquivar" }))) return;
     await action({ action: "archiveCards" });
   }
 
   async function remove() {
-    if (!confirm(`Excluir a lista "${list.name}" e suas ${list.cards.length} tarefas?`)) return;
+    if (!(await askConfirm({ title: "Excluir lista", message: `Excluir a lista "${list.name}" e suas ${list.cards.length} tarefas?`, confirmLabel: "Excluir", danger: true }))) return;
     await http.del(`/api/lists/${list.id}`);
     onChanged();
   }
@@ -233,10 +241,43 @@ export function ListColumn({
                 </div>
               )}
               <MenuItem
+                icon={<Magnet size={14} />}
+                label={pullOpen ? "Puxar tarefas de prioridade…" : "Puxar todas as tarefas de uma prioridade"}
+                disabled={list.kind === "done"}
+                onClick={() => setPullOpen((o) => !o)}
+              />
+              {pullOpen && (
+                <div className="mb-1 ml-6 space-y-0.5 border-l border-line pl-2">
+                  {[1, 2, 3].map((p) => {
+                    const pu = priorityUi(p);
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => action({ action: "pullPriority", priority: p })}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-ink-2 hover:bg-white/[0.06] hover:text-ink"
+                      >
+                        <span className={`h-2 w-2 rounded-full ${pu.dot}`} /> {pu.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <MenuItem
                 icon={<Archive size={14} />}
                 label="Arquivar todas as tarefas desta lista"
                 disabled={list.cards.length === 0}
                 onClick={archiveAll}
+              />
+              <div className="my-1 border-t border-line" />
+              <MenuItem
+                icon={<Undo2 size={14} />}
+                label={lastUndo ? `Desfazer: ${lastUndo.label}` : "Desfazer última ação"}
+                disabled={!lastUndo || !onUndo}
+                onClick={() => {
+                  setMenu(false);
+                  onUndo?.();
+                }}
               />
               <div className="my-1 border-t border-line" />
               <MenuItem

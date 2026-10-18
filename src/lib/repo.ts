@@ -192,6 +192,83 @@ export async function runMaintenance(): Promise<void> {
   await autoStopForgottenLeisure();
 }
 
+/* ───────────────────────── Desfazer ───────────────────────── */
+
+type UndoPayload =
+  | { kind: "restoreCards"; cards: { id: string; listId: string; position: number; completedAt: string | null; scheduledFor: string }[] }
+  | { kind: "unarchiveCards"; cardIds: string[] }
+  | { kind: "deleteList"; listId: string }
+  | { kind: "deleteCard"; cardId: string };
+
+const UNDO_KEEP = 20;
+
+async function recordUndo(userId: string, label: string, payload: UndoPayload) {
+  await prisma.undoAction.create({ data: { userId, kind: payload.kind, label, payload: JSON.stringify(payload) } });
+  const old = await prisma.undoAction.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    skip: UNDO_KEEP,
+    select: { id: true },
+  });
+  if (old.length) await prisma.undoAction.deleteMany({ where: { id: { in: old.map((o) => o.id) } } });
+}
+
+/** Retrato das tarefas antes de uma movimentação, para poder voltar. */
+function snapshotCards(cards: { id: string; listId: string; position: number; completedAt: Date | null; scheduledFor: string }[]) {
+  return cards.map((c) => ({
+    id: c.id,
+    listId: c.listId,
+    position: c.position,
+    completedAt: c.completedAt ? c.completedAt.toISOString() : null,
+    scheduledFor: c.scheduledFor,
+  }));
+}
+
+export async function getLastUndo(userId: string): Promise<{ id: string; label: string } | null> {
+  const row = await prisma.undoAction.findFirst({ where: { userId }, orderBy: { createdAt: "desc" } });
+  return row ? { id: row.id, label: row.label } : null;
+}
+
+/** Reverte a última ação registrada e a remove da pilha. */
+export async function undoLast(userId: string): Promise<{ label: string } | null> {
+  const row = await prisma.undoAction.findFirst({ where: { userId }, orderBy: { createdAt: "desc" } });
+  if (!row) return null;
+  const payload = JSON.parse(row.payload) as UndoPayload;
+
+  if (payload.kind === "restoreCards") {
+    const ops = [];
+    for (const c of payload.cards) {
+      const exists = await prisma.card.findFirst({ where: { id: c.id, list: { board: { userId } } }, select: { id: true } });
+      const listOk = await prisma.list.findFirst({ where: { id: c.listId, board: { userId } }, select: { id: true } });
+      if (!exists || !listOk) continue;
+      ops.push(
+        prisma.card.update({
+          where: { id: c.id },
+          data: {
+            listId: c.listId,
+            position: c.position,
+            completedAt: c.completedAt ? new Date(c.completedAt) : null,
+            scheduledFor: c.scheduledFor,
+          },
+        }),
+      );
+    }
+    if (ops.length) await prisma.$transaction(ops);
+  } else if (payload.kind === "unarchiveCards") {
+    await prisma.card.updateMany({
+      where: { id: { in: payload.cardIds }, list: { board: { userId } } },
+      data: { archivedAt: null },
+    });
+  } else if (payload.kind === "deleteList") {
+    await prisma.list.deleteMany({ where: { id: payload.listId, board: { userId } } });
+  } else if (payload.kind === "deleteCard") {
+    await prisma.card.deleteMany({ where: { id: payload.cardId, list: { board: { userId } } } });
+  }
+
+  await prisma.undoAction.delete({ where: { id: row.id } });
+  return { label: row.label };
+}
+
 /* ───────────────────────── Quadros ───────────────────────── */
 
 export async function ensureDefaultBoard(userId: string): Promise<void> {
@@ -317,6 +394,7 @@ export async function getBoard(id: string, userId: string): Promise<BoardDTO> {
     name: board.name,
     position: board.position,
     createdAt: board.createdAt.toISOString(),
+    lastUndo: await getLastUndo(userId),
     lists: board.lists.map(
       (l): ListDTO => ({
         id: l.id,
@@ -422,6 +500,7 @@ export async function copyList(id: string, userId: string) {
   await prisma.$transaction(
     ordered.map((l, i) => prisma.list.update({ where: { id: l.id }, data: { position: i } })),
   );
+  await recordUndo(userId, `copiar a lista "${list.name}"`, { kind: "deleteList", listId: created.id });
   return created;
 }
 
@@ -445,13 +524,52 @@ export async function moveAllCards(fromListId: string, toListId: string, userId:
       }),
     ),
   );
+  if (cards.length) {
+    await recordUndo(userId, `mover ${cards.length} tarefa(s) para "${to.name}"`, {
+      kind: "restoreCards",
+      cards: snapshotCards(cards),
+    });
+  }
+  return cards.length;
+}
+
+/** Puxa para esta lista todas as tarefas abertas de uma prioridade, vindas das outras listas do quadro. */
+export async function pullByPriority(listId: string, priority: number, userId: string) {
+  const target = await ownedList(listId, userId);
+  const cards = await prisma.card.findMany({
+    where: {
+      priority,
+      archivedAt: null,
+      completedAt: null,
+      listId: { not: listId },
+      list: { boardId: target.boardId, kind: { not: "done" } },
+    },
+    orderBy: [{ listId: "asc" }, { position: "asc" }],
+  });
+  if (cards.length === 0) return 0;
+  const max = await prisma.card.aggregate({ where: { listId }, _max: { position: true } });
+  let pos = (max._max.position ?? -1) + 1;
+  await prisma.$transaction(
+    cards.map((c) =>
+      prisma.card.update({
+        where: { id: c.id },
+        data: { listId, position: pos++, ...kindEffects(target.kind, c) },
+      }),
+    ),
+  );
+  const label = { 1: "alta", 2: "média", 3: "baixa" }[priority as 1 | 2 | 3] ?? "";
+  await recordUndo(userId, `puxar ${cards.length} tarefa(s) de prioridade ${label} para "${target.name}"`, {
+    kind: "restoreCards",
+    cards: snapshotCards(cards),
+  });
   return cards.length;
 }
 
 /** Arquiva todas as tarefas da lista (concluídas ou não). Elas continuam na aba Arquivadas. */
 export async function archiveAllCards(listId: string, userId: string) {
-  await ownedList(listId, userId);
+  const list = await ownedList(listId, userId);
   const now = new Date();
+  const ids = (await prisma.card.findMany({ where: { listId, archivedAt: null }, select: { id: true } })).map((c) => c.id);
   await prisma.taskSession.updateMany({
     where: { endedAt: null, card: { listId } },
     data: { endedAt: now },
@@ -460,6 +578,9 @@ export async function archiveAllCards(listId: string, userId: string) {
     where: { listId, archivedAt: null },
     data: { archivedAt: now },
   });
+  if (ids.length) {
+    await recordUndo(userId, `arquivar ${ids.length} tarefa(s) de "${list.name}"`, { kind: "unarchiveCards", cardIds: ids });
+  }
   return result.count;
 }
 
@@ -563,17 +684,19 @@ export async function copyCard(userId: string, cardId: string): Promise<CardDTO>
   await prisma.$transaction(
     ordered.map((c, i) => prisma.card.update({ where: { id: c.id }, data: { position: i } })),
   );
+  await recordUndo(userId, `copiar a tarefa "${card.title}"`, { kind: "deleteCard", cardId: created.id });
   return getCard(created.id, userId);
 }
 
 /** Arquiva a tarefa (concluída ou não); ela some do quadro e fica em Arquivadas. */
 export async function archiveCard(userId: string, cardId: string): Promise<void> {
-  await ownedCard(cardId, userId);
+  const card = await ownedCard(cardId, userId);
   const now = new Date();
   await prisma.$transaction([
     prisma.taskSession.updateMany({ where: { cardId, endedAt: null }, data: { endedAt: now } }),
     prisma.card.update({ where: { id: cardId }, data: { archivedAt: now } }),
   ]);
+  await recordUndo(userId, `arquivar a tarefa "${card.title}"`, { kind: "unarchiveCards", cardIds: [cardId] });
 }
 
 /** Ajustes de estado ao entrar numa lista de determinado tipo. */

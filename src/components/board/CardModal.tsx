@@ -1,5 +1,6 @@
 "use client";
 
+import { askConfirm } from "@/components/ui/ConfirmProvider";
 import { Archive, Check, Copy, ImagePlus, Pause, Play, RotateCcw, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { elapsedSince, http, priorityUi, useNow } from "@/lib/client";
@@ -100,7 +101,7 @@ export function CardModal({
   }
 
   async function remove() {
-    if (!confirm(`Excluir a tarefa "${card!.title}"?`)) return;
+    if (!(await askConfirm({ title: "Excluir tarefa", message: `Excluir a tarefa "${card!.title}"?`, confirmLabel: "Excluir", danger: true }))) return;
     await http.del(`/api/cards/${card!.id}`);
     onClose();
     onChanged();

@@ -1,5 +1,6 @@
 "use client";
 
+import { askConfirm } from "@/components/ui/ConfirmProvider";
 import {
   DndContext,
   DragOverlay,
@@ -97,6 +98,13 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
     const id = setInterval(load, 60000);
     return () => clearInterval(id);
   }, [load, initialBoard]);
+
+  async function undo() {
+    if (!board?.lastUndo) return;
+    if (!(await askConfirm({ title: "Desfazer", message: `Desfazer: ${board.lastUndo.label}?`, confirmLabel: "Desfazer" }))) return;
+    await http.post("/api/undo");
+    load();
+  }
 
   async function copyCard(cardId: string) {
     setCtxMenu(null);
@@ -256,7 +264,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
 
   async function removeBoard() {
     if (!board) return;
-    if (!confirm(`Excluir o quadro "${board.name}" com todas as listas e tarefas?`)) return;
+    if (!(await askConfirm({ title: "Excluir quadro", message: `Excluir o quadro "${board.name}" com todas as listas e tarefas?`, confirmLabel: "Excluir", danger: true }))) return;
     await http.del(`/api/boards/${boardId}`);
     router.push("/quadros?lista=1");
   }
@@ -406,6 +414,8 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
               onOpenCard={(c) => setOpenCardId(c.id)}
               onTimer={timer}
               onCardContextMenu={(e, c) => setCtxMenu({ cardId: c.id, x: e.clientX, y: e.clientY })}
+              lastUndo={board.lastUndo}
+              onUndo={undo}
             />
           ))}
 

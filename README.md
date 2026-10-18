@@ -34,6 +34,9 @@ source ~/.nvm/nvm.sh
   estimativa em minutos, descrição, dia agendado e cronômetro. Arrastar e soltar
   entre listas. Menu de cada lista: adicionar tarefa, copiar lista, mover todas
   as tarefas para outra lista, arquivar todas as tarefas, mover lista, tipo e excluir.
+  Menu da lista também puxa todas as tarefas abertas de uma prioridade (Alta,
+  Média ou Baixa) das outras listas, e "Desfazer última ação" reverte a última
+  ação em lote (mover, arquivar, puxar, copiar lista/tarefa), guardada no banco.
   Botão direito na tarefa: abrir, copiar, arquivar. Imagens: cole com Ctrl+V ao
   criar a tarefa ou no modal (ou anexe arquivos); a primeira vira capa do cartão.
   Ficam no banco (`CardImage`), servidas por `/api/imagens/[id]` só para o dono.
@@ -52,6 +55,13 @@ source ~/.nvm/nvm.sh
 - **Configurações** (`/configuracoes`): meta diária de trabalho.
 - **Contas**: cadastro aberto, login por e-mail ou usuário, dados isolados por conta.
 - **Admin** (`/admin`): painel do administrador (primeiro usuário cadastrado).
+
+## Confirmações
+
+Nenhuma ação usa as caixas nativas do navegador: confirmações e avisos passam
+pelo `ConfirmProvider` (`askConfirm` e `notify` em `src/components/ui/ConfirmProvider.tsx`),
+no mesmo visual do app. As porcentagens do dashboard mostram uma explicação ao
+passar o mouse.
 
 ## Mobile
 

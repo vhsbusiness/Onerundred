@@ -1,5 +1,6 @@
 "use client";
 
+import { askConfirm } from "@/components/ui/ConfirmProvider";
 import { Moon, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { http } from "@/lib/client";
@@ -149,7 +150,7 @@ export function SleepPage() {
   }
 
   async function remove(l: SleepLogDTO) {
-    if (!confirm(`Apagar o registro de ${keyToDate(l.dayKey).toLocaleDateString("pt-BR")}?`)) return;
+    if (!(await askConfirm({ title: "Apagar noite", message: `Apagar o registro de ${keyToDate(l.dayKey).toLocaleDateString("pt-BR")}?`, confirmLabel: "Apagar", danger: true }))) return;
     await http.del(`/api/sono/${l.id}`);
     await load();
   }

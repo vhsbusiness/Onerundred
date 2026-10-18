@@ -1,5 +1,6 @@
 "use client";
 
+import { askConfirm } from "@/components/ui/ConfirmProvider";
 import { RotateCcw, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -47,12 +48,13 @@ export function ArchiveList() {
 
   async function removeAll() {
     if (!cards || cards.length === 0) return;
-    if (
-      !confirm(
-        `Excluir definitivamente as ${cards.length} tarefas arquivadas?\n\nElas deixam de contar no histórico e nas notas dos dias anteriores. Não dá para desfazer.`,
-      )
-    )
-      return;
+    const ok = await askConfirm({
+      title: "Excluir tudo",
+      message: `Excluir definitivamente as ${cards.length} tarefas arquivadas?\n\nElas deixam de contar no histórico e nas notas dos dias anteriores. Não dá para desfazer.`,
+      confirmLabel: "Excluir tudo",
+      danger: true,
+    });
+    if (!ok) return;
     await http.del("/api/arquivadas");
     load();
   }
@@ -63,7 +65,7 @@ export function ArchiveList() {
   }
 
   async function remove(c: ArchivedCard) {
-    if (!confirm(`Excluir definitivamente "${c.title}"?`)) return;
+    if (!(await askConfirm({ title: "Excluir tarefa", message: `Excluir definitivamente "${c.title}"?`, confirmLabel: "Excluir", danger: true }))) return;
     await http.del(`/api/cards/${c.id}`);
     load();
   }

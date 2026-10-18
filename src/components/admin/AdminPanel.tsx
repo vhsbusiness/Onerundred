@@ -1,5 +1,6 @@
 "use client";
 
+import { askConfirm, notify } from "@/components/ui/ConfirmProvider";
 import { Eye, ShieldCheck, Trash2, UserCheck, UserX } from "lucide-react";
 import { Avatar } from "@/components/profile/ProfilePage";
 import { useCallback, useEffect, useState } from "react";
@@ -58,7 +59,7 @@ export function AdminPanel() {
       await fn();
       await load();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Erro");
+      notify(e instanceof Error ? e.message : "Erro", "error");
     }
   }
 
@@ -94,13 +95,13 @@ export function AdminPanel() {
     act(() => http.patch(`/api/admin/users/${u.id}`, { role }));
   }
 
-  function setActive(u: AdminUser, active: boolean) {
-    if (!active && !confirm(`Desativar a conta de ${u.name}? A pessoa será deslogada.`)) return;
+  async function setActive(u: AdminUser, active: boolean) {
+    if (!active && !(await askConfirm({ title: "Desativar conta", message: `Desativar a conta de ${u.name}? A pessoa será deslogada.`, confirmLabel: "Desativar", danger: true }))) return;
     act(() => http.patch(`/api/admin/users/${u.id}`, { active }));
   }
 
-  function remove(u: AdminUser) {
-    if (!confirm(`Excluir ${u.name} (${u.email}) e TODOS os dados dessa conta? Não dá para desfazer.`)) return;
+  async function remove(u: AdminUser) {
+    if (!(await askConfirm({ title: "Excluir conta", message: `Excluir ${u.name} (${u.email}) e TODOS os dados dessa conta? Não dá para desfazer.`, confirmLabel: "Excluir conta", danger: true }))) return;
     act(() => http.del(`/api/admin/users/${u.id}`));
   }
 

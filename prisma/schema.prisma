@@ -29,6 +29,7 @@ model User {
   sleepLogs    SleepLog[]
   projects     Project[]
   leisureLogs  LeisureLog[]
+  undoActions  UndoAction[]
 }
 
 /// Sessão de login (o id é o token guardado no cookie)
@@ -240,4 +241,18 @@ model CardImage {
   card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
 
   @@index([cardId])
+}
+
+/// Última(s) ação(ões) em lote do usuário, para "Desfazer última ação"
+model UndoAction {
+  id        String   @id @default(cuid())
+  userId    String
+  kind      String
+  label     String
+  /// JSON com o necessário para reverter
+  payload   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }

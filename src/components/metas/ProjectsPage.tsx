@@ -1,5 +1,6 @@
 "use client";
 
+import { askConfirm } from "@/components/ui/ConfirmProvider";
 import { Archive, ArrowUpRight, Check, Flame, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -133,7 +134,7 @@ function CardMenu({
 
   async function remove() {
     setOpen(false);
-    if (!confirm(`Excluir a meta "${project.name}" e todas as marcações?`)) return;
+    if (!(await askConfirm({ title: "Excluir meta", message: `Excluir a meta "${project.name}" e todas as marcações?`, confirmLabel: "Excluir", danger: true }))) return;
     await http.del(`/api/projetos/${project.id}`);
     onChanged();
   }
@@ -204,7 +205,7 @@ export function ProjectsPage() {
   }, [load]);
 
   async function markToday(p: ProjectDTO, done: boolean) {
-    if (done && p.todayStatus === "missed" && !confirmMarkDone()) return;
+    if (done && p.todayStatus === "missed" && !(await confirmMarkDone())) return;
     await http.post(`/api/projetos/${p.id}/dias`, { dayKey: todayKey(), done });
     load();
   }

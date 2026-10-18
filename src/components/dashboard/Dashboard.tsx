@@ -11,14 +11,14 @@ import { HistoryChart } from "./HistoryChart";
 import { TodayTasks } from "./TodayTasks";
 import { WorkTimer } from "./WorkTimer";
 
-function ScoreTile({ label, score, hint }: { label: string; score: PeriodScore; hint: string }) {
+function ScoreTile({ label, score, hint, help }: { label: string; score: PeriodScore; hint: string; help: string }) {
   const tone = scoreTone(score.score);
   return (
-    <div className="min-w-0">
+    <div className="min-w-0 cursor-help" title={help}>
       <div className={`text-[2rem] font-semibold leading-none tracking-tight tabular-nums ${TONE_TEXT[tone]}`}>
         {formatPercent(score.score)}
       </div>
-      <div className="mt-1.5 text-sm text-ink-2">{label}</div>
+      <div className="mt-1.5 text-sm text-ink-2 underline decoration-dotted decoration-ink-3/60 underline-offset-4">{label}</div>
       <div className="mt-2">
         <span className={TONE_PILL[tone]}>{hint}</span>
       </div>
@@ -31,16 +31,18 @@ function PlainTile({
   label,
   pill,
   pillClass = "pill",
+  help,
 }: {
   value: string;
   label: string;
   pill: string;
   pillClass?: string;
+  help?: string;
 }) {
   return (
-    <div className="min-w-0">
+    <div className={`min-w-0 ${help ? "cursor-help" : ""}`} title={help}>
       <div className="text-[2rem] font-semibold leading-none tracking-tight tabular-nums">{value}</div>
-      <div className="mt-1.5 text-sm text-ink-2">{label}</div>
+      <div className={`mt-1.5 text-sm text-ink-2 ${help ? "underline decoration-dotted decoration-ink-3/60 underline-offset-4" : ""}`}>{label}</div>
       <div className="mt-2">
         <span className={pillClass}>{pill}</span>
       </div>
@@ -166,20 +168,37 @@ export function Dashboard({ initialData, initialAi }: { initialData?: DashboardD
       <div className="grid gap-4 lg:grid-cols-12">
         <section className="card p-5 lg:col-span-8">
           <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 xl:grid-cols-5">
-            <ScoreTile label="Hoje" score={data.today} hint={todayHint} />
-            <ScoreTile label="Esta semana" score={data.week} hint={weekHint} />
-            <ScoreTile label="Este mês" score={data.month} hint={monthHint} />
+            <ScoreTile
+              label="Hoje"
+              score={data.today}
+              hint={todayHint}
+              help="Nota de hoje: peso das tarefas concluídas hoje dividido pelo peso das concluídas mais as que ainda estão abertas (agendadas até hoje). Peso = prioridade da tarefa (Alta 3, Média 2, Baixa 1) × prioridade da lista (Alta ×1,5, Média ×1, Baixa ×0,5). Tarefas de amanhã não entram."
+            />
+            <ScoreTile
+              label="Esta semana"
+              score={data.week}
+              hint={weekHint}
+              help="Nota da semana (segunda a domingo): peso das tarefas concluídas na semana dividido pelo peso das concluídas mais as que continuam abertas no fim da semana."
+            />
+            <ScoreTile
+              label="Este mês"
+              score={data.month}
+              hint={monthHint}
+              help="Nota do mês: peso das tarefas concluídas no mês dividido pelo peso das concluídas mais as que continuam abertas no fim do mês."
+            />
             <PlainTile
               value={formatDuration(data.work.todayMs)}
               label="Trabalhado hoje"
               pill={data.work.verdict.label}
               pillClass={TONE_PILL[data.work.verdict.tone]}
+              help="Soma das sessões de trabalho de hoje (botão começar/pausar). O selo compara esse tempo com a soma das estimativas das tarefas de hoje ou, se não houver estimativas, com a sua meta diária das Configurações."
             />
             <PlainTile
               value={`${data.streak}d`}
               label="Sequência ≥ 70%"
               pill={data.streak > 0 ? "Mantenha o ritmo" : "Comece hoje"}
               pillClass={data.streak > 0 ? "pill pill-orange" : "pill"}
+              help="Quantos dias seguidos você fechou com nota de 70% ou mais. Dias sem nenhuma tarefa não quebram a sequência; hoje conta se já estiver em 70% ou mais."
             />
           </div>
 

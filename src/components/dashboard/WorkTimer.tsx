@@ -1,5 +1,6 @@
 "use client";
 
+import { askConfirm } from "@/components/ui/ConfirmProvider";
 import { Pause, Play, Square, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { elapsedSince, http, notifyWorkChanged, TONE_BAR, TONE_PILL, useNow } from "@/lib/client";
@@ -24,7 +25,7 @@ export function WorkTimer({ work, onChange }: { work: WorkState; onChange: (w: W
   const progress = plannedMs > 0 ? Math.min(1, totalMs / plannedMs) : 0;
 
   async function act(action: "start" | "pause" | "end") {
-    if (action === "end" && !confirm("Encerrar o dia de trabalho? Você ainda pode reabrir depois.")) return;
+    if (action === "end" && !(await askConfirm({ title: "Encerrar o dia", message: "Encerrar o dia de trabalho? Você ainda pode reabrir depois.", confirmLabel: "Encerrar" }))) return;
     setBusy(true);
     try {
       const next = await http.post<WorkState>("/api/work", { action });
@@ -40,7 +41,7 @@ export function WorkTimer({ work, onChange }: { work: WorkState; onChange: (w: W
   const lastEnd = work.sessions.find((s) => s.endedAt)?.endedAt ?? null;
 
   async function remove(id: string) {
-    if (!confirm("Apagar esta sessão de trabalho?")) return;
+    if (!(await askConfirm({ title: "Apagar sessão", message: "Apagar esta sessão de trabalho?", confirmLabel: "Apagar", danger: true }))) return;
     const next = await http.del<WorkState>(`/api/work/${id}`);
     onChange(next);
     notifyWorkChanged();

@@ -1,5 +1,6 @@
 "use client";
 
+import { askConfirm, notify } from "@/components/ui/ConfirmProvider";
 import { Archive, ArrowLeft, Check, Flame, Pencil, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -46,12 +47,12 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   }, [load]);
 
   async function mark(day: ProjectDayDTO, done: boolean) {
-    if (done && day.status === "missed" && !confirmMarkDone()) return;
+    if (done && day.status === "missed" && !(await confirmMarkDone())) return;
     try {
       setP(await http.post<ProjectDTO>(`/api/projetos/${projectId}/dias`, { dayKey: day.dayKey, done }));
       setSelected(null);
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Erro");
+      notify(e instanceof Error ? e.message : "Erro", "error");
     }
   }
 
@@ -63,7 +64,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
 
   async function remove() {
     if (!p) return;
-    if (!confirm(`Excluir o projeto "${p.name}" e todas as marcações?`)) return;
+    if (!(await askConfirm({ title: "Excluir projeto", message: `Excluir o projeto "${p.name}" e todas as marcações?`, confirmLabel: "Excluir", danger: true }))) return;
     await http.del(`/api/projetos/${p.id}`);
     router.push("/metas");
   }

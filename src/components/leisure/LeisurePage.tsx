@@ -1,5 +1,6 @@
 "use client";
 
+import { askConfirm } from "@/components/ui/ConfirmProvider";
 import { Gamepad2, Pause, Play, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { elapsedSince, http, useNow } from "@/lib/client";
@@ -139,7 +140,7 @@ export function LeisurePage() {
   }
 
   async function remove(l: LeisureLogDTO) {
-    if (!confirm(`Apagar ${l.activity} de ${l.startTime} até ${l.endTime ?? "agora"}?`)) return;
+    if (!(await askConfirm({ title: "Apagar lazer", message: `Apagar ${l.activity} de ${l.startTime} até ${l.endTime ?? "agora"}?`, confirmLabel: "Apagar", danger: true }))) return;
     await http.del(`/api/lazer/${l.id}`);
     await load();
   }
