@@ -145,6 +145,7 @@ function CardMenu({
       <button
         ref={btnRef}
         type="button"
+        onMouseDown={(e) => e.preventDefault()}
         onClick={toggle}
         className="btn btn-ghost h-8 w-8 p-0"
         aria-label="Opções da meta"

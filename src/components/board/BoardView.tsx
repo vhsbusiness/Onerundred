@@ -17,7 +17,7 @@ import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { http, useNow } from "@/lib/client";
 import { todayKey } from "@/lib/time";
 import type { BoardDTO, CardDTO } from "@/lib/types";
@@ -38,7 +38,27 @@ export function BoardView({ boardId }: { boardId: string }) {
   const [listName, setListName] = useState("");
   const [editingName, setEditingName] = useState(false);
   const [boardName, setBoardName] = useState("");
+  const [panning, setPanning] = useState(false);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const panRef = useRef<{ x: number; left: number } | null>(null);
   const today = todayKey();
+
+  // Rolagem lateral arrastando o mouse em qualquer área vazia do quadro.
+  function onPanStart(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.button !== 0 || !scrollerRef.current) return;
+    if ((e.target as HTMLElement).closest("[data-no-pan]")) return;
+    panRef.current = { x: e.clientX, left: scrollerRef.current.scrollLeft };
+    setPanning(true);
+    e.preventDefault();
+  }
+  function onPanMove(e: React.MouseEvent<HTMLDivElement>) {
+    if (!panRef.current || !scrollerRef.current) return;
+    scrollerRef.current.scrollLeft = panRef.current.left - (e.clientX - panRef.current.x);
+  }
+  function onPanEnd() {
+    panRef.current = null;
+    setPanning(false);
+  }
 
   const load = useCallback(async () => {
     try {
@@ -285,7 +305,16 @@ export function BoardView({ boardId }: { boardId: string }) {
           load();
         }}
       >
-        <div className="flex min-h-0 flex-1 items-start gap-4 overflow-x-auto pb-4">
+        <div
+          ref={scrollerRef}
+          onMouseDown={onPanStart}
+          onMouseMove={onPanMove}
+          onMouseUp={onPanEnd}
+          onMouseLeave={onPanEnd}
+          className={`flex min-h-0 flex-1 items-start gap-4 overflow-x-auto pb-4 ${
+            panning ? "cursor-grabbing select-none" : "cursor-grab"
+          }`}
+        >
           {board.lists.map((list, i) => (
             <ListColumn
               key={list.id}
@@ -301,7 +330,7 @@ export function BoardView({ boardId }: { boardId: string }) {
           ))}
 
           {addingList ? (
-            <form onSubmit={addList} className="card w-[300px] shrink-0 space-y-2 p-3">
+            <form onSubmit={addList} data-no-pan className="card w-[300px] shrink-0 space-y-2 p-3">
               <input
                 autoFocus
                 value={listName}
@@ -324,6 +353,7 @@ export function BoardView({ boardId }: { boardId: string }) {
           ) : (
             <button
               type="button"
+              data-no-pan
               onClick={() => setAddingList(true)}
               className="flex h-12 w-[300px] shrink-0 items-center justify-center gap-2 rounded-card border border-dashed border-line text-sm text-ink-3 transition hover:border-line-2 hover:text-ink"
             >

@@ -104,6 +104,7 @@ export function ListColumn({
 
   return (
     <section
+      data-no-pan
       className={`card flex max-h-full w-[300px] shrink-0 flex-col transition ${
         isOver ? "border-line-2 bg-surface-2" : ""
       }`}
