@@ -5,6 +5,7 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { Archive, ArrowLeft, ArrowRight, Check, Copy, FolderInput, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { http, priorityUi } from "@/lib/client";
+import { imagesFromClipboard, toImageDataUrl } from "@/lib/images";
 import type { CardDTO, ListDTO, ListKind } from "@/lib/types";
 import { CardItem } from "./CardItem";
 
@@ -24,6 +25,7 @@ export function ListColumn({
   onChanged,
   onOpenCard,
   onTimer,
+  onCardContextMenu,
 }: {
   list: ListDTO;
   lists: ListDTO[];
@@ -34,6 +36,7 @@ export function ListColumn({
   onChanged: () => void;
   onOpenCard: (card: CardDTO) => void;
   onTimer: (card: CardDTO) => void;
+  onCardContextMenu?: (e: React.MouseEvent, card: CardDTO) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: list.id, data: { type: "list" } });
   const [menu, setMenu] = useState(false);
@@ -44,6 +47,15 @@ export function ListColumn({
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState(2);
   const [estimate, setEstimate] = useState("");
+  const [pendingImages, setPendingImages] = useState<string[]>([]);
+
+  async function onPasteNewCard(e: React.ClipboardEvent) {
+    const files = imagesFromClipboard(e.clipboardData);
+    if (files.length === 0) return;
+    e.preventDefault();
+    const urls = await Promise.all(files.map((f) => toImageDataUrl(f)));
+    setPendingImages((prev) => [...prev, ...urls].slice(0, 10));
+  }
   const addRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -108,12 +120,16 @@ export function ListColumn({
     e.preventDefault();
     const t = title.trim();
     if (!t) return;
-    await http.post("/api/cards", {
+    const created = await http.post<{ id: string }>("/api/cards", {
       listId: list.id,
       title: t,
       priority,
       estimatedMinutes: estimate ? Number(estimate) : null,
     });
+    for (const image of pendingImages) {
+      await http.post(`/api/cards/${created.id}/imagens`, { image });
+    }
+    setPendingImages([]);
     setTitle("");
     setEstimate("");
     onChanged();
@@ -263,6 +279,7 @@ export function ListColumn({
               todayKey={todayKey}
               onOpen={() => onOpenCard(card)}
               onTimer={() => onTimer(card)}
+              onContextMenu={onCardContextMenu}
             />
           ))}
         </SortableContext>
@@ -275,7 +292,7 @@ export function ListColumn({
 
       <footer className="px-3 pb-3 pt-1">
         {adding ? (
-          <form onSubmit={addCard} className="space-y-2 rounded-xl border border-line-2 bg-surface-2 p-2">
+          <form onSubmit={addCard} onPaste={onPasteNewCard} className="space-y-2 rounded-xl border border-line-2 bg-surface-2 p-2">
             <input
               ref={addRef}
               value={title}
@@ -283,9 +300,27 @@ export function ListColumn({
               onKeyDown={(e) => {
                 if (e.key === "Escape") setAdding(false);
               }}
-              placeholder="Título da tarefa"
+              placeholder="Título da tarefa (cole uma imagem com Ctrl+V)"
               className="input"
             />
+            {pendingImages.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {pendingImages.map((img, i) => (
+                  <div key={i} className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={img} alt="" className="h-14 w-14 rounded-md object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setPendingImages((p) => p.filter((_, idx) => idx !== i))}
+                      className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border border-line-2 bg-surface-3 text-[10px] text-ink-2"
+                      aria-label="Remover imagem"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="flex items-center gap-1.5">
               {[1, 2, 3].map((n) => {
                 const pu = priorityUi(n);

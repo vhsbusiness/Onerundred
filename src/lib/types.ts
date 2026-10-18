@@ -25,6 +25,8 @@ export interface CardDTO {
   /** Quando a sessão atual começou, se houver uma rodando. */
   runningSince: string | null;
   sessions?: SessionDTO[];
+  /** Ids das imagens anexadas (URL: /api/imagens/{id}); a primeira é a capa. */
+  imageIds: string[];
 }
 
 export interface ListDTO {

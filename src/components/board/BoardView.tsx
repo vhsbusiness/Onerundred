@@ -25,6 +25,7 @@ import type { BoardDTO, CardDTO } from "@/lib/types";
 import { CardBody } from "./CardItem";
 import { CardModal } from "./CardModal";
 import { ImportModal } from "./ImportModal";
+import { CardContextMenu, type ContextMenuState } from "./CardContextMenu";
 import { ListColumn } from "./ListColumn";
 
 export function BoardView({ boardId, initialBoard }: { boardId: string; initialBoard?: BoardDTO }) {
@@ -38,8 +39,19 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
   );
   const [addingList, setAddingList] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [ctxMenu, setCtxMenu] = useState<ContextMenuState | null>(null);
+  const closeCtxMenu = useCallback(() => setCtxMenu(null), []);
+
   const [boardMenu, setBoardMenu] = useState(false);
   const boardMenuRef = useRef<HTMLDivElement>(null);
+
+  const [listName, setListName] = useState("");
+  const [editingName, setEditingName] = useState(false);
+  const [boardName, setBoardName] = useState(initialBoard?.name ?? "");
+  const [panning, setPanning] = useState(false);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const panRef = useRef<{ x: number; left: number } | null>(null);
+  const today = todayKey();
 
   useEffect(() => {
     if (!boardMenu) return;
@@ -49,13 +61,6 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, [boardMenu]);
-  const [listName, setListName] = useState("");
-  const [editingName, setEditingName] = useState(false);
-  const [boardName, setBoardName] = useState(initialBoard?.name ?? "");
-  const [panning, setPanning] = useState(false);
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  const panRef = useRef<{ x: number; left: number } | null>(null);
-  const today = todayKey();
 
   // Rolagem lateral arrastando o mouse em qualquer área vazia do quadro.
   function onPanStart(e: React.MouseEvent<HTMLDivElement>) {
@@ -92,6 +97,19 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
     const id = setInterval(load, 60000);
     return () => clearInterval(id);
   }, [load, initialBoard]);
+
+  async function copyCard(cardId: string) {
+    setCtxMenu(null);
+    await http.post(`/api/cards/${cardId}/acoes`, { action: "copy" });
+    load();
+  }
+
+  async function archiveCard(cardId: string) {
+    setCtxMenu(null);
+    await http.post(`/api/cards/${cardId}/acoes`, { action: "archive" });
+    if (openCardId === cardId) setOpenCardId(null);
+    load();
+  }
 
   const anyRunning = useMemo(
     () => board?.lists.some((l) => l.cards.some((c) => c.runningSince)) ?? false,
@@ -387,6 +405,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
               onChanged={load}
               onOpenCard={(c) => setOpenCardId(c.id)}
               onTimer={timer}
+              onCardContextMenu={(e, c) => setCtxMenu({ cardId: c.id, x: e.clientX, y: e.clientY })}
             />
           ))}
 
@@ -434,11 +453,24 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
 
       <ImportModal boardId={boardId} open={importing} onClose={() => setImporting(false)} onImported={load} />
 
+      <CardContextMenu
+        state={ctxMenu}
+        onClose={closeCtxMenu}
+        onOpen={(id) => {
+          setCtxMenu(null);
+          setOpenCardId(id);
+        }}
+        onCopy={copyCard}
+        onArchive={archiveCard}
+      />
+
       {openCard && (
         <CardModal
           key={openCard.id}
           card={openCard}
           lists={board.lists}
+          onCopy={() => copyCard(openCard.id)}
+          onArchive={() => archiveCard(openCard.id)}
           onClose={() => {
             setOpenCardId(null);
             if (window.location.search.includes("card=")) {

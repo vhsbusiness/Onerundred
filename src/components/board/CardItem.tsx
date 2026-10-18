@@ -4,6 +4,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { AlignLeft, Pause, Play } from "lucide-react";
 import { elapsedSince, priorityUi } from "@/lib/client";
+import { imageUrl } from "@/lib/images";
 import { formatDuration, minutesToLabel } from "@/lib/time";
 import type { CardDTO } from "@/lib/types";
 
@@ -39,12 +40,23 @@ export function CardBody({
       onClick={onOpen}
       role="button"
     >
+      {card.imageIds.length > 0 && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={imageUrl(card.imageIds[0])}
+          alt=""
+          className="mb-2 h-28 w-full rounded-lg object-cover"
+          loading="lazy"
+          draggable={false}
+        />
+      )}
       <div className="flex items-start gap-2">
         <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${p.dot}`} title={`Prioridade ${p.label}`} />
         <div className="min-w-0 flex-1">
           <div className={`text-sm leading-snug ${done ? "line-through" : ""}`}>{card.title}</div>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-ink-3">
             {card.description ? <AlignLeft size={11} className="text-ink-3" /> : null}
+            {card.imageIds.length > 1 ? <span>{card.imageIds.length} imagens</span> : null}
             {card.estimatedMinutes ? <span>est. {minutesToLabel(card.estimatedMinutes)}</span> : null}
             {spent > 0 ? (
               <span className={running ? "font-medium text-green" : ""}>{formatDuration(spent)}</span>
@@ -81,6 +93,7 @@ export function CardItem(props: {
   todayKey: string;
   onOpen: () => void;
   onTimer: () => void;
+  onContextMenu?: (e: React.MouseEvent, card: CardDTO) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: props.card.id,
@@ -94,7 +107,17 @@ export function CardItem(props: {
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      onContextMenu={(e) => {
+        if (!props.onContextMenu) return;
+        e.preventDefault();
+        props.onContextMenu(e, props.card);
+      }}
+    >
       <CardBody {...props} />
     </div>
   );

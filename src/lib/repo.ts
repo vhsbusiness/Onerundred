@@ -54,6 +54,7 @@ interface CardRow {
   completedAt: Date | null;
   archivedAt: Date | null;
   sessions: SessionRow[];
+  images?: { id: string }[];
 }
 
 export function serializeSession(s: SessionRow): SessionDTO {
@@ -81,6 +82,7 @@ export function serializeCard(c: CardRow): CardDTO {
     archivedAt: c.archivedAt ? c.archivedAt.toISOString() : null,
     spentMs: sumSessions(closed),
     runningSince: running ? running.startedAt.toISOString() : null,
+    imageIds: (c.images ?? []).map((i) => i.id),
     sessions: c.sessions
       .slice()
       .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime())
@@ -88,7 +90,7 @@ export function serializeCard(c: CardRow): CardDTO {
   };
 }
 
-const cardInclude = { sessions: true } as const;
+const cardInclude = { sessions: true, images: { select: { id: true }, orderBy: { createdAt: "asc" } } } as const;
 
 /* ───────────────────────── Propriedade ───────────────────────── */
 
@@ -532,6 +534,48 @@ export async function deleteCard(id: string, userId: string) {
   await prisma.card.delete({ where: { id } });
 }
 
+/** Duplica a tarefa logo abaixo da original (sem o tempo cronometrado). */
+export async function copyCard(userId: string, cardId: string): Promise<CardDTO> {
+  const card = await ownedCard(cardId, userId);
+  const siblings = await prisma.card.findMany({
+    where: { listId: card.listId, archivedAt: null },
+    orderBy: { position: "asc" },
+  });
+  const created = await prisma.card.create({
+    data: {
+      listId: card.listId,
+      title: card.title,
+      description: card.description,
+      priority: card.priority,
+      estimatedMinutes: card.estimatedMinutes,
+      scheduledFor: card.scheduledFor,
+      completedAt: card.completedAt,
+      position: card.position + 1,
+    },
+    include: cardInclude,
+  });
+  const images = await prisma.cardImage.findMany({ where: { cardId }, orderBy: { createdAt: "asc" } });
+  if (images.length) {
+    await prisma.cardImage.createMany({ data: images.map((i) => ({ cardId: created.id, data: i.data })) });
+  }
+  const idx = siblings.findIndex((c) => c.id === cardId);
+  const ordered = [...siblings.slice(0, idx + 1), created, ...siblings.slice(idx + 1)];
+  await prisma.$transaction(
+    ordered.map((c, i) => prisma.card.update({ where: { id: c.id }, data: { position: i } })),
+  );
+  return getCard(created.id, userId);
+}
+
+/** Arquiva a tarefa (concluída ou não); ela some do quadro e fica em Arquivadas. */
+export async function archiveCard(userId: string, cardId: string): Promise<void> {
+  await ownedCard(cardId, userId);
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.taskSession.updateMany({ where: { cardId, endedAt: null }, data: { endedAt: now } }),
+    prisma.card.update({ where: { id: cardId }, data: { archivedAt: now } }),
+  ]);
+}
+
 /** Ajustes de estado ao entrar numa lista de determinado tipo. */
 function kindEffects(kind: string, card: { completedAt: Date | null; scheduledFor: string }) {
   const today = todayKey();
@@ -634,6 +678,36 @@ export async function reopenCard(userId: string, cardId: string): Promise<CardDT
     }
   }
   return getCard(cardId, userId);
+}
+
+/* ───────────────────────── Imagens da tarefa ───────────────────────── */
+
+export const MAX_CARD_IMAGE_CHARS = 700 * 1024; // ~500 KB de imagem em base64
+export const MAX_CARD_IMAGES = 10;
+
+export async function addCardImage(userId: string, cardId: string, data: string): Promise<CardDTO> {
+  await ownedCard(cardId, userId);
+  if (!/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(data)) throw new ApiError(400, "Imagem inválida");
+  if (data.length > MAX_CARD_IMAGE_CHARS) throw new ApiError(400, "Imagem grande demais (máx. 500 KB)");
+  const count = await prisma.cardImage.count({ where: { cardId } });
+  if (count >= MAX_CARD_IMAGES) throw new ApiError(400, `No máximo ${MAX_CARD_IMAGES} imagens por tarefa`);
+  await prisma.cardImage.create({ data: { cardId, data } });
+  return getCard(cardId, userId);
+}
+
+export async function removeCardImage(userId: string, cardId: string, imageId: string): Promise<CardDTO> {
+  await ownedCard(cardId, userId);
+  await prisma.cardImage.deleteMany({ where: { id: imageId, cardId } });
+  return getCard(cardId, userId);
+}
+
+/** Lê a imagem (com checagem de dono) para servir pela rota /api/imagens/[id]. */
+export async function getCardImage(userId: string, imageId: string): Promise<{ data: string } | null> {
+  const img = await prisma.cardImage.findFirst({
+    where: { id: imageId, card: { list: { board: { userId } } } },
+    select: { data: true },
+  });
+  return img;
 }
 
 /* ───────────────────────── Cronômetro da tarefa ───────────────────────── */
@@ -790,7 +864,7 @@ export async function getDashboard(userId: string): Promise<DashboardDTO> {
 
   const cards = await prisma.card.findMany({
     where: { list: { board: { userId } } },
-    include: { list: { include: { board: true } }, sessions: true },
+    include: { list: { include: { board: true } }, sessions: true, images: { select: { id: true } } },
   });
 
   const metricCards: MetricCard[] = cards.map((c) => ({ ...c, listPriority: c.list.priority }));
@@ -872,12 +946,18 @@ export async function getDashboard(userId: string): Promise<DashboardDTO> {
 
 /* ───────────────────────── Arquivadas ───────────────────────── */
 
+/** Apaga definitivamente todas as tarefas arquivadas do usuário. */
+export async function deleteAllArchived(userId: string): Promise<number> {
+  const r = await prisma.card.deleteMany({ where: { archivedAt: { not: null }, list: { board: { userId } } } });
+  return r.count;
+}
+
 export async function listArchived(userId: string): Promise<ArchivedCard[]> {
   await runMaintenance();
   const cards = await prisma.card.findMany({
     where: { archivedAt: { not: null }, list: { board: { userId } } },
     orderBy: { archivedAt: "desc" },
-    include: { list: { include: { board: true } }, sessions: true },
+    include: { list: { include: { board: true } }, sessions: true, images: { select: { id: true } } },
     take: 500,
   });
   return cards.map((c) => ({

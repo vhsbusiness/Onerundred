@@ -87,6 +87,7 @@ model Card {
   archivedAt       DateTime?
   list             List          @relation(fields: [listId], references: [id], onDelete: Cascade)
   sessions         TaskSession[]
+  images           CardImage[]
 
   @@index([listId])
   @@index([scheduledFor])
@@ -228,4 +229,15 @@ model LeisureLog {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, startAt])
+}
+
+/// Imagem anexada a uma tarefa (colada ou enviada), guardada como data URL
+model CardImage {
+  id        String   @id @default(cuid())
+  cardId    String
+  data      String
+  createdAt DateTime @default(now())
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([cardId])
 }

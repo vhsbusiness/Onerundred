@@ -34,6 +34,9 @@ source ~/.nvm/nvm.sh
   estimativa em minutos, descrição, dia agendado e cronômetro. Arrastar e soltar
   entre listas. Menu de cada lista: adicionar tarefa, copiar lista, mover todas
   as tarefas para outra lista, arquivar todas as tarefas, mover lista, tipo e excluir.
+  Botão direito na tarefa: abrir, copiar, arquivar. Imagens: cole com Ctrl+V ao
+  criar a tarefa ou no modal (ou anexe arquivos); a primeira vira capa do cartão.
+  Ficam no banco (`CardImage`), servidas por `/api/imagens/[id]` só para o dono.
 - **Metas › Projetos** (`/metas`): projeto de N dias (ou sem data para acabar) com nome, descrição e
   obrigações diárias. Cada dia é marcado como feito ou não feito; dias sem
   marcação viram "não feito" na virada do dia (pode corrigir, com aviso para
@@ -44,7 +47,8 @@ source ~/.nvm/nvm.sh
   médias de 7 e 30 dias, hora média de deitar/acordar e gráfico das últimas 14
   noites. Os registros entram na análise da IA.
 - **Arquivadas** (`/arquivadas`): tarefas concluídas são arquivadas
-  automaticamente no dia seguinte e continuam contando nas métricas.
+  automaticamente no dia seguinte e continuam contando nas métricas. Mostra
+  quando cada tarefa foi criada, concluída e arquivada; tem busca e "Excluir tudo".
 - **Configurações** (`/configuracoes`): meta diária de trabalho.
 - **Contas**: cadastro aberto, login por e-mail ou usuário, dados isolados por conta.
 - **Admin** (`/admin`): painel do administrador (primeiro usuário cadastrado).
