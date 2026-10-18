@@ -67,6 +67,8 @@ export interface TodayCard extends CardDTO {
 export interface WorkState {
   todayMs: number;
   running: { id: string; startedAt: string } | null;
+  /** Dia de trabalho encerrado pelo usuário (pode reabrir). */
+  ended: boolean;
   sessions: SessionDTO[];
   plannedMinutes: number;
   dailyGoalMinutes: number;
@@ -259,8 +261,11 @@ export interface ProjectDTO {
   description: string;
   obligations: string[];
   startDate: string;
-  endDate: string;
+  /** null quando o projeto não tem data para acabar */
+  endDate: string | null;
+  /** 0 = sem data para acabar */
   days: number;
+  endless: boolean;
   createdAt: string;
   archivedAt: string | null;
   doneCount: number;

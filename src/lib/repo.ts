@@ -718,10 +718,12 @@ export async function getWorkState(userId: string): Promise<WorkState> {
   const settings = await getSettings(userId);
   const estimated = await plannedMinutesForToday(userId);
   const plannedMinutes = estimated > 0 ? estimated : settings.dailyGoalMinutes;
+  const endedRow = await prisma.setting.findUnique({ where: { userId_key: { userId, key: "workEndedDay" } } });
 
   return {
     todayMs,
     running: running ? { id: running.id, startedAt: running.startedAt.toISOString() } : null,
+    ended: !running && endedRow?.value === today,
     sessions: sessions.map(serializeSession),
     plannedMinutes,
     dailyGoalMinutes: settings.dailyGoalMinutes,
@@ -729,13 +731,24 @@ export async function getWorkState(userId: string): Promise<WorkState> {
   };
 }
 
+async function setWorkEnded(userId: string, ended: boolean) {
+  await prisma.setting.upsert({
+    where: { userId_key: { userId, key: "workEndedDay" } },
+    create: { userId, key: "workEndedDay", value: ended ? todayKey() : "" },
+    update: { value: ended ? todayKey() : "" },
+  });
+}
+
+/** Começar ou retomar: abre uma sessão (e reabre o dia, se estava encerrado). */
 export async function startWork(userId: string): Promise<WorkState> {
   const running = await prisma.workSession.findFirst({ where: { userId, endedAt: null } });
   if (!running) await prisma.workSession.create({ data: { userId } });
+  await setWorkEnded(userId, false);
   return getWorkState(userId);
 }
 
-export async function stopWork(userId: string): Promise<WorkState> {
+/** Pausar: fecha a sessão em andamento (e o cronômetro de tarefa); o dia continua aberto. */
+export async function pauseWork(userId: string): Promise<WorkState> {
   const now = new Date();
   await prisma.$transaction([
     prisma.workSession.updateMany({ where: { userId, endedAt: null }, data: { endedAt: now } }),
@@ -746,6 +759,16 @@ export async function stopWork(userId: string): Promise<WorkState> {
   ]);
   return getWorkState(userId);
 }
+
+/** Encerrar o dia: pausa e marca o dia como encerrado. */
+export async function endWork(userId: string): Promise<WorkState> {
+  await pauseWork(userId);
+  await setWorkEnded(userId, true);
+  return getWorkState(userId);
+}
+
+/** Compatibilidade: "stop" equivale a pausar. */
+export const stopWork = pauseWork;
 
 export async function deleteWorkSession(userId: string, id: string) {
   const session = await prisma.workSession.findFirst({ where: { id, userId } });

@@ -186,7 +186,7 @@ async function buildContext(userId: string, observation: AiObservation) {
           nome: p.name,
           obrigacoes: p.obligations,
           diaAtual: p.daysElapsed,
-          totalDias: p.days,
+          totalDias: p.endless ? null : p.days,
           feitos: p.doneCount,
           naoFeitos: p.missedCount,
           sequencia: p.streak,
@@ -380,4 +380,13 @@ export async function generateInsight(userId: string): Promise<AiInsightDTO> {
   ]);
 
   return serializeInsight(row, Math.max(0, MAX_GENERATIONS_PER_DAY - used - 1));
+}
+
+/** Apaga a memória de hábitos e o histórico de análises do usuário. Os dados (tarefas, sono, lazer) ficam. */
+export async function resetAiMemory(userId: string): Promise<{ insights: number; hadMemory: boolean }> {
+  const [insights, memory] = await prisma.$transaction([
+    prisma.aiInsight.deleteMany({ where: { userId } }),
+    prisma.aiMemory.deleteMany({ where: { userId } }),
+  ]);
+  return { insights: insights.count, hadMemory: memory.count > 0 };
 }

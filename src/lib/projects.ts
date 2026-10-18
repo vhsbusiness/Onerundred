@@ -12,9 +12,19 @@ import type { ProjectDTO, ProjectDayDTO, ProjectDayStatus } from "./types";
 
 export const MAX_PROJECT_DAYS = 365;
 
+/** Quantos dias futuros mostrar num projeto sem fim. */
+const ENDLESS_LOOKAHEAD = 6;
+
+/** Dias do projeto. Sem fim (days = 0): do início até hoje + alguns dias à frente. */
 function dayKeysOf(startDate: string, days: number): string[] {
   const start = keyToDate(startDate);
-  return Array.from({ length: days }, (_, i) => dayKey(addDays(start, i)));
+  let count = days;
+  if (days === 0) {
+    const today = keyToDate(todayKey());
+    const elapsed = Math.round((today.getTime() - start.getTime()) / 86400000);
+    count = Math.max(1, elapsed + 1 + ENDLESS_LOOKAHEAD);
+  }
+  return Array.from({ length: count }, (_, i) => dayKey(addDays(start, i)));
 }
 
 export function parseObligations(text: string): string[] {
@@ -84,7 +94,8 @@ function serialize(p: ProjectRow): ProjectDTO {
     else break;
   }
 
-  const endDate = keys[keys.length - 1];
+  const endless = p.days === 0;
+  const endDate = endless ? null : keys[keys.length - 1];
   const todayEntry = dayList.find((d) => d.dayKey === today);
   const todayStatus: ProjectDTO["todayStatus"] = todayEntry
     ? todayEntry.status
@@ -100,6 +111,7 @@ function serialize(p: ProjectRow): ProjectDTO {
     startDate: p.startDate,
     endDate,
     days: p.days,
+    endless,
     createdAt: p.createdAt.toISOString(),
     archivedAt: p.archivedAt ? p.archivedAt.toISOString() : null,
     doneCount,
@@ -135,8 +147,8 @@ export async function getProject(userId: string, id: string): Promise<ProjectDTO
 
 function validate(input: { name: string; days: number; startDate: string }) {
   if (input.name.trim().length < 2) throw new ApiError(400, "Dê um nome ao projeto");
-  if (!Number.isInteger(input.days) || input.days < 1 || input.days > MAX_PROJECT_DAYS) {
-    throw new ApiError(400, `Duração deve ser de 1 a ${MAX_PROJECT_DAYS} dias`);
+  if (!Number.isInteger(input.days) || input.days < 0 || input.days > MAX_PROJECT_DAYS) {
+    throw new ApiError(400, `Duração deve ser de 1 a ${MAX_PROJECT_DAYS} dias (ou 0 para sem fim)`);
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.startDate)) throw new ApiError(400, "Data de início inválida");
 }
@@ -185,11 +197,13 @@ export async function updateProject(
     },
     include,
   });
-  // Marcações fora do novo intervalo são descartadas
-  const valid = new Set(dayKeysOf(row.startDate, row.days));
-  await prisma.projectDay.deleteMany({
-    where: { projectId: id, dayKey: { notIn: [...valid] } },
-  });
+  // Marcações fora do novo intervalo são descartadas (projeto sem fim: só as anteriores ao início)
+  if (row.days === 0) {
+    await prisma.projectDay.deleteMany({ where: { projectId: id, dayKey: { lt: row.startDate } } });
+  } else {
+    const valid = new Set(dayKeysOf(row.startDate, row.days));
+    await prisma.projectDay.deleteMany({ where: { projectId: id, dayKey: { notIn: [...valid] } } });
+  }
   return getProject(userId, id);
 }
 

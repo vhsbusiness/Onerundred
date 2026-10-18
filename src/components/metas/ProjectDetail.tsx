@@ -91,7 +91,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
           <ArrowLeft size={15} /> Projetos
         </Link>
         <span className="pill">
-          {fmtDay(p.startDate)} → {fmtDay(p.endDate)} · {p.days} dias
+          {p.endless ? `desde ${fmtDay(p.startDate)} · sem data para acabar` : `${fmtDay(p.startDate)} → ${fmtDay(p.endDate ?? p.startDate)} · ${p.days} dias`}
         </span>
         <span className="pill pill-green">{p.doneCount} feitos</span>
         <span className="pill pill-red">{p.missedCount} não feitos</span>
@@ -134,7 +134,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
           {todayDay && (
             <div className="mt-5 rounded-xl border border-line bg-black/20 p-3">
               <div className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-3">
-                Hoje · dia {todayDay.index} de {p.days}
+                Hoje · dia {todayDay.index}{p.endless ? "" : ` de ${p.days}`}
               </div>
               <div className="flex gap-2">
                 <button

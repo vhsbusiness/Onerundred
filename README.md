@@ -26,7 +26,7 @@ source ~/.nvm/nvm.sh
 - **Dashboard** (`/`): nota de hoje, da semana e do mês; tempo trabalhado; sequência
   de dias ≥ 70%; barra feitas / em andamento / pendentes; gráfico dos últimos 14 dias;
   lista das tarefas de hoje com cronômetro e botão de concluir.
-- **Sessão de trabalho**: botão iniciar/parar no dashboard. Compara o tempo
+- **Sessão de trabalho**: começar, pausar, retomar e encerrar o dia no dashboard. Compara o tempo
   trabalhado com a soma das estimativas das tarefas do dia (ou com a meta diária
   das configurações) e dá um veredito.
 - **Quadros** (`/quadros`): abre direto no último quadro visto (`?lista=1` mostra todos); vários quadros; cada quadro tem listas com prioridade
@@ -34,7 +34,7 @@ source ~/.nvm/nvm.sh
   estimativa em minutos, descrição, dia agendado e cronômetro. Arrastar e soltar
   entre listas. Menu de cada lista: adicionar tarefa, copiar lista, mover todas
   as tarefas para outra lista, arquivar todas as tarefas, mover lista, tipo e excluir.
-- **Metas › Projetos** (`/metas`): projeto de N dias com nome, descrição e
+- **Metas › Projetos** (`/metas`): projeto de N dias (ou sem data para acabar) com nome, descrição e
   obrigações diárias. Cada dia é marcado como feito ou não feito; dias sem
   marcação viram "não feito" na virada do dia (pode corrigir, com aviso para
   marcar feito só se cumpriu de verdade). Mostra sequência, % e calendário.
@@ -154,6 +154,9 @@ estimativa, tempo cronometrado, atrasos), as sessões de trabalho, o histórico 
 das próximas tarefas e horários de trabalho, pausas e sono. A primeira análise do
 dia é gerada sozinha ao abrir o dashboard; "Atualizar" gera outra (limite de 12 por
 dia por usuário).
+
+**Resetar inteligência.** Em Configurações, o usuário pode apagar a memória de
+hábitos e o histórico de análises (com aviso e confirmação); a IA recomeça do zero.
 
 **Período de observação.** Antes de opinar, a IA observa cada dimensão por um
 mínimo de dias com dados (padrão: tarefas 3 dias, tempo de trabalho 3 dias, sono

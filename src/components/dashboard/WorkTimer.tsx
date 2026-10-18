@@ -1,6 +1,6 @@
 "use client";
 
-import { Pause, Play, Trash2 } from "lucide-react";
+import { Pause, Play, Square, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { elapsedSince, http, notifyWorkChanged, TONE_BAR, TONE_PILL, useNow } from "@/lib/client";
 import { formatClock, formatDuration } from "@/lib/time";
@@ -23,16 +23,21 @@ export function WorkTimer({ work, onChange }: { work: WorkState; onChange: (w: W
   const plannedMs = work.plannedMinutes * 60000;
   const progress = plannedMs > 0 ? Math.min(1, totalMs / plannedMs) : 0;
 
-  async function toggle() {
+  async function act(action: "start" | "pause" | "end") {
+    if (action === "end" && !confirm("Encerrar o dia de trabalho? Você ainda pode reabrir depois.")) return;
     setBusy(true);
     try {
-      const next = await http.post<WorkState>("/api/work", { action: running ? "stop" : "start" });
+      const next = await http.post<WorkState>("/api/work", { action });
       onChange(next);
       notifyWorkChanged();
     } finally {
       setBusy(false);
     }
   }
+
+  const hasSessions = work.sessions.length > 0;
+  const paused = !running && hasSessions && !work.ended;
+  const lastEnd = work.sessions.find((s) => s.endedAt)?.endedAt ?? null;
 
   async function remove(id: string) {
     if (!confirm("Apagar esta sessão de trabalho?")) return;
@@ -67,22 +72,68 @@ export function WorkTimer({ work, onChange }: { work: WorkState; onChange: (w: W
                 <span className="live-dot h-2 w-2 rounded-full bg-green" />
                 Trabalhando desde {timeLabel(work.running!.startedAt)}
               </span>
+            ) : work.ended ? (
+              <>Dia encerrado{lastEnd ? ` às ${timeLabel(lastEnd)}` : ""}</>
+            ) : paused ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-orange" />
+                Pausado{lastEnd ? ` às ${timeLabel(lastEnd)}` : ""}
+              </span>
             ) : (
               <>Trabalhado hoje</>
             )}
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={toggle}
-          disabled={busy}
-          className={`btn h-14 w-14 rounded-full p-0 ${running ? "pill-red border-red/40" : "btn-primary"}`}
-          aria-label={running ? "Parar de trabalhar" : "Começar a trabalhar"}
-          title={running ? "Parar de trabalhar" : "Começar a trabalhar"}
-        >
-          {running ? <Pause size={22} /> : <Play size={22} className="ml-0.5" />}
-        </button>
+        <div className="flex items-center gap-2">
+          {running ? (
+            <>
+              <button
+                type="button"
+                onClick={() => act("pause")}
+                disabled={busy}
+                className="btn h-12 rounded-full pill-orange border-orange/40 px-4"
+                title="Pausar (o dia continua aberto)"
+              >
+                <Pause size={16} /> Pausar
+              </button>
+              <button
+                type="button"
+                onClick={() => act("end")}
+                disabled={busy}
+                className="btn h-12 w-12 rounded-full p-0 pill-red border-red/40"
+                aria-label="Encerrar o dia"
+                title="Encerrar o dia"
+              >
+                <Square size={16} />
+              </button>
+            </>
+          ) : work.ended ? (
+            <button type="button" onClick={() => act("start")} disabled={busy} className="btn h-12 rounded-full px-4">
+              <Play size={16} className="ml-0.5" /> Reabrir
+            </button>
+          ) : paused ? (
+            <>
+              <button type="button" onClick={() => act("start")} disabled={busy} className="btn btn-primary h-12 rounded-full px-4">
+                <Play size={16} className="ml-0.5" /> Retomar
+              </button>
+              <button
+                type="button"
+                onClick={() => act("end")}
+                disabled={busy}
+                className="btn h-12 w-12 rounded-full p-0 pill-red border-red/40"
+                aria-label="Encerrar o dia"
+                title="Encerrar o dia"
+              >
+                <Square size={16} />
+              </button>
+            </>
+          ) : (
+            <button type="button" onClick={() => act("start")} disabled={busy} className="btn btn-primary h-12 rounded-full px-4">
+              <Play size={16} className="ml-0.5" /> Começar
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="mt-5">

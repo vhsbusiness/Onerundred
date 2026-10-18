@@ -31,6 +31,9 @@
 
 html {
   color-scheme: dark;
+  /* Fundo próprio no html: assim o gradiente do body não "propaga" para a tela
+     (que usa a altura da janela como referência) e cobre toda a altura da página. */
+  background-color: var(--color-bg);
 }
 
 body {
@@ -38,6 +41,7 @@ body {
   color: var(--color-ink);
   font-family: var(--font-sans);
   background-color: var(--color-bg);
+  background-repeat: no-repeat;
   background-image:
     radial-gradient(1100px 560px at 8% -12%, rgba(245, 176, 110, 0.11), transparent 62%),
     radial-gradient(900px 520px at 100% -4%, rgba(127, 183, 245, 0.1), transparent 60%),
