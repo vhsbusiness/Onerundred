@@ -62,9 +62,9 @@ export function WorkTimer({ work, onChange }: { work: WorkState; onChange: (w: W
         <span className={TONE_PILL[work.verdict.tone]}>{work.verdict.label}</span>
       </div>
 
-      <div className="mt-4 flex items-end justify-between gap-4">
-        <div>
-          <div className="font-mono text-[2.6rem] font-semibold leading-none tracking-tight tabular-nums">
+      <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <div className="font-mono text-[2.1rem] font-semibold leading-none tracking-tight tabular-nums sm:text-[2.6rem]">
             {formatClock(totalMs)}
           </div>
           <div className="mt-2 text-sm text-ink-2">
@@ -86,7 +86,7 @@ export function WorkTimer({ work, onChange }: { work: WorkState; onChange: (w: W
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {running ? (
             <>
               <button

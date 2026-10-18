@@ -361,6 +361,15 @@ export async function generateInsight(userId: string): Promise<AiInsightDTO> {
   content.nextTasks = content.nextTasks.filter((t) => openIds.has(t.cardId)).slice(0, 3);
   content.score = Math.max(0, Math.min(100, Math.round(content.score)));
 
+  await prisma.aiUsage.create({
+    data: {
+      userId,
+      kind: "insight",
+      model,
+      promptTokens: completion.usage?.prompt_tokens ?? 0,
+      completionTokens: completion.usage?.completion_tokens ?? 0,
+    },
+  });
   const [row] = await prisma.$transaction([
     prisma.aiInsight.create({
       data: {

@@ -64,10 +64,19 @@ body::before {
 #app {
   position: relative;
   z-index: 1;
+  /* Nenhum elemento pode alargar a página no celular: o que passar é cortado,
+     em vez de criar rolagem lateral e desalinhar tudo. */
+  overflow-x: clip;
+}
+
+html,
+body {
+  overflow-x: clip;
 }
 
 /* Componentes utilitários */
 @utility card {
+  min-width: 0;
   background-color: var(--color-surface);
   border: 1px solid var(--color-line);
   border-radius: var(--radius-card);

@@ -54,7 +54,10 @@ source ~/.nvm/nvm.sh
   quando cada tarefa foi criada, concluída e arquivada; tem busca e "Excluir tudo".
 - **Configurações** (`/configuracoes`): meta diária de trabalho.
 - **Contas**: cadastro aberto, login por e-mail ou usuário, dados isolados por conta.
-- **Admin** (`/admin`): painel do administrador (primeiro usuário cadastrado).
+- **Admin** (`/admin`): painel do administrador (primeiro usuário cadastrado),
+  com gasto de IA por usuário (chamadas, tokens e custo estimado em dólares,
+  total e últimos 30 dias; preços por milhão de tokens ajustáveis em
+  `AI_PRICE_INPUT_PER_M` e `AI_PRICE_OUTPUT_PER_M`, padrão do gpt-5-mini).
 
 ## Confirmações
 

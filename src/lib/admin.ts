@@ -38,12 +38,52 @@ export async function updateAppSettings(data: Partial<AppSettingsDTO>): Promise<
   return getAppSettings();
 }
 
+/** Preço por milhão de tokens (padrão: gpt-5-mini). Ajustável por env. */
+const PRICE_IN = Number(process.env.AI_PRICE_INPUT_PER_M ?? 0.25);
+const PRICE_OUT = Number(process.env.AI_PRICE_OUTPUT_PER_M ?? 2);
+
+export function estimateCostUsd(promptTokens: number, completionTokens: number): number {
+  return (promptTokens / 1e6) * PRICE_IN + (completionTokens / 1e6) * PRICE_OUT;
+}
+
+async function aiUsageByUser() {
+  const since30 = new Date(Date.now() - 30 * 86400000);
+  const [all, recent] = await Promise.all([
+    prisma.aiUsage.groupBy({ by: ["userId"], _count: { _all: true }, _sum: { promptTokens: true, completionTokens: true } }),
+    prisma.aiUsage.groupBy({
+      by: ["userId"],
+      where: { createdAt: { gte: since30 } },
+      _count: { _all: true },
+      _sum: { promptTokens: true, completionTokens: true },
+    }),
+  ]);
+  const map = new Map<string, AdminUser["ai"]>();
+  for (const r of all) {
+    const p = r._sum.promptTokens ?? 0;
+    const c = r._sum.completionTokens ?? 0;
+    map.set(r.userId, { calls: r._count._all, calls30: 0, promptTokens: p, completionTokens: c, costUsd: estimateCostUsd(p, c), costUsd30: 0 });
+  }
+  for (const r of recent) {
+    const cur = map.get(r.userId);
+    if (!cur) continue;
+    cur.calls30 = r._count._all;
+    cur.costUsd30 = estimateCostUsd(r._sum.promptTokens ?? 0, r._sum.completionTokens ?? 0);
+  }
+  return map;
+}
+
+const EMPTY_AI: AdminUser["ai"] = { calls: 0, calls30: 0, promptTokens: 0, completionTokens: 0, costUsd: 0, costUsd30: 0 };
+
 export async function listUsers(): Promise<AdminUser[]> {
-  const users = await prisma.user.findMany({
-    orderBy: { createdAt: "asc" },
-    include: { _count: { select: { sessions: true } } },
-  });
+  const [users, usage] = await Promise.all([
+    prisma.user.findMany({
+      orderBy: { createdAt: "asc" },
+      include: { _count: { select: { sessions: true } } },
+    }),
+    aiUsageByUser(),
+  ]);
   return users.map((u) => ({
+    ai: usage.get(u.id) ?? EMPTY_AI,
     id: u.id,
     avatar: u.avatar,
     name: u.name,
@@ -67,7 +107,15 @@ export async function getOverview(): Promise<AdminOverview> {
     prisma.workSession.findMany({ where: { startedAt: { gte: start } }, select: { startedAt: true, endedAt: true } }),
     prisma.card.count({ where: { completedAt: null, archivedAt: null } }),
   ]);
+  const since30 = new Date(Date.now() - 30 * 86400000);
+  const usage30 = await prisma.aiUsage.aggregate({
+    where: { createdAt: { gte: since30 } },
+    _count: { _all: true },
+    _sum: { promptTokens: true, completionTokens: true },
+  });
   return {
+    aiCostUsd30: estimateCostUsd(usage30._sum.promptTokens ?? 0, usage30._sum.completionTokens ?? 0),
+    aiCalls30: usage30._count._all,
     users,
     activeToday,
     newThisWeek,

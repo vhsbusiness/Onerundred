@@ -18,6 +18,10 @@ function fmtDate(iso: string | null) {
   });
 }
 
+function usd(v: number): string {
+  return v < 0.01 && v > 0 ? "< US$ 0,01" : `US$ ${v.toFixed(2).replace(".", ",")}`;
+}
+
 function Tile({ value, label }: { value: string; label: string }) {
   return (
     <div>
@@ -136,13 +140,14 @@ export function AdminPanel() {
       </div>
 
       <section className="card p-5">
-        <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 xl:grid-cols-7">
           <Tile value={String(overview.users)} label="Contas" />
           <Tile value={String(overview.activeToday)} label="Entraram hoje" />
           <Tile value={String(overview.newThisWeek)} label="Novas na semana" />
           <Tile value={String(overview.doneToday)} label="Tarefas feitas hoje" />
           <Tile value={String(overview.openCards)} label="Tarefas abertas" />
           <Tile value={formatDuration(overview.workedTodayMs)} label="Trabalhado hoje (todos)" />
+          <Tile value={usd(overview.aiCostUsd30)} label="Gasto com IA (30 dias)" />
         </div>
       </section>
 
@@ -180,12 +185,14 @@ export function AdminPanel() {
           <span className="pill">{users.length}</span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-sm">
+          <table className="w-full min-w-[860px] text-sm">
             <thead className="border-y border-line bg-black/20 text-left text-[11px] uppercase tracking-wide text-ink-3">
               <tr>
                 <th className="px-5 py-2 font-medium">Usuário</th>
                 <th className="px-3 py-2 font-medium">Papel</th>
                 <th className="px-3 py-2 font-medium">Último login</th>
+                <th className="px-3 py-2 font-medium text-right">IA (30 dias)</th>
+                <th className="px-3 py-2 font-medium text-right">IA (total)</th>
                 <th className="px-5 py-2 font-medium text-right">Ações</th>
               </tr>
             </thead>
@@ -215,6 +222,14 @@ export function AdminPanel() {
                       </span>
                     </td>
                     <td className="px-3 py-3 text-ink-2 tabular-nums">{fmtDate(u.lastLoginAt)}</td>
+                    <td className="px-3 py-3 text-right tabular-nums" title={`${u.ai.calls30} chamada(s) nos últimos 30 dias`}>
+                      <div>{usd(u.ai.costUsd30)}</div>
+                      <div className="text-[11px] text-ink-3">{u.ai.calls30} chamadas</div>
+                    </td>
+                    <td className="px-3 py-3 text-right tabular-nums" title={`${u.ai.promptTokens.toLocaleString("pt-BR")} tokens de entrada · ${u.ai.completionTokens.toLocaleString("pt-BR")} de saída`}>
+                      <div>{usd(u.ai.costUsd)}</div>
+                      <div className="text-[11px] text-ink-3">{u.ai.calls} chamadas · {((u.ai.promptTokens + u.ai.completionTokens) / 1000).toFixed(1)}k tokens</div>
+                    </td>
                     <td className="px-5 py-3">
                       <div className="flex items-center justify-end gap-1">
                         {u.role === "admin" ? (

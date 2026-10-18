@@ -34,6 +34,7 @@ model User {
   notifPref    NotificationPref?
   notifLogs    NotificationLog[]
   reminders    Reminder[]
+  aiUsage      AiUsage[]
 }
 
 /// Sessão de login (o id é o token guardado no cookie)
@@ -320,4 +321,19 @@ model Reminder {
 
   @@index([userId, at])
   @@index([active, at])
+}
+
+/// Cada chamada à IA (análise do dia, importação de print), para medir gasto por usuário
+model AiUsage {
+  id               String   @id @default(cuid())
+  userId           String
+  /// insight | import
+  kind             String
+  model            String
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  createdAt        DateTime @default(now())
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }

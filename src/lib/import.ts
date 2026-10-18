@@ -66,7 +66,7 @@ const SYSTEM = `Você lê prints de quadros do Trello (ou de outras listas de ta
 - Ignore elementos de interface (botões, "Adicionar cartão", menus). Se a imagem não parecer um quadro de tarefas, devolva lists vazio.`;
 
 /** Lê a imagem com a IA e devolve listas/tarefas. */
-export async function extractFromImage(image: string): Promise<Extracted> {
+export async function extractFromImage(image: string, userId?: string): Promise<Extracted> {
   if (!aiEnabled()) throw new ApiError(503, "IA não configurada (OPENAI_API_KEY ausente)");
   if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(image)) throw new ApiError(400, "Imagem inválida");
   if (image.length > MAX_IMPORT_IMAGE_CHARS) throw new ApiError(400, "Imagem grande demais");
@@ -88,6 +88,17 @@ export async function extractFromImage(image: string): Promise<Extracted> {
     ],
     response_format: { type: "json_schema", json_schema: { name: "quadro", strict: true, schema: extractionSchema } },
   });
+  if (userId) {
+    await prisma.aiUsage.create({
+      data: {
+        userId,
+        kind: "import",
+        model,
+        promptTokens: completion.usage?.prompt_tokens ?? 0,
+        completionTokens: completion.usage?.completion_tokens ?? 0,
+      },
+    });
+  }
   const raw = completion.choices[0]?.message?.content;
   if (!raw) throw new ApiError(502, "A IA não conseguiu ler a imagem");
   const parsed = JSON.parse(raw) as Extracted;
@@ -114,10 +125,10 @@ function norm(s: string): string {
 export const MAX_IMPORT_IMAGES = 8;
 
 /** Lê várias imagens e junta: listas com o mesmo nome viram uma só, tarefas repetidas são descartadas. */
-export async function extractFromImages(images: string[]): Promise<Extracted> {
+export async function extractFromImages(images: string[], userId?: string): Promise<Extracted> {
   if (images.length === 0) throw new ApiError(400, "Envie pelo menos um print");
   if (images.length > MAX_IMPORT_IMAGES) throw new ApiError(400, `No máximo ${MAX_IMPORT_IMAGES} prints por vez`);
-  const results = await Promise.all(images.map((img) => extractFromImage(img)));
+  const results = await Promise.all(images.map((img) => extractFromImage(img, userId)));
   const merged: Extracted = { lists: [] };
   const seenCards = new Set<string>();
   for (const r of results) {
@@ -146,7 +157,7 @@ export async function planImport(userId: string, boardId: string, images: string
   });
   if (!board) throw new ApiError(404, "Quadro não encontrado");
 
-  const extracted = await extractFromImages(images);
+  const extracted = await extractFromImages(images, userId);
   const existingTitles = new Set(board.lists.flatMap((l) => l.cards.map((c) => norm(c.title))));
   const seen = new Set<string>();
 

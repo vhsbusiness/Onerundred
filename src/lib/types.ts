@@ -157,9 +157,20 @@ export interface AdminUser {
   createdAt: string;
   lastLoginAt: string | null;
   activeSessions: number;
+  ai: {
+    calls: number;
+    calls30: number;
+    promptTokens: number;
+    completionTokens: number;
+    /** Custo estimado em dólares (total e últimos 30 dias). */
+    costUsd: number;
+    costUsd30: number;
+  };
 }
 
 export interface AdminOverview {
+  aiCostUsd30: number;
+  aiCalls30: number;
   users: number;
   activeToday: number;
   newThisWeek: number;

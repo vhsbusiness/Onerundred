@@ -103,7 +103,7 @@ export function AiInsightCard({ todayCards, initialStatus }: { todayCards: Today
 
   return (
     <section
-      className="blob-surface rounded-2xl border border-line bg-black/20 p-4"
+      className="blob-surface min-w-0 rounded-2xl border border-line bg-black/20 p-4"
       style={{ "--blob-a": "rgba(127,183,245,0.22)", "--blob-b": "rgba(139,227,166,0.18)" } as React.CSSProperties}
     >
       <div className="flex flex-wrap items-center gap-2">
