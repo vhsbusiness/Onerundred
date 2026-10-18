@@ -1,8 +1,8 @@
 "use client";
 
-import { Check, Flame, Plus, X } from "lucide-react";
+import { Archive, ArrowUpRight, Check, Flame, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { http } from "@/lib/client";
 import { Modal } from "@/components/ui/Modal";
 import { todayKey } from "@/lib/time";
@@ -93,9 +93,99 @@ export function ProjectForm({
   );
 }
 
+function CardMenu({
+  project,
+  onEdit,
+  onChanged,
+}: {
+  project: ProjectDTO;
+  onEdit: () => void;
+  onChanged: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  // O card tem overflow hidden (blobs), então o menu é posicionado em relação à janela.
+  function toggle() {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 6, left: Math.max(8, r.right - 192) });
+    }
+    setOpen((o) => !o);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  async function archive() {
+    setOpen(false);
+    await http.patch(`/api/projetos/${project.id}`, { archived: !project.archivedAt });
+    onChanged();
+  }
+
+  async function remove() {
+    setOpen(false);
+    if (!confirm(`Excluir a meta "${project.name}" e todas as marcações?`)) return;
+    await http.del(`/api/projetos/${project.id}`);
+    onChanged();
+  }
+
+  const item = "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition hover:bg-white/[0.06]";
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={toggle}
+        className="btn btn-ghost h-8 w-8 p-0"
+        aria-label="Opções da meta"
+      >
+        <MoreHorizontal size={16} />
+      </button>
+      {open && (
+        <div
+          className="fixed z-40 w-48 rounded-xl border border-line-2 bg-surface-3 p-1 shadow-2xl"
+          style={{ top: pos.top, left: pos.left }}
+        >
+          <Link href={`/metas/projetos/${project.id}`} className={item} onClick={() => setOpen(false)}>
+            <ArrowUpRight size={14} className="text-ink-3" /> Abrir
+          </Link>
+          <button
+            type="button"
+            className={item}
+            onClick={() => {
+              setOpen(false);
+              onEdit();
+            }}
+          >
+            <Pencil size={14} className="text-ink-3" /> Editar
+          </button>
+          <button type="button" className={item} onClick={archive}>
+            <Archive size={14} className="text-ink-3" /> {project.archivedAt ? "Reativar" : "Arquivar"}
+          </button>
+          <div className="my-1 border-t border-line" />
+          <button type="button" className={`${item} text-red`} onClick={remove}>
+            <Trash2 size={14} /> Excluir
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ProjectsPage() {
   const [projects, setProjects] = useState<ProjectDTO[] | null>(null);
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<ProjectDTO | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -159,11 +249,14 @@ export function ProjectsPage() {
                     <h2 className="truncate text-lg font-semibold tracking-tight hover:underline">{p.name}</h2>
                     <p className="line-clamp-2 text-sm text-ink-2">{p.description || p.obligations.slice(0, 2).join(" · ")}</p>
                   </Link>
-                  {p.streak > 0 && (
-                    <span className="pill pill-orange shrink-0">
-                      <Flame size={11} /> {p.streak}d
-                    </span>
-                  )}
+                  <div className="flex shrink-0 items-center gap-1">
+                    {p.streak > 0 && (
+                      <span className="pill pill-orange">
+                        <Flame size={11} /> {p.streak}d
+                      </span>
+                    )}
+                    <CardMenu project={p} onEdit={() => setEditing(p)} onChanged={load} />
+                  </div>
                 </div>
 
                 <div className="mt-4">
@@ -213,13 +306,14 @@ export function ProjectsPage() {
           <h2 className="mb-2 text-sm font-medium text-ink-2">Arquivados</h2>
           <ul className="space-y-1 text-sm">
             {archived.map((p) => (
-              <li key={p.id} className="flex items-center justify-between rounded-lg border border-line bg-black/20 px-3 py-2">
+              <li key={p.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-black/20 px-3 py-2">
                 <Link href={`/metas/projetos/${p.id}`} className="hover:underline">
                   {p.name}
                 </Link>
-                <span className="text-xs text-ink-3">
+                <span className="ml-auto text-xs text-ink-3">
                   {p.doneCount}/{p.days} dias feitos
                 </span>
+                <CardMenu project={p} onEdit={() => setEditing(p)} onChanged={load} />
               </li>
             ))}
           </ul>
@@ -228,6 +322,10 @@ export function ProjectsPage() {
 
       <Modal open={creating} onClose={() => setCreating(false)} title={<h2 className="text-lg font-semibold">Novo projeto</h2>}>
         <ProjectForm onSaved={load} onClose={() => setCreating(false)} />
+      </Modal>
+
+      <Modal open={Boolean(editing)} onClose={() => setEditing(null)} title={<h2 className="text-lg font-semibold">Editar meta</h2>}>
+        {editing && <ProjectForm key={editing.id} initial={editing} onSaved={load} onClose={() => setEditing(null)} />}
       </Modal>
     </div>
   );

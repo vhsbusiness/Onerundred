@@ -174,7 +174,9 @@ body::before {
 /* Blobs de gradiente borrado (estilo dos cards coloridos da referência) */
 @utility blob-surface {
   position: relative;
-  overflow: hidden;
+  /* clip (e não hidden): os blobs saem do card sem criar área rolável,
+     então focar um botão na borda não desloca o conteúdo. */
+  overflow: clip;
   isolation: isolate;
 }
 .blob-surface::before,
