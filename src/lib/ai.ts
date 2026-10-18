@@ -4,6 +4,7 @@ import { prisma } from "./db";
 import { ApiError } from "./errors";
 import { PRIORITY_LABEL, asPriority } from "./metrics";
 import { getDashboard } from "./repo";
+import { computeStats, listSleep } from "./sleep";
 import { dayKey, dayRange, formatDuration, todayKey } from "./time";
 import type { AiInsightContent, AiInsightDTO, AiStatusDTO } from "./types";
 
@@ -44,7 +45,7 @@ async function buildContext(userId: string) {
   const dash = await getDashboard(userId);
   const since = subDays(dayRange(today).start, 14);
 
-  const [workSessions, taskSessions, memory, tomorrowCards] = await Promise.all([
+  const [workSessions, taskSessions, memory, tomorrowCards, sleepLogs] = await Promise.all([
     prisma.workSession.findMany({
       where: { userId, startedAt: { gte: since } },
       orderBy: { startedAt: "asc" },
@@ -59,7 +60,9 @@ async function buildContext(userId: string) {
       select: { title: true, priority: true, scheduledFor: true, estimatedMinutes: true },
       take: 20,
     }),
+    listSleep(userId, 14),
   ]);
+  const sleepStats = computeStats(sleepLogs);
 
   // Minutos trabalhados por dia (14 dias) e distribuição por hora do dia
   const workByDay: Record<string, number> = {};
@@ -122,6 +125,21 @@ async function buildContext(userId: string) {
       minutosTrabalhadosPorDia: workByDay,
       horasComSessaoDeTrabalho: hourHistogram,
       horasComFocoEmTarefa: focusHours,
+      sono: {
+        noitesRegistradas14Dias: sleepLogs.length,
+        mediaDormidoMin7Dias: sleepStats.avgDuration7,
+        horaMediaDeitar7Dias: sleepStats.avgBedTime7,
+        horaMediaAcordar7Dias: sleepStats.avgWakeTime7,
+        minutosParaPegarNoSono7Dias: sleepStats.avgLatency7,
+        ultimasNoites: sleepLogs.slice(0, 7).map((l) => ({
+          dia: l.dayKey,
+          deitei: l.bedTime,
+          dormi: l.sleepTime,
+          acordei: l.wakeTime,
+          dormidoMin: l.durationMin,
+          qualidade1a5: l.quality,
+        })),
+      },
       memoriaAnterior: memory?.summary ?? "(primeira análise deste usuário)",
     },
   };
@@ -178,7 +196,7 @@ Regras:
 - Responda em português do Brasil, direto e humano, sem bajulação e sem listas enormes.
 - A nota (score) deve refletir o peso das prioridades: tarefas Alta valem mais; tarefas atrasadas pesam contra; tempo trabalhado abaixo do planejado puxa para baixo; concluir cedo o que importa puxa para cima. Se não há tarefas nem trabalho, seja franco.
 - Em nextTasks use somente ids de tarefas abertas de hoje (feita=false), no máximo 3, da mais importante para a menos.
-- Os horários (schedule) devem partir dos padrões reais do usuário (histogramas de horas, minutos por dia, memória) e ser realistas: jornada compatível com a meta diária, pausas a cada 90–120 min de trabalho, 7–8h de sono. Horários no formato HH:MM, 24h.
+- Os horários (schedule) devem partir dos padrões reais do usuário (histogramas de horas, minutos por dia, registros de sono, memória) e ser realistas: jornada compatível com a meta diária, pausas a cada 90–120 min de trabalho, 7–8h de sono. Se houver registros de sono, use a hora real em que a pessoa acorda e dorme e comente se está dormindo pouco; sem registros, sugira e convide a registrar na aba Sono. Horários no formato HH:MM, 24h.
 - memorySummary é a memória de longo prazo deste usuário. Reescreva-a por completo a partir da memória anterior mais o que você aprendeu agora. Guarde padrões (horário em que rende mais, se subestima tempo, se acumula atrasos, dias fracos da semana), não detalhes do dia. Até 1200 caracteres.`;
 
 /* ───────────── Geração ───────────── */

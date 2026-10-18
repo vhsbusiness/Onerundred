@@ -33,6 +33,9 @@ source ~/.nvm/nvm.sh
   (Alta / Média / Baixa) e tipo (Normal, Amanhã, Feitas). Tarefas têm prioridade,
   estimativa em minutos, descrição, dia agendado e cronômetro. Arrastar e soltar
   entre listas.
+- **Sono** (`/sono`): registro de cada noite (deitei, dormi, acordei, qualidade),
+  médias de 7 e 30 dias, hora média de deitar/acordar e gráfico das últimas 14
+  noites. Os registros entram na análise da IA.
 - **Arquivadas** (`/arquivadas`): tarefas concluídas são arquivadas
   automaticamente no dia seguinte e continuam contando nas métricas.
 - **Configurações** (`/configuracoes`): meta diária de trabalho.

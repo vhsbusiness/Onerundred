@@ -189,3 +189,38 @@ export interface AiStatusDTO {
   remainingToday: number;
   memory: string | null;
 }
+
+/* ───────────── Sono ───────────── */
+
+export interface SleepLogDTO {
+  id: string;
+  dayKey: string;
+  bedAt: string;
+  sleepAt: string;
+  wakeAt: string;
+  bedTime: string;
+  sleepTime: string;
+  wakeTime: string;
+  quality: number | null;
+  note: string;
+  /** Minutos dormidos (dormi → acordei). */
+  durationMin: number;
+  /** Minutos para pegar no sono (deitei → dormi). */
+  latencyMin: number;
+}
+
+export interface SleepStats {
+  nights: number;
+  avgDuration7: number | null;
+  avgDuration30: number | null;
+  avgLatency7: number | null;
+  avgBedTime7: string | null;
+  avgSleepTime7: string | null;
+  avgWakeTime7: string | null;
+  lastNight: SleepLogDTO | null;
+}
+
+export interface SleepPageDTO {
+  logs: SleepLogDTO[];
+  stats: SleepStats;
+}

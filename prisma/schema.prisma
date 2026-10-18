@@ -24,6 +24,7 @@ model User {
   settings     Setting[]
   aiInsights   AiInsight[]
   aiMemory     AiMemory?
+  sleepLogs    SleepLog[]
 }
 
 /// Sessão de login (o id é o token guardado no cookie)
@@ -149,4 +150,26 @@ model AiMemory {
   summary   String
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// Registro de uma noite de sono (identificada pelo dia em que acordou)
+model SleepLog {
+  id        String   @id @default(cuid())
+  userId    String
+  /// yyyy-MM-dd do dia em que acordou
+  dayKey    String
+  /// hora que deitou
+  bedAt     DateTime
+  /// hora que pegou no sono
+  sleepAt   DateTime
+  /// hora que acordou
+  wakeAt    DateTime
+  /// 1 (péssimo) a 5 (ótimo), opcional
+  quality   Int?
+  note      String   @default("")
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dayKey])
+  @@index([userId, wakeAt])
 }
