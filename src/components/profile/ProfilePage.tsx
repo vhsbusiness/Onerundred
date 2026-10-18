@@ -4,6 +4,7 @@ import { Camera, KeyRound, Trash2, UserRound } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { http } from "@/lib/client";
 import type { MeDTO } from "@/lib/types";
+import { NotificationsSection } from "./NotificationsSection";
 
 /** Redimensiona a imagem no navegador para um JPEG quadrado de 256px (cabe no banco). */
 async function toAvatarDataUrl(file: File): Promise<string> {
@@ -224,6 +225,8 @@ export function ProfilePage() {
             </button>
           </form>
         </section>
+
+        <NotificationsSection />
       </div>
     </div>
   );

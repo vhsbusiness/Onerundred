@@ -340,3 +340,29 @@ export interface ImportPlan {
   newCards: number;
   doneCards: number;
 }
+
+/* ───────────── Notificações e lembretes ───────────── */
+
+export type NotificationType = "goalReminder" | "longWork" | "weekly" | "balance" | "overdue" | "sleepLog" | "reminders";
+
+export interface NotificationPrefsDTO {
+  enabled: boolean;
+  types: Record<NotificationType, boolean>;
+  /** Tipos que exigem a IA pronta (período de observação concluído). */
+  aiRequired: NotificationType[];
+  aiReady: boolean;
+  devices: { id: string; userAgent: string; createdAt: string }[];
+  /** Horário em que o lembrete de meta será enviado hoje (HH:MM). */
+  goalReminderTime: string;
+  vapidPublicKey: string | null;
+}
+
+export interface ReminderDTO {
+  id: string;
+  title: string;
+  note: string;
+  at: string;
+  repeat: "none" | "daily" | "weekly";
+  active: boolean;
+  lastSentAt: string | null;
+}

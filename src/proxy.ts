@@ -6,7 +6,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * acontece em src/lib/current-user.ts, nas páginas e rotas de API.
  */
 const SESSION_COOKIE = "onerundred_session";
-const PUBLIC_PREFIXES = ["/login", "/api/auth/", "/icon", "/apple-icon", "/manifest"];
+const PUBLIC_PREFIXES = ["/login", "/api/auth/", "/icon", "/apple-icon", "/manifest", "/sw.js", "/api/notificacoes/tick"];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -24,5 +24,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon|apple-icon|manifest).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon|apple-icon|manifest|sw.js|icons/).*)"],
 };

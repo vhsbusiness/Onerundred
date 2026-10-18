@@ -30,6 +30,10 @@ model User {
   projects     Project[]
   leisureLogs  LeisureLog[]
   undoActions  UndoAction[]
+  pushSubs     PushSubscription[]
+  notifPref    NotificationPref?
+  notifLogs    NotificationLog[]
+  reminders    Reminder[]
 }
 
 /// Sessão de login (o id é o token guardado no cookie)
@@ -255,4 +259,65 @@ model UndoAction {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+/// Inscrição de push de um aparelho/navegador do usuário
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String   @default("")
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Preferências de notificação (tudo desligado por padrão)
+model NotificationPref {
+  userId       String   @id
+  enabled      Boolean  @default(false)
+  goalReminder Boolean  @default(false)
+  longWork     Boolean  @default(false)
+  weekly       Boolean  @default(false)
+  balance      Boolean  @default(false)
+  overdue      Boolean  @default(false)
+  sleepLog     Boolean  @default(false)
+  reminders    Boolean  @default(false)
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// Registro do que já foi enviado (evita repetir no mesmo dia/semana)
+model NotificationLog {
+  id     String   @id @default(cuid())
+  userId String
+  type   String
+  /// chave do período: yyyy-MM-dd (dia) ou yyyy-Www (semana)
+  period String
+  sentAt DateTime @default(now())
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, period])
+}
+
+/// Lembrete criado pelo usuário: vira uma notificação na hora marcada
+model Reminder {
+  id         String    @id @default(cuid())
+  userId     String
+  title      String
+  note       String    @default("")
+  /// próximo disparo
+  at         DateTime
+  /// none | daily | weekly
+  repeat     String    @default("none")
+  active     Boolean   @default(true)
+  lastSentAt DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, at])
+  @@index([active, at])
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, Gamepad2, LayoutDashboard, LogOut, Moon, Settings, ShieldCheck, SquareKanban, Target, UserRound } from "lucide-react";
+import { Archive, Bell, Gamepad2, LayoutDashboard, LogOut, Moon, Settings, ShieldCheck, SquareKanban, Target, UserRound } from "lucide-react";
 import { Avatar } from "@/components/profile/ProfilePage";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -14,6 +14,7 @@ const tabs = [
   { href: "/metas", label: "Metas", short: "Metas", icon: Target },
   { href: "/sono", label: "Sono", short: "Sono", icon: Moon },
   { href: "/lazer", label: "Lazer", short: "Lazer", icon: Gamepad2 },
+  { href: "/lembretes", label: "Lembretes", short: "Lembretes", icon: Bell },
   { href: "/arquivadas", label: "Arquivadas", short: "Arquivo", icon: Archive },
   { href: "/configuracoes", label: "Configurações", short: "Config.", icon: Settings },
 ];
@@ -156,7 +157,7 @@ function UserMenu({ me }: { me: MeDTO }) {
 }
 
 /** Barra inferior do celular, estilo app: só as abas principais. */
-const MOBILE_TABS = ["/", "/quadros", "/metas", "/sono", "/lazer"];
+const MOBILE_TABS = ["/", "/quadros", "/metas", "/sono", "/lazer", "/lembretes"];
 
 function BottomNav({
   tabs: items,
@@ -183,7 +184,7 @@ function BottomNav({
                   active ? "text-ink" : "text-ink-3"
                 }`}
               >
-                <span className={`flex h-8 w-12 items-center justify-center rounded-full ${active ? "bg-white/[0.1]" : ""}`}>
+                <span className={`flex h-8 w-11 items-center justify-center rounded-full ${active ? "bg-white/[0.1]" : ""}`}>
                   <Icon size={20} strokeWidth={active ? 2.2 : 1.8} />
                 </span>
                 {t.short}
