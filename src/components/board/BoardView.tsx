@@ -354,6 +354,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
       </div>
 
       <DndContext
+        id={`board-${boardId}`}
         sensors={sensors}
         collisionDetection={closestCorners}
         onDragStart={onDragStart}
