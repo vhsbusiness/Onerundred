@@ -38,19 +38,27 @@ export function Logo() {
 
 /** Data e hora atuais, atualizadas a cada 30 s (só após montar, para não divergir do servidor). */
 function Clock() {
-  const [text, setText] = useState<string>("");
+  const [full, setFull] = useState<string>("");
+  const [short, setShort] = useState<string>("");
   useEffect(() => {
     const tick = () => {
       const now = new Date();
       const hhmm = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-      setText(`${formatDayLong(todayKey())} · ${hhmm}`);
+      setFull(`${formatDayLong(todayKey())} · ${hhmm}`);
+      setShort(`${now.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} · ${hhmm}`);
     };
     // Sincroniza o relógio com a hora do navegador ao montar e a cada 30 s.
     tick();
     const id = setInterval(tick, 30000);
     return () => clearInterval(id);
   }, []);
-  return <span className="hidden whitespace-nowrap text-sm text-ink-2 tabular-nums xl:inline">{text || formatDayLong(todayKey())}</span>;
+  // Notebook: só dia/mês e hora; telas largas: data por extenso.
+  return (
+    <>
+      <span className="hidden whitespace-nowrap text-sm text-ink-2 tabular-nums lg:inline 2xl:hidden">{short}</span>
+      <span className="hidden whitespace-nowrap text-sm text-ink-2 tabular-nums 2xl:inline">{full || formatDayLong(todayKey())}</span>
+    </>
+  );
 }
 
 function WorkIndicator() {
@@ -117,7 +125,7 @@ function UserMenu({ me }: { me: MeDTO }) {
         aria-label="Menu do usuário"
       >
         <Avatar me={me} size={28} />
-        <span className="hidden max-w-[140px] truncate lg:inline">{me.name}</span>
+        <span className="hidden max-w-[140px] truncate 2xl:inline">{me.name}</span>
       </button>
       {open && (
         <div className="absolute right-0 top-10 z-40 w-56 rounded-xl border border-line-2 bg-surface-3 p-1 text-sm shadow-2xl">
@@ -232,19 +240,19 @@ export function Nav() {
     <BottomNav tabs={allTabs.filter((t) => MOBILE_TABS.includes(t.href))} isActive={isActive} />
     <header className="sticky z-30 mb-6 pt-3" style={{ top: "env(safe-area-inset-top, 0px)" }}>
       <div className="card w-full bg-surface/90 px-4 py-2.5 shadow-[0_18px_40px_-24px_rgba(0,0,0,0.9)] backdrop-blur-md sm:px-5">
-        <div className="flex min-h-11 items-center gap-4 sm:gap-6">
+        <div className="flex min-h-11 items-center gap-3 lg:gap-4 2xl:gap-6">
         <Link href="/" className="shrink-0">
           <Logo />
         </Link>
 
-        <nav className="hidden min-w-0 items-center gap-0.5 overflow-x-auto rounded-full border border-line bg-white/[0.03] p-1 md:flex xl:gap-1">
+        <nav className="hidden min-w-0 items-center gap-0.5 overflow-x-auto rounded-full border border-line bg-white/[0.03] p-1 md:flex 2xl:gap-1">
           {allTabs.map((t) => {
             const active = t.href === "/" ? pathname === "/" : pathname.startsWith(t.href);
             return (
               <Link
                 key={t.href}
                 href={t.href}
-                className={`whitespace-nowrap rounded-full px-2.5 py-1.5 text-[13px] transition xl:px-3.5 xl:text-sm ${
+                className={`whitespace-nowrap rounded-full px-2 py-1.5 text-[13px] transition lg:px-2.5 2xl:px-3.5 2xl:text-sm ${
                   active ? "bg-white/[0.08] text-ink" : "text-ink-2 hover:text-ink"
                 }`}
               >
@@ -254,7 +262,7 @@ export function Nav() {
           })}
         </nav>
 
-        <div className="ml-auto flex shrink-0 items-center gap-3">
+        <div className="ml-auto flex shrink-0 items-center gap-2 lg:gap-3">
           <WorkIndicator />
           <Clock />
           {me && <InviteBell />}

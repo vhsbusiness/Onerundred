@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import type { Tone } from "./metrics";
 
 /* ───────────── HTTP ───────────── */
@@ -50,14 +50,29 @@ export function notifyWorkChanged() {
 /* ───────────── Relógio ───────────── */
 
 /** Retorna Date.now() atualizado a cada `intervalMs` enquanto `active`. */
+/*
+ * Relógio compartilhado para contadores. No servidor (e na hidratação) vale 0,
+ * para o HTML não divergir do cliente; depois de montar passa a valer Date.now()
+ * e, enquanto `active`, avança a cada `intervalMs`.
+ */
+let tickNow = 0;
 export function useNow(active: boolean, intervalMs = 1000): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!active) return;
-    const id = setInterval(() => setNow(Date.now()), intervalMs);
-    return () => clearInterval(id);
-  }, [active, intervalMs]);
-  return now;
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      if (!active) return () => {};
+      const id = setInterval(() => {
+        tickNow = Date.now();
+        onChange();
+      }, intervalMs);
+      return () => clearInterval(id);
+    },
+    [active, intervalMs],
+  );
+  return useSyncExternalStore(
+    subscribe,
+    () => tickNow || (tickNow = Date.now()),
+    () => 0,
+  );
 }
 
 export function elapsedSince(iso: string | null | undefined, now: number): number {
