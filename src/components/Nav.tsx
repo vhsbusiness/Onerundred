@@ -143,8 +143,8 @@ export function Nav() {
   const allTabs = me?.role === "admin" ? [...tabs, { href: "/admin", label: "Admin" }] : tabs;
 
   return (
-    <header className="sticky top-0 z-30 -mx-4 mb-6 border-b border-line bg-bg/70 px-4 backdrop-blur-xl sm:-mx-6 sm:px-6">
-      <div className="mx-auto flex h-16 w-full max-w-[1480px] items-center gap-6">
+    <header className="sticky top-0 z-30 mb-6 pt-3">
+      <div className="card flex min-h-16 w-full flex-wrap items-center gap-x-6 gap-y-2 bg-surface/80 px-4 py-2.5 shadow-[0_18px_40px_-24px_rgba(0,0,0,0.9)] backdrop-blur-xl sm:px-5">
         <Link href="/" className="shrink-0">
           <Logo />
         </Link>
@@ -171,9 +171,8 @@ export function Nav() {
           <span className="hidden text-sm text-ink-2 lg:inline">{formatDayLong(todayKey())}</span>
           {me && <UserMenu me={me} />}
         </div>
-      </div>
 
-      <nav className="flex gap-1 overflow-x-auto pb-2 md:hidden">
+        <nav className="flex basis-full gap-1 overflow-x-auto md:hidden">
         {allTabs.map((t) => {
           const active = t.href === "/" ? pathname === "/" : pathname.startsWith(t.href);
           return (
@@ -186,7 +185,8 @@ export function Nav() {
             </Link>
           );
         })}
-      </nav>
+        </nav>
+      </div>
     </header>
   );
 }
