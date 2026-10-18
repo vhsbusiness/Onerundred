@@ -1,4 +1,4 @@
-import { handle, json } from "@/lib/api";
+import { json, withUser } from "@/lib/api";
 import { listArchived } from "@/lib/repo";
 
-export const GET = handle(async () => json(await listArchived()));
+export const GET = withUser(async (user) => json(await listArchived(user.id)));

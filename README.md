@@ -36,6 +36,8 @@ source ~/.nvm/nvm.sh
 - **Arquivadas** (`/arquivadas`): tarefas concluídas são arquivadas
   automaticamente no dia seguinte e continuam contando nas métricas.
 - **Configurações** (`/configuracoes`): meta diária de trabalho.
+- **Contas**: cadastro aberto, login por e-mail ou usuário, dados isolados por conta.
+- **Admin** (`/admin`): painel do administrador (primeiro usuário cadastrado).
 
 ## Regras de negócio
 
@@ -103,14 +105,20 @@ npm run db:pg-migration -- <nome>        # migration Postgres em prisma/migratio
 `db:pg-migration` compara o schema atual com o último commitado (`git HEAD`),
 então rode-o **antes** de commitar a alteração do schema.
 
-## Senha de acesso
+## Contas e acesso
 
-O app é de um usuário só e não tem cadastro. Para proteger uma instância pública,
-defina `APP_PASSWORD` (e, opcionalmente, `AUTH_SECRET`, um texto aleatório usado
-para assinar o cookie). Com a senha definida, toda rota redireciona para `/login`
-até o cookie de sessão (30 dias) ser criado. Sem `APP_PASSWORD`, o app fica
-aberto, o que é o esperado no uso local. Implementação em `src/proxy.ts`,
-`src/lib/auth.ts` e `src/app/api/login/route.ts`.
+Qualquer pessoa pode criar uma conta (nome, e-mail, usuário e senha) e entrar
+com e-mail ou usuário. Cada conta só vê os próprios quadros, tarefas, sessões e
+preferências. Senhas são guardadas com hash scrypt; a sessão é um token
+aleatório salvo no banco (tabela `AuthSession`) e num cookie httpOnly de 30 dias.
+
+**O primeiro usuário cadastrado vira administrador.** A aba **Admin** (`/admin`)
+mostra o total de contas, quem entrou hoje, tarefas feitas e tempo trabalhado por
+todos, e permite promover/rebaixar admins, desativar, reativar ou excluir contas e
+fechar/abrir o cadastro de novos usuários.
+
+Implementação em `src/lib/auth.ts`, `src/lib/current-user.ts`, `src/lib/admin.ts`,
+`src/proxy.ts` e `src/app/api/auth/*`.
 
 ## Deploy no Railway
 
@@ -125,8 +133,6 @@ aberto, o que é o esperado no uso local. Implementação em `src/proxy.ts`,
      Postgres; use o nome que o Railway deu ao banco). Ela precisa existir já
      no **build**, porque é ela que faz o `prisma generate` gerar o client
      Postgres.
-   - `APP_PASSWORD` = a senha que você vai usar para entrar, e `AUTH_SECRET` =
-     um texto longo aleatório (ex.: saída de `openssl rand -hex 32`).
    - `TZ` = `America/Sao_Paulo` (o dia "de hoje" das tarefas usa o fuso do
      servidor; o Railway roda em UTC).
 5. Aba **Settings → Networking → Generate Domain** para ter uma URL pública.

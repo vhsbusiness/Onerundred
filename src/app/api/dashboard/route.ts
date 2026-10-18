@@ -1,4 +1,4 @@
-import { handle, json } from "@/lib/api";
+import { json, withUser } from "@/lib/api";
 import { getDashboard } from "@/lib/repo";
 
-export const GET = handle(async () => json(await getDashboard()));
+export const GET = withUser(async (user) => json(await getDashboard(user.id)));

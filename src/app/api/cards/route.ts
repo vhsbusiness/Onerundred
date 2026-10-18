@@ -1,9 +1,9 @@
-import { handle, json, optionalDayKey, optionalMinutes, optionalPriority, readBody, requireString } from "@/lib/api";
+import { json, optionalDayKey, optionalMinutes, optionalPriority, readBody, requireString, withUser } from "@/lib/api";
 import { createCard } from "@/lib/repo";
 
-export const POST = handle(async (req: Request) => {
+export const POST = withUser(async (user, req: Request) => {
   const body = await readBody(req);
-  const card = await createCard({
+  const card = await createCard(user.id, {
     listId: requireString(body.listId, "listId"),
     title: requireString(body.title, "title"),
     description: body.description !== undefined ? requireString(body.description, "description", { allowEmpty: true }) : undefined,

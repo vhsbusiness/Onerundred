@@ -11,6 +11,12 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
     cache: "no-store",
     headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
   });
+  if (res.status === 401 && typeof window !== "undefined" && window.location.pathname !== "/login") {
+    // Sessão expirada ou inválida: volta para o login.
+    const login = new URL("/login", window.location.origin);
+    login.searchParams.set("next", window.location.pathname);
+    window.location.assign(login.toString());
+  }
   if (!res.ok) {
     let message = `Erro ${res.status}`;
     try {

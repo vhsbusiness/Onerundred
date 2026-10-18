@@ -1,10 +1,11 @@
 "use client";
 
+import { LogOut, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { LogOut } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { formatDayLong, todayKey } from "@/lib/time";
+import type { MeDTO } from "@/lib/types";
 
 const tabs = [
   { href: "/", label: "Dashboard" },
@@ -63,38 +64,84 @@ function WorkIndicator() {
   );
 }
 
-function LogoutButton() {
+function UserMenu({ me }: { me: MeDTO }) {
   const router = useRouter();
-  const [enabled, setEnabled] = useState(false);
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch("/api/login", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setEnabled(Boolean(d?.enabled)))
-      .catch(() => {});
-  }, []);
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
 
-  if (!enabled) return null;
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.replace("/login");
+    router.refresh();
+  }
+
   return (
-    <button
-      type="button"
-      onClick={async () => {
-        await fetch("/api/login", { method: "DELETE" });
-        router.replace("/login");
-        router.refresh();
-      }}
-      className="btn btn-ghost h-8 w-8 p-0"
-      aria-label="Sair"
-      title="Sair"
-    >
-      <LogOut size={15} />
-    </button>
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2 rounded-full border border-line bg-white/[0.03] py-1 pl-1 pr-3 text-sm transition hover:bg-white/[0.06]"
+        aria-label="Menu do usuário"
+      >
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-orange to-blue text-[11px] font-semibold uppercase text-bg">
+          {me.name.slice(0, 2)}
+        </span>
+        <span className="hidden max-w-[140px] truncate sm:inline">{me.name}</span>
+      </button>
+      {open && (
+        <div className="absolute right-0 top-10 z-40 w-56 rounded-xl border border-line-2 bg-surface-3 p-1 text-sm shadow-2xl">
+          <div className="px-2 py-1.5">
+            <div className="truncate font-medium">{me.name}</div>
+            <div className="truncate text-xs text-ink-3">@{me.username} · {me.email}</div>
+          </div>
+          <div className="my-1 border-t border-line" />
+          {me.role === "admin" && (
+            <Link
+              href="/admin"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/[0.06]"
+            >
+              <ShieldCheck size={14} className="text-green" /> Painel admin
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={logout}
+            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-white/[0.06]"
+          >
+            <LogOut size={14} className="text-ink-3" /> Sair
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
 export function Nav() {
   const pathname = usePathname();
+  const [me, setMe] = useState<MeDTO | null>(null);
+
+  useEffect(() => {
+    if (pathname === "/login") return;
+    fetch("/api/auth/me", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setMe(d?.user ?? null))
+      .catch(() => {});
+  }, [pathname]);
+
   if (pathname === "/login") return null;
+
+  const allTabs = me?.role === "admin" ? [...tabs, { href: "/admin", label: "Admin" }] : tabs;
+
   return (
     <header className="sticky top-0 z-30 -mx-4 mb-6 border-b border-line bg-bg/70 px-4 backdrop-blur-xl sm:-mx-6 sm:px-6">
       <div className="mx-auto flex h-16 w-full max-w-[1480px] items-center gap-6">
@@ -103,16 +150,14 @@ export function Nav() {
         </Link>
 
         <nav className="hidden items-center gap-1 rounded-full border border-line bg-white/[0.03] p-1 md:flex">
-          {tabs.map((t) => {
+          {allTabs.map((t) => {
             const active = t.href === "/" ? pathname === "/" : pathname.startsWith(t.href);
             return (
               <Link
                 key={t.href}
                 href={t.href}
                 className={`rounded-full px-3.5 py-1.5 text-sm transition ${
-                  active
-                    ? "bg-white/[0.08] text-ink"
-                    : "text-ink-2 hover:text-ink"
+                  active ? "bg-white/[0.08] text-ink" : "text-ink-2 hover:text-ink"
                 }`}
               >
                 {t.label}
@@ -123,13 +168,13 @@ export function Nav() {
 
         <div className="ml-auto flex items-center gap-3">
           <WorkIndicator />
-          <span className="hidden text-sm text-ink-2 sm:inline">{formatDayLong(todayKey())}</span>
-          <LogoutButton />
+          <span className="hidden text-sm text-ink-2 lg:inline">{formatDayLong(todayKey())}</span>
+          {me && <UserMenu me={me} />}
         </div>
       </div>
 
       <nav className="flex gap-1 overflow-x-auto pb-2 md:hidden">
-        {tabs.map((t) => {
+        {allTabs.map((t) => {
           const active = t.href === "/" ? pathname === "/" : pathname.startsWith(t.href);
           return (
             <Link

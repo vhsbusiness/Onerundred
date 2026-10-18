@@ -1,21 +1,21 @@
-import { handle, json, optionalDayKey, optionalMinutes, optionalPriority, readBody, requireString } from "@/lib/api";
+import { json, optionalDayKey, optionalMinutes, optionalPriority, readBody, requireString, withUser } from "@/lib/api";
 import { completeCard, deleteCard, getCard, reopenCard, updateCard } from "@/lib/repo";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-export const GET = handle(async (_req: Request, ctx: Ctx) => {
+export const GET = withUser(async (user, _req: Request, ctx: Ctx) => {
   const { id } = await ctx.params;
-  return json(await getCard(id));
+  return json(await getCard(id, user.id));
 });
 
-export const PATCH = handle(async (req: Request, ctx: Ctx) => {
+export const PATCH = withUser(async (user, req: Request, ctx: Ctx) => {
   const { id } = await ctx.params;
   const body = await readBody(req);
 
-  if (body.completed === true) return json(await completeCard(id));
-  if (body.completed === false) return json(await reopenCard(id));
+  if (body.completed === true) return json(await completeCard(user.id, id));
+  if (body.completed === false) return json(await reopenCard(user.id, id));
 
-  const card = await updateCard(id, {
+  const card = await updateCard(id, user.id, {
     title: body.title !== undefined ? requireString(body.title, "title") : undefined,
     description: body.description !== undefined ? requireString(body.description, "description", { allowEmpty: true }) : undefined,
     priority: optionalPriority(body.priority),
@@ -25,8 +25,8 @@ export const PATCH = handle(async (req: Request, ctx: Ctx) => {
   return json(card);
 });
 
-export const DELETE = handle(async (_req: Request, ctx: Ctx) => {
+export const DELETE = withUser(async (user, _req: Request, ctx: Ctx) => {
   const { id } = await ctx.params;
-  await deleteCard(id);
+  await deleteCard(id, user.id);
   return json({ ok: true });
 });

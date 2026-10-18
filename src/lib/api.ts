@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
+import type { CurrentUser } from "./auth";
+import { requireAdmin, requireUser } from "./current-user";
 
-export class ApiError extends Error {
-  status: number;
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-  }
-}
+import { ApiError } from "./errors";
+
+export { ApiError };
 
 export function json<T>(data: T, init?: ResponseInit) {
   return NextResponse.json(data, { ...init, headers: { "Cache-Control": "no-store", ...(init?.headers ?? {}) } });
@@ -65,4 +63,24 @@ export function optionalDayKey(v: unknown): string | undefined {
     throw new ApiError(400, "Data deve estar no formato yyyy-MM-dd");
   }
   return v;
+}
+
+/** Rota que exige usuário logado: o handler recebe o usuário como último argumento. */
+export function withUser<Args extends unknown[]>(
+  fn: (user: CurrentUser, ...args: Args) => Promise<Response>,
+): (...args: Args) => Promise<Response> {
+  return handle(async (...args: Args) => {
+    const user = await requireUser();
+    return fn(user, ...args);
+  });
+}
+
+/** Rota que exige administrador. */
+export function withAdmin<Args extends unknown[]>(
+  fn: (user: CurrentUser, ...args: Args) => Promise<Response>,
+): (...args: Args) => Promise<Response> {
+  return handle(async (...args: Args) => {
+    const user = await requireAdmin();
+    return fn(user, ...args);
+  });
 }

@@ -1,10 +1,13 @@
 import { Suspense } from "react";
-import { LoginForm } from "@/components/auth/LoginForm";
+import { redirect } from "next/navigation";
+import { AuthForm } from "@/components/auth/AuthForm";
+import { getCurrentUser } from "@/lib/current-user";
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  if (await getCurrentUser()) redirect("/");
   return (
     <Suspense>
-      <LoginForm />
+      <AuthForm />
     </Suspense>
   );
 }

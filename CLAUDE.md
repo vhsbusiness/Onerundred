@@ -44,8 +44,14 @@ rodando em :3000; `onerundred-dev` tenta iniciar o Next pelo launcher do app, o
 que pode travar esperando permissão do macOS para a pasta Documentos. Preferir
 subir o servidor pelo terminal e usar `onerundred`.
 
-## Autenticação
+## Autenticação e usuários
 
-- Senha única via `APP_PASSWORD` (+ `AUTH_SECRET`), checada em `src/proxy.ts` com cookie
-  HMAC (`src/lib/auth.ts`). Sem `APP_PASSWORD` o app fica aberto (dev local).
-- Rotas públicas: `/login` e `/api/login`. A `Nav` some em `/login` e mostra "Sair" quando há senha.
+- Contas em `User` (e-mail e usuário únicos, em minúsculas), senha com scrypt
+  (`src/lib/auth.ts`), sessão em `AuthSession` + cookie httpOnly `onerundred_session`.
+- `src/proxy.ts` só checa se o cookie existe; a validação real é `getCurrentUser()`
+  em `src/lib/current-user.ts`. Páginas chamam `requireUserPage()`; rotas usam
+  `withUser`/`withAdmin` de `src/lib/api.ts` e recebem o usuário como 1º argumento.
+- Toda função de `src/lib/repo.ts` recebe `userId` e filtra por ele (quadro → lista → tarefa).
+- Primeiro usuário cadastrado = admin. Painel em `/admin` (`src/lib/admin.ts`).
+  `AppSetting.allowRegistration` fecha o cadastro.
+- Rotas públicas: `/login` e `/api/auth/*`. A `Nav` some em `/login`.

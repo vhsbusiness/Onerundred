@@ -1,10 +1,10 @@
-import { handle, json, readBody, requireString } from "@/lib/api";
+import { json, readBody, requireString, withUser } from "@/lib/api";
 import { createBoard, listBoards } from "@/lib/repo";
 
-export const GET = handle(async () => json(await listBoards()));
+export const GET = withUser(async (user) => json(await listBoards(user.id)));
 
-export const POST = handle(async (req: Request) => {
+export const POST = withUser(async (user, req: Request) => {
   const body = await readBody(req);
-  const board = await createBoard(requireString(body.name, "name"));
+  const board = await createBoard(user.id, requireString(body.name, "name"));
   return json(board, { status: 201 });
 });

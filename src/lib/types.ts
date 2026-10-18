@@ -104,3 +104,46 @@ export interface SettingsDTO {
 }
 
 export type { Tone };
+
+/* ───────────── Autenticação e admin ───────────── */
+
+export interface MeDTO {
+  id: string;
+  email: string;
+  username: string;
+  name: string;
+  role: "user" | "admin";
+}
+
+export interface AppSettingsDTO {
+  allowRegistration: boolean;
+}
+
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  username: string;
+  role: "user" | "admin";
+  active: boolean;
+  createdAt: string;
+  lastLoginAt: string | null;
+  boards: number;
+  openCards: number;
+  doneCards: number;
+  doneToday: number;
+  workedTodayMs: number;
+  workedTotalMs: number;
+  taskMs: number;
+  activeSessions: number;
+}
+
+export interface AdminOverview {
+  users: number;
+  activeToday: number;
+  newThisWeek: number;
+  doneToday: number;
+  workedTodayMs: number;
+  openCards: number;
+  settings: AppSettingsDTO;
+}

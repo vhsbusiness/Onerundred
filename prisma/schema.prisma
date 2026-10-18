@@ -7,12 +7,46 @@ datasource db {
   provider = "postgresql"
 }
 
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  username     String        @unique
+  name         String
+  passwordHash String
+  /// user | admin
+  role         String        @default("user")
+  active       Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  lastLoginAt  DateTime?
+  boards       Board[]
+  sessions     AuthSession[]
+  workSessions WorkSession[]
+  settings     Setting[]
+}
+
+/// Sessão de login (o id é o token guardado no cookie)
+model AuthSession {
+  id        String   @id
+  userId    String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  userAgent String   @default("")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
 model Board {
   id        String   @id @default(cuid())
+  userId    String
   name      String
   position  Int      @default(0)
   createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   lists     List[]
+
+  @@index([userId])
 }
 
 model List {
@@ -66,13 +100,26 @@ model TaskSession {
 /// Sessão de trabalho (botão iniciar/parar do dashboard)
 model WorkSession {
   id        String    @id @default(cuid())
+  userId    String
   startedAt DateTime  @default(now())
   endedAt   DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([startedAt])
+  @@index([userId, startedAt])
 }
 
+/// Preferências por usuário (ex.: dailyGoalMinutes)
 model Setting {
+  userId String
+  key    String
+  value  String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, key])
+}
+
+/// Configurações globais do app (ex.: allowRegistration), editadas pelo admin
+model AppSetting {
   key   String @id
   value String
 }
