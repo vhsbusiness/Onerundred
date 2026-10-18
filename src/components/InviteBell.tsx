@@ -85,7 +85,7 @@ export function InviteBell() {
           ) : (
             <ul className="space-y-1">
               {invites.map((inv) => (
-                <li key={inv.id} className="rounded-lg border border-line bg-black/20 p-2.5">
+                <li key={inv.id} className="rounded-lg border border-line bg-well p-2.5">
                   <div className="flex items-center gap-2">
                     <Avatar me={inv.from} size={28} />
                     <div className="min-w-0 flex-1">

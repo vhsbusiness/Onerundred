@@ -110,7 +110,7 @@ export const TONE_BAR: Record<Tone, string> = {
   green: "bg-green-deep",
   blue: "bg-blue-deep",
   orange: "bg-orange-deep",
-  neutral: "bg-white/20",
+  neutral: "bg-line-3",
 };
 
 export function formatPercent(score: number | null): string {

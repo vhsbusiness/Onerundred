@@ -52,7 +52,7 @@ export function TodayTasks({
           <li
             key={c.id}
             className={`group flex items-center gap-3 rounded-xl border border-line px-3 py-2 transition ${
-              running ? "bg-green/[0.06] border-green/30" : "bg-black/20 hover:bg-white/[0.03]"
+              running ? "bg-green/[0.06] border-green/30" : "bg-well hover:bg-fill"
             } ${done ? "opacity-55" : ""}`}
           >
             <button

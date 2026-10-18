@@ -35,7 +35,7 @@ export function CardBody({
       className={`group relative rounded-xl border px-3 py-2.5 transition ${
         running
           ? "border-green/35 bg-green/[0.07]"
-          : "border-white/[0.09] bg-[#262b34] hover:border-white/[0.16] hover:bg-[#2c313b]"
+          : "border-line bg-card hover:border-line-3 hover:bg-card-hover"
       } ${done ? "opacity-60" : ""} ${dragging ? "rotate-[1.5deg] shadow-2xl" : ""}`}
       onClick={onOpen}
       role="button"

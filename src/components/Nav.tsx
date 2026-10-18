@@ -1,12 +1,14 @@
 "use client";
 
-import { Archive, Bell, Gamepad2, LayoutDashboard, LogOut, Moon, Settings, ShieldCheck, SquareKanban, Target, UserRound } from "lucide-react";
+import { Archive, Bell, Gamepad2, LayoutDashboard, LogOut, Moon, Settings, ShieldCheck, SquareKanban, Sun, Target, UserRound } from "lucide-react";
 import { Avatar } from "@/components/profile/ProfilePage";
 import { InviteBell } from "@/components/InviteBell";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { formatDayLong, todayKey } from "@/lib/time";
+import { isTheme, type Theme } from "@/lib/theme";
+import { applyTheme, currentTheme } from "@/lib/theme-client";
 import type { MeDTO } from "@/lib/types";
 
 const tabs = [
@@ -99,7 +101,23 @@ function WorkIndicator() {
 function UserMenu({ me }: { me: MeDTO }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [theme, setTheme] = useState<Theme>("dark");
   const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Lê o tema já aplicado no <html> e acompanha trocas feitas em outra parte do app.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTheme(currentTheme());
+    const onChange = (e: Event) => setTheme((e as CustomEvent<Theme>).detail);
+    window.addEventListener("theme-changed", onChange);
+    return () => window.removeEventListener("theme-changed", onChange);
+  }, []);
+
+  function toggleTheme() {
+    const next: Theme = theme === "dark" ? "light" : "dark";
+    applyTheme(next);
+    fetch("/api/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ theme: next }) }).catch(() => {});
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -121,7 +139,7 @@ function UserMenu({ me }: { me: MeDTO }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-full border border-line bg-white/[0.03] py-1 pl-1 pr-3 text-sm transition hover:bg-white/[0.06]"
+        className="flex items-center gap-2 rounded-full border border-line bg-fill py-1 pl-1 pr-3 text-sm transition hover:bg-fill-2"
         aria-label="Menu do usuário"
       >
         <Avatar me={me} size={28} />
@@ -134,20 +152,24 @@ function UserMenu({ me }: { me: MeDTO }) {
             <div className="truncate text-xs text-ink-3">@{me.username} · {me.email}</div>
           </div>
           <div className="my-1 border-t border-line" />
-          <Link href="/perfil" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/[0.06]">
+          <Link href="/perfil" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-fill-2">
             <UserRound size={14} className="text-ink-3" /> Meu perfil
           </Link>
-          <Link href="/arquivadas" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/[0.06] md:hidden">
+          <button type="button" onClick={toggleTheme} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-fill-2">
+            {theme === "dark" ? <Sun size={14} className="text-orange" /> : <Moon size={14} className="text-blue" />}
+            {theme === "dark" ? "Tema claro" : "Tema escuro"}
+          </button>
+          <Link href="/arquivadas" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-fill-2 md:hidden">
             <Archive size={14} className="text-ink-3" /> Arquivadas
           </Link>
-          <Link href="/configuracoes" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/[0.06] md:hidden">
+          <Link href="/configuracoes" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-fill-2 md:hidden">
             <Settings size={14} className="text-ink-3" /> Configurações
           </Link>
           {me.role === "admin" && (
             <Link
               href="/admin"
               onClick={() => setOpen(false)}
-              className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/[0.06]"
+              className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-fill-2"
             >
               <ShieldCheck size={14} className="text-green" /> Painel admin
             </Link>
@@ -155,7 +177,7 @@ function UserMenu({ me }: { me: MeDTO }) {
           <button
             type="button"
             onClick={logout}
-            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-white/[0.06]"
+            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-fill-2"
           >
             <LogOut size={14} className="text-ink-3" /> Sair
           </button>
@@ -193,7 +215,7 @@ function BottomNav({
                   active ? "text-ink" : "text-ink-3"
                 }`}
               >
-                <span className={`flex h-8 w-11 items-center justify-center rounded-full ${active ? "bg-white/[0.1]" : ""}`}>
+                <span className={`flex h-8 w-11 items-center justify-center rounded-full ${active ? "bg-fill-3" : ""}`}>
                   <Icon size={20} strokeWidth={active ? 2.2 : 1.8} />
                 </span>
                 {t.short}
@@ -220,6 +242,8 @@ export function Nav() {
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error("falha"))))
         .then((d) => {
           const next: MeDTO | null = d?.user ?? null;
+          // Preferência da conta (vale em qualquer aparelho): aplica se diferir do que está na tela.
+          if (next && isTheme(d.theme) && d.theme !== currentTheme()) applyTheme(d.theme);
           // Só guarda no cache quando há usuário; erro ou sessão ausente tentam de novo na próxima página.
           meCache = next ?? undefined;
           setMe(next);
@@ -239,13 +263,13 @@ export function Nav() {
     <>
     <BottomNav tabs={allTabs.filter((t) => MOBILE_TABS.includes(t.href))} isActive={isActive} />
     <header className="sticky z-30 mb-6 pt-3" style={{ top: "env(safe-area-inset-top, 0px)" }}>
-      <div className="card w-full bg-surface/90 px-4 py-2.5 shadow-[0_18px_40px_-24px_rgba(0,0,0,0.9)] backdrop-blur-md sm:px-5">
+      <div className="card w-full bg-surface/90 px-4 py-2.5 shadow-[var(--shadow-float)] backdrop-blur-md sm:px-5">
         <div className="flex min-h-11 items-center gap-3 lg:gap-4 2xl:gap-6">
         <Link href="/" className="shrink-0">
           <Logo />
         </Link>
 
-        <nav className="hidden min-w-0 items-center gap-0.5 overflow-x-auto rounded-full border border-line bg-white/[0.03] p-1 md:flex 2xl:gap-1">
+        <nav className="hidden min-w-0 items-center gap-0.5 overflow-x-auto rounded-full border border-line bg-fill p-1 md:flex 2xl:gap-1">
           {allTabs.map((t) => {
             const active = t.href === "/" ? pathname === "/" : pathname.startsWith(t.href);
             return (
@@ -253,7 +277,7 @@ export function Nav() {
                 key={t.href}
                 href={t.href}
                 className={`whitespace-nowrap rounded-full px-2 py-1.5 text-[13px] transition lg:px-2.5 2xl:px-3.5 2xl:text-sm ${
-                  active ? "bg-white/[0.08] text-ink" : "text-ink-2 hover:text-ink"
+                  active ? "bg-fill-3 text-ink" : "text-ink-2 hover:text-ink"
                 }`}
               >
                 {t.label}

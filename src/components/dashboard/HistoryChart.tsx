@@ -9,7 +9,7 @@ const TONE_FILL = {
   green: "var(--color-green-deep)",
   blue: "var(--color-blue-deep)",
   orange: "var(--color-orange-deep)",
-  neutral: "rgba(255,255,255,0.08)",
+  neutral: "var(--color-fill-3)",
 } as const;
 
 /** Barras dos últimos 14 dias. Uma única medida (nota do dia), colorida pela faixa. */
@@ -37,7 +37,7 @@ export function HistoryChart({ history, todayKey }: { history: HistoryPoint[]; t
       <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="Nota diária dos últimos 14 dias">
         {[0, 50, 100].map((g) => (
           <g key={g}>
-            <line x1={padL} x2={W - padR} y1={y(g)} y2={y(g)} stroke="rgba(255,255,255,0.07)" strokeWidth={1} />
+            <line x1={padL} x2={W - padR} y1={y(g)} y2={y(g)} stroke="var(--color-grid)" strokeWidth={1} />
             <text x={padL - 6} y={y(g) + 3.5} fontSize={10} textAnchor="end" fill="var(--color-ink-3)">
               {g}
             </text>
@@ -67,7 +67,7 @@ export function HistoryChart({ history, todayKey }: { history: HistoryPoint[]; t
                   x2={x + barW}
                   y1={padT + innerH - 1}
                   y2={padT + innerH - 1}
-                  stroke="rgba(255,255,255,0.18)"
+                  stroke="var(--color-grid-2)"
                   strokeWidth={2}
                   strokeDasharray="3 3"
                 />
@@ -90,7 +90,7 @@ export function HistoryChart({ history, todayKey }: { history: HistoryPoint[]; t
                   height={h + 6}
                   rx={6}
                   fill="none"
-                  stroke="rgba(255,255,255,0.35)"
+                  stroke="var(--color-grid-3)"
                   strokeWidth={1}
                 />
               )}
@@ -134,7 +134,7 @@ export function HistoryChart({ history, todayKey }: { history: HistoryPoint[]; t
           <span className="h-2 w-2 rounded-sm bg-orange-deep" /> &lt; 50%
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-0.5 w-3 border-t border-dashed border-white/30" /> sem tarefas
+          <span className="h-0.5 w-3 border-t border-dashed border-line-3" /> sem tarefas
         </span>
       </div>
     </div>

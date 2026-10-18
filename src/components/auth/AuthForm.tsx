@@ -95,7 +95,7 @@ export function AuthForm() {
         </div>
 
         {allowRegistration ? (
-          <div className="flex rounded-full border border-line bg-black/20 p-1 text-sm">
+          <div className="flex rounded-full border border-line bg-well p-1 text-sm">
             {(["login", "register"] as Mode[]).map((m) => (
               <button
                 key={m}
@@ -105,7 +105,7 @@ export function AuthForm() {
                   setError(null);
                 }}
                 className={`flex-1 rounded-full py-1.5 transition ${
-                  mode === m ? "bg-white/[0.1] text-ink" : "text-ink-2 hover:text-ink"
+                  mode === m ? "bg-fill-3 text-ink" : "text-ink-2 hover:text-ink"
                 }`}
               >
                 {m === "login" ? "Entrar" : "Criar conta"}

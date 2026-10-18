@@ -1,3 +1,4 @@
+import type { Theme } from "./theme";
 import type { PeriodScore, Tone, WorkVerdict } from "./metrics";
 
 export type ListKind = "normal" | "tomorrow" | "done";
@@ -121,6 +122,8 @@ export interface ArchivedCard extends CardDTO {
 
 export interface SettingsDTO {
   dailyGoalMinutes: number;
+  /** Tema da interface escolhido pelo usuário. */
+  theme: Theme;
 }
 
 export type { Tone };

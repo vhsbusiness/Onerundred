@@ -149,8 +149,8 @@ export function ListColumn({
   return (
     <section
       data-no-pan
-      className={`card flex max-h-full w-[86vw] max-w-[300px] shrink-0 snap-start flex-col bg-[#111318] transition md:w-[300px] ${
-        isOver ? "border-line-2 bg-[#15181e]" : ""
+      className={`card flex max-h-full w-[86vw] max-w-[300px] shrink-0 snap-start flex-col bg-list transition md:w-[300px] ${
+        isOver ? "border-line-2 bg-list-hover" : ""
       }`}
     >
       <header className="flex items-center gap-2 px-3 pb-2 pt-3">
@@ -233,7 +233,7 @@ export function ListColumn({
                         key={l.id}
                         type="button"
                         onClick={() => action({ action: "moveCards", toListId: l.id })}
-                        className="block w-full truncate rounded-md px-2 py-1 text-left text-xs text-ink-2 hover:bg-white/[0.06] hover:text-ink"
+                        className="block w-full truncate rounded-md px-2 py-1 text-left text-xs text-ink-2 hover:bg-fill-2 hover:text-ink"
                       >
                         {l.name}
                       </button>
@@ -255,7 +255,7 @@ export function ListColumn({
                         key={p}
                         type="button"
                         onClick={() => action({ action: "pullPriority", priority: p })}
-                        className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-ink-2 hover:bg-white/[0.06] hover:text-ink"
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-ink-2 hover:bg-fill-2 hover:text-ink"
                       >
                         <span className={`h-2 w-2 rounded-full ${pu.dot}`} /> {pu.label}
                       </button>
@@ -333,7 +333,7 @@ export function ListColumn({
 
       <footer className="px-3 pb-3 pt-1">
         {adding ? (
-          <form onSubmit={addCard} onPaste={onPasteNewCard} className="space-y-2 rounded-xl border border-white/[0.12] bg-[#262b34] p-2">
+          <form onSubmit={addCard} onPaste={onPasteNewCard} className="space-y-2 rounded-xl border border-line-2 bg-card p-2">
             <input
               ref={addRef}
               value={title}
@@ -398,7 +398,7 @@ export function ListColumn({
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="btn btn-ghost h-9 w-full justify-start px-2 text-ink-3 hover:bg-white/[0.04]"
+            className="btn btn-ghost h-9 w-full justify-start px-2 text-ink-3 hover:bg-fill"
           >
             <Plus size={15} /> Adicionar tarefa
           </button>
@@ -426,7 +426,7 @@ function MenuItem({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition hover:bg-white/[0.06] disabled:opacity-40 ${
+      className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition hover:bg-fill-2 disabled:opacity-40 ${
         danger ? "text-red" : ""
       }`}
     >

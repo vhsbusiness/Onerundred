@@ -186,7 +186,7 @@ export function AdminPanel() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[860px] text-sm">
-            <thead className="border-y border-line bg-black/20 text-left text-[11px] uppercase tracking-wide text-ink-3">
+            <thead className="border-y border-line bg-well text-left text-[11px] uppercase tracking-wide text-ink-3">
               <tr>
                 <th className="px-5 py-2 font-medium">Usuário</th>
                 <th className="px-3 py-2 font-medium">Papel</th>

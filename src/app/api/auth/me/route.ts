@@ -1,11 +1,13 @@
 import { ApiError, handle, json, readBody, withUser } from "@/lib/api";
 import { registrationAllowed, updateProfile } from "@/lib/auth";
 import { getCurrentUser } from "@/lib/current-user";
+import { getSettings } from "@/lib/repo";
 
 /** Quem está logado (ou null) e se o cadastro está aberto. */
 export const GET = handle(async () => {
   const user = await getCurrentUser();
-  return json({ user, allowRegistration: await registrationAllowed() });
+  const theme = user ? (await getSettings(user.id)).theme : null;
+  return json({ user, theme, allowRegistration: await registrationAllowed() });
 });
 
 /** Atualiza nome, usuário, e-mail e/ou foto do próprio perfil. */

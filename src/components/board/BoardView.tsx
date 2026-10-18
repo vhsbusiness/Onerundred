@@ -339,7 +339,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
         <span className="pill">{openCount} abertas</span>
         <span className="pill pill-green">{doneCount} feitas</span>
         {(board.members.length > 0 || !board.isOwner) && (
-          <button type="button" onClick={() => setSharing(true)} className="flex items-center -space-x-1.5 rounded-full border border-line bg-white/[0.03] py-0.5 pl-0.5 pr-2" title="Participantes">
+          <button type="button" onClick={() => setSharing(true)} className="flex items-center -space-x-1.5 rounded-full border border-line bg-fill py-0.5 pl-0.5 pr-2" title="Participantes">
             {[board.owner, ...board.members].slice(0, 4).map((u) => (
               <span key={u.id} className="rounded-full ring-2 ring-surface">
                 <Avatar me={u} size={22} />
@@ -371,7 +371,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
                     setBoardMenu(false);
                     setSharing(true);
                   }}
-                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-white/[0.06]"
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-fill-2"
                 >
                   <Users size={14} className="text-green" /> {board.isOwner ? "Compartilhar quadro" : "Participantes"}
                 </button>
@@ -381,7 +381,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
                     setBoardMenu(false);
                     setImporting(true);
                   }}
-                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-white/[0.06]"
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-fill-2"
                 >
                   <Sparkles size={14} className="text-blue" /> Trazer dados do Trello
                 </button>
@@ -391,7 +391,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
                     setBoardMenu(false);
                     setEditingName(true);
                   }}
-                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-white/[0.06]"
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-fill-2"
                 >
                   <Pencil size={14} className="text-ink-3" /> Renomear quadro
                 </button>
@@ -403,7 +403,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
                       setBoardMenu(false);
                       removeBoard();
                     }}
-                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-red hover:bg-white/[0.06]"
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-red hover:bg-fill-2"
                   >
                     <Trash2 size={14} /> Excluir quadro
                   </button>
@@ -414,7 +414,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
                       setBoardMenu(false);
                       leaveBoard();
                     }}
-                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-red hover:bg-white/[0.06]"
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-red hover:bg-fill-2"
                   >
                     <LogOut size={14} /> Sair do quadro
                   </button>

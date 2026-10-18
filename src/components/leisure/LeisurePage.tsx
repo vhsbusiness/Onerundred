@@ -45,7 +45,7 @@ function LeisureChart({ byDay }: { byDay: { key: string; minutes: number }[] }) 
       <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="Horas de lazer nos últimos 14 dias">
         {ticks.map((t) => (
           <g key={t}>
-            <line x1={padL} x2={W - padR} y1={y(t * 60)} y2={y(t * 60)} stroke="rgba(255,255,255,0.07)" />
+            <line x1={padL} x2={W - padR} y1={y(t * 60)} y2={y(t * 60)} stroke="var(--color-grid)" />
             <text x={padL - 6} y={y(t * 60) + 3.5} fontSize={10} textAnchor="end" fill="var(--color-ink-3)">
               {t}h
             </text>
@@ -60,7 +60,7 @@ function LeisureChart({ byDay }: { byDay: { key: string; minutes: number }[] }) 
               {d.minutes > 0 ? (
                 <rect x={x} y={y(d.minutes)} width={barW} height={padT + innerH - y(d.minutes)} rx={4} fill="var(--color-blue-deep)" opacity={hover === null || hover === d.key ? 1 : 0.55} />
               ) : (
-                <line x1={x} x2={x + barW} y1={padT + innerH - 1} y2={padT + innerH - 1} stroke="rgba(255,255,255,0.18)" strokeWidth={2} strokeDasharray="3 3" />
+                <line x1={x} x2={x + barW} y1={padT + innerH - 1} y2={padT + innerH - 1} stroke="var(--color-grid-2)" strokeWidth={2} strokeDasharray="3 3" />
               )}
               <text x={cx} y={H - 8} fontSize={10} textAnchor="middle" fill={d.key === todayKey() ? "var(--color-ink)" : "var(--color-ink-3)"}>
                 {weekdayShort(d.key)} {keyToDate(d.key).getDate()}
@@ -284,7 +284,7 @@ export function LeisurePage() {
                 </div>
                 <ul className="space-y-1.5">
                   {items.map((l) => (
-                    <li key={l.id} className="group flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-line bg-black/20 px-3 py-2 text-sm">
+                    <li key={l.id} className="group flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-line bg-well px-3 py-2 text-sm">
                       <span className="pill pill-blue">{l.activity}</span>
                       <span className="text-ink-2 tabular-nums">
                         {l.startTime} → {l.endTime}

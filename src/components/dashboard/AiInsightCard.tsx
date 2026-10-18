@@ -89,7 +89,7 @@ export function AiInsightCard({ todayCards, initialStatus }: { todayCards: Today
 
   if (status && !status.enabled) {
     return (
-      <div className="flex items-center gap-2 rounded-full border border-line bg-black/20 px-4 py-2 text-sm text-ink-3">
+      <div className="flex items-center gap-2 rounded-full border border-line bg-well px-4 py-2 text-sm text-ink-3">
         <Sparkles size={14} /> IA desativada neste ambiente (falta OPENAI_API_KEY).
       </div>
     );
@@ -103,7 +103,7 @@ export function AiInsightCard({ todayCards, initialStatus }: { todayCards: Today
 
   return (
     <section
-      className="blob-surface min-w-0 rounded-2xl border border-line bg-black/20 p-4"
+      className="blob-surface min-w-0 rounded-2xl border border-line bg-well p-4"
       style={{ "--blob-a": "rgba(127,183,245,0.22)", "--blob-b": "rgba(139,227,166,0.18)" } as React.CSSProperties}
     >
       <div className="flex flex-wrap items-center gap-2">
@@ -149,14 +149,14 @@ export function AiInsightCard({ todayCards, initialStatus }: { todayCards: Today
             {observation.dimensions.map((d) => {
               const pct = d.need === 0 ? 100 : Math.min(100, Math.round((d.have / d.need) * 100));
               return (
-                <li key={d.key} className="rounded-xl border border-line bg-black/20 px-3 py-2">
+                <li key={d.key} className="rounded-xl border border-line bg-well px-3 py-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-medium">{d.label}</span>
                     <span className={d.ready ? "text-green" : "text-ink-3"}>
                       {d.ready ? "pronto" : `${d.have} de ${d.need} ${d.unit}`}
                     </span>
                   </div>
-                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-fill-2">
                     <div className={`h-full rounded-full ${d.ready ? "bg-green-deep" : "bg-blue-deep"}`} style={{ width: `${pct}%` }} />
                   </div>
                 </li>
@@ -212,7 +212,7 @@ export function AiInsightCard({ todayCards, initialStatus }: { todayCards: Today
                     const boardId = boardOf(t.cardId);
                     const inner = (
                       <>
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/[0.08] text-[11px] font-semibold">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-fill-3 text-[11px] font-semibold">
                           {i + 1}
                         </span>
                         <span className="min-w-0">
@@ -226,12 +226,12 @@ export function AiInsightCard({ todayCards, initialStatus }: { todayCards: Today
                         {boardId ? (
                           <Link
                             href={`/quadros/${boardId}?card=${t.cardId}`}
-                            className="flex items-start gap-2 rounded-lg border border-line bg-black/20 px-2.5 py-1.5 transition hover:border-line-2"
+                            className="flex items-start gap-2 rounded-lg border border-line bg-well px-2.5 py-1.5 transition hover:border-line-2"
                           >
                             {inner}
                           </Link>
                         ) : (
-                          <div className="flex items-start gap-2 rounded-lg border border-line bg-black/20 px-2.5 py-1.5">{inner}</div>
+                          <div className="flex items-start gap-2 rounded-lg border border-line bg-well px-2.5 py-1.5">{inner}</div>
                         )}
                       </li>
                     );

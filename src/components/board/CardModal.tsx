@@ -268,7 +268,7 @@ export function CardModal({
         <aside className="space-y-4">
           <div
             className={`rounded-2xl border p-4 ${
-              running ? "border-green/35 bg-green/[0.07]" : "border-line bg-black/20"
+              running ? "border-green/35 bg-green/[0.07]" : "border-line bg-well"
             }`}
           >
             <div className="text-xs font-medium uppercase tracking-wide text-ink-3">Tempo na tarefa</div>
@@ -354,7 +354,7 @@ export function CardModal({
               return (
                 <li
                   key={s.id}
-                  className="group flex items-center justify-between rounded-lg border border-line bg-black/20 px-3 py-1.5 text-xs"
+                  className="group flex items-center justify-between rounded-lg border border-line bg-well px-3 py-1.5 text-xs"
                 >
                   <span className="text-ink-2 tabular-nums">
                     {fmtDate(s.startedAt)} · {fmtTime(s.startedAt)} – {s.endedAt ? fmtTime(s.endedAt) : "agora"}

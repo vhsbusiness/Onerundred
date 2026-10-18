@@ -120,7 +120,7 @@ export function ArchiveList() {
                 return (
                   <li
                     key={c.id}
-                    className="group flex items-center gap-3 rounded-xl border border-line bg-black/20 px-3 py-2"
+                    className="group flex items-center gap-3 rounded-xl border border-line bg-well px-3 py-2"
                   >
                     <span className={`h-2 w-2 shrink-0 rounded-full ${p.dot}`} />
                     <div className="min-w-0 flex-1">

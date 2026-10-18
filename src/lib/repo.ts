@@ -1,5 +1,6 @@
 import { subDays } from "date-fns";
 import { prisma } from "./db";
+import { DEFAULT_THEME, isTheme } from "./theme";
 import { ApiError } from "./errors";
 import { periodScore, workVerdict, type MetricCard } from "./metrics";
 import { autoMarkMissedDays } from "./projects";
@@ -889,19 +890,25 @@ export async function deleteTaskSession(userId: string, sessionId: string) {
 const DEFAULT_DAILY_GOAL = 8 * 60;
 
 export async function getSettings(userId: string): Promise<SettingsDTO> {
-  const row = await prisma.setting.findUnique({
-    where: { userId_key: { userId, key: "dailyGoalMinutes" } },
-  });
-  const n = row ? Number(row.value) : NaN;
-  return { dailyGoalMinutes: Number.isFinite(n) && n > 0 ? n : DEFAULT_DAILY_GOAL };
+  const rows = await prisma.setting.findMany({ where: { userId, key: { in: ["dailyGoalMinutes", "theme"] } } });
+  const get = (k: string) => rows.find((r) => r.key === k)?.value;
+  const n = Number(get("dailyGoalMinutes") ?? NaN);
+  const theme = get("theme");
+  return {
+    dailyGoalMinutes: Number.isFinite(n) && n > 0 ? n : DEFAULT_DAILY_GOAL,
+    theme: isTheme(theme) ? theme : DEFAULT_THEME,
+  };
 }
 
 export async function updateSettings(userId: string, data: Partial<SettingsDTO>): Promise<SettingsDTO> {
-  if (data.dailyGoalMinutes !== undefined) {
+  const entries: [string, string][] = [];
+  if (data.dailyGoalMinutes !== undefined) entries.push(["dailyGoalMinutes", String(data.dailyGoalMinutes)]);
+  if (data.theme !== undefined) entries.push(["theme", data.theme]);
+  for (const [key, value] of entries) {
     await prisma.setting.upsert({
-      where: { userId_key: { userId, key: "dailyGoalMinutes" } },
-      create: { userId, key: "dailyGoalMinutes", value: String(data.dailyGoalMinutes) },
-      update: { value: String(data.dailyGoalMinutes) },
+      where: { userId_key: { userId, key } },
+      create: { userId, key, value },
+      update: { value },
     });
   }
   return getSettings(userId);

@@ -50,7 +50,7 @@ export function CardContextMenu({
   const height = 130;
   const left = Math.min(state.x, window.innerWidth - width - 8);
   const top = Math.min(state.y, window.innerHeight - height - 8);
-  const item = "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition hover:bg-white/[0.06]";
+  const item = "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition hover:bg-fill-2";
 
   return (
     <div

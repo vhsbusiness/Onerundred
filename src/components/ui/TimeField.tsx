@@ -56,7 +56,7 @@ export function TimeField({
   const col = "max-h-44 w-14 overflow-y-auto overscroll-contain py-1 [scrollbar-width:none]";
   const item = (active: boolean) =>
     `block w-full rounded-lg px-2 py-1.5 text-center text-sm tabular-nums transition ${
-      active ? "bg-ink text-bg font-semibold" : "text-ink-2 hover:bg-white/[0.08] hover:text-ink"
+      active ? "bg-ink text-bg font-semibold" : "text-ink-2 hover:bg-fill-3 hover:text-ink"
     }`;
 
   return (

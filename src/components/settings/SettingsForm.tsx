@@ -1,10 +1,12 @@
 "use client";
 
-import { Brain, RotateCcw } from "lucide-react";
+import { Brain, Check, Moon, RotateCcw, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { http } from "@/lib/client";
 import { Modal } from "@/components/ui/Modal";
 import type { SettingsDTO } from "@/lib/types";
+import type { Theme } from "@/lib/theme";
+import { applyTheme, currentTheme } from "@/lib/theme-client";
 
 export function SettingsForm() {
   const [hours, setHours] = useState("8");
@@ -15,6 +17,20 @@ export function SettingsForm() {
   const [understood, setUnderstood] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [resetMsg, setResetMsg] = useState<string | null>(null);
+  const [theme, setTheme] = useState<Theme>("dark");
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTheme(currentTheme());
+    const onChange = (e: Event) => setTheme((e as CustomEvent<Theme>).detail);
+    window.addEventListener("theme-changed", onChange);
+    return () => window.removeEventListener("theme-changed", onChange);
+  }, []);
+
+  async function chooseTheme(t: Theme) {
+    applyTheme(t);
+    await http.patch("/api/settings", { theme: t }).catch(() => {});
+  }
 
   async function resetAi() {
     setResetting(true);
@@ -85,7 +101,52 @@ export function SettingsForm() {
         </form>
       </section>
 
-      <section className="card p-5 text-sm text-ink-2">
+      <section className="card p-5">
+        <h2 className="text-base font-semibold">Aparência</h2>
+        <p className="mt-1 text-sm text-ink-2">Escolha o tema. Vale para a sua conta em qualquer aparelho.</p>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          {(
+            [
+              { key: "dark", label: "Escuro", icon: Moon, bg: "#0b0c0f", card: "#15171c", ink: "#f4f5f7", muted: "#6b7280" },
+              { key: "light", label: "Claro", icon: Sun, bg: "#f3f1ec", card: "#ffffff", ink: "#17181c", muted: "#b5b9c2" },
+            ] as const
+          ).map((t) => {
+            const active = theme === t.key;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => chooseTheme(t.key)}
+                aria-pressed={active}
+                className={`group rounded-2xl border p-2 text-left transition ${active ? "border-blue/60 bg-blue/10" : "border-line hover:border-line-3"}`}
+              >
+                <div className="relative overflow-hidden rounded-xl border border-black/10 p-2.5" style={{ backgroundColor: t.bg }}>
+                  <div className="flex gap-1.5">
+                    <span className="h-1.5 w-6 rounded-full" style={{ backgroundColor: "#f5b06e" }} />
+                    <span className="h-1.5 w-4 rounded-full" style={{ backgroundColor: "#8be3a6" }} />
+                    <span className="h-1.5 w-5 rounded-full" style={{ backgroundColor: "#7fb7f5" }} />
+                  </div>
+                  <div className="mt-2 space-y-1.5 rounded-lg p-2" style={{ backgroundColor: t.card }}>
+                    <span className="block h-1.5 w-3/5 rounded-full" style={{ backgroundColor: t.ink }} />
+                    <span className="block h-1.5 w-4/5 rounded-full" style={{ backgroundColor: t.muted }} />
+                    <span className="block h-1.5 w-2/5 rounded-full" style={{ backgroundColor: t.muted }} />
+                  </div>
+                  {active && (
+                    <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-blue text-bg">
+                      <Check size={12} strokeWidth={3} />
+                    </span>
+                  )}
+                </div>
+                <div className="mt-2 flex items-center gap-1.5 px-1 text-sm font-medium">
+                  <t.icon size={14} className={t.key === "dark" ? "text-blue" : "text-orange"} /> {t.label}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="card p-5 text-sm text-ink-2 lg:col-span-2">
         <h2 className="text-base font-semibold text-ink">Como a nota é calculada</h2>
         <p className="mt-2">
           Cada tarefa tem um peso: <span className="text-ink">prioridade da tarefa</span> (Alta 3, Média 2,
@@ -139,7 +200,7 @@ export function SettingsForm() {
             de sono e lazer). Essa memória entra como contexto na análise seguinte, por isso ela vai ficando mais
             precisa com o tempo.
           </p>
-          <div className="rounded-xl border border-line bg-black/20 p-3">
+          <div className="rounded-xl border border-line bg-well p-3">
             <p className="font-medium text-ink">Ao resetar:</p>
             <ul className="mt-1 list-disc space-y-1 pl-5">
               <li>a memória de hábitos é apagada;</li>

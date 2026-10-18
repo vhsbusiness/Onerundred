@@ -137,7 +137,7 @@ export function RemindersPage() {
             ) : (
               <ul className="space-y-1.5">
                 {upcoming.map((r) => (
-                  <li key={r.id} className="group flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line bg-black/20 px-3 py-2 text-sm">
+                  <li key={r.id} className="group flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line bg-well px-3 py-2 text-sm">
                     <Bell size={14} className="text-orange" />
                     <span className="font-medium">{r.title}</span>
                     {r.note && <span className="truncate text-xs text-ink-3">{r.note}</span>}
@@ -164,7 +164,7 @@ export function RemindersPage() {
               <h2 className="mb-3 text-sm font-medium text-ink-2">Enviados ou pausados</h2>
               <ul className="space-y-1.5">
                 {past.map((r) => (
-                  <li key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line bg-black/20 px-3 py-2 text-sm opacity-70">
+                  <li key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line bg-well px-3 py-2 text-sm opacity-70">
                     <Check size={14} className="text-green" />
                     <span>{r.title}</span>
                     <span className="ml-auto text-xs text-ink-3 tabular-nums">{r.lastSentAt ? `enviado ${fmt(r.lastSentAt)}` : fmt(r.at)}</span>

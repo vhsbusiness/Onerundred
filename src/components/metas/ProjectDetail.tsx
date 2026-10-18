@@ -17,7 +17,7 @@ const STATUS_STYLE: Record<ProjectDayDTO["status"], string> = {
   done: "bg-green-deep text-bg border-transparent",
   missed: "bg-red/20 text-red border-red/40",
   pending: "bg-transparent text-ink border-ink-2 border-dashed",
-  future: "bg-white/[0.03] text-ink-3 border-line",
+  future: "bg-fill text-ink-3 border-line",
 };
 
 function fmtDay(key: string) {
@@ -133,7 +133,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
           )}
 
           {todayDay && (
-            <div className="mt-5 rounded-xl border border-line bg-black/20 p-3">
+            <div className="mt-5 rounded-xl border border-line bg-well p-3">
               <div className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-3">
                 Hoje · dia {todayDay.index}{p.endless ? "" : ` de ${p.days}`}
               </div>
@@ -167,7 +167,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
               <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-green-deep" /> feito</span>
               <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm border border-red/40 bg-red/20" /> não feito</span>
               <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm border border-dashed border-ink-2" /> hoje</span>
-              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm border border-line bg-white/[0.03]" /> futuro</span>
+              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm border border-line bg-fill" /> futuro</span>
             </div>
           </div>
           <div className="grid grid-cols-7 gap-1.5 sm:grid-cols-10 md:grid-cols-14">

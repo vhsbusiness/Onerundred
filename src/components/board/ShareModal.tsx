@@ -102,7 +102,7 @@ export function ShareModal({
               </button>
             </div>
             {results.length > 0 && (
-              <ul className="overflow-hidden rounded-xl border border-line bg-black/20">
+              <ul className="overflow-hidden rounded-xl border border-line bg-well">
                 {results.map((u) => {
                   const taken = alreadyIn.has(u.id);
                   return (
@@ -111,7 +111,7 @@ export function ShareModal({
                         type="button"
                         disabled={taken || busy}
                         onClick={() => invite(u.username)}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition hover:bg-white/[0.06] disabled:opacity-50"
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition hover:bg-fill-2 disabled:opacity-50"
                       >
                         <Avatar me={u} size={26} />
                         <span className="font-medium">{u.name}</span>
@@ -134,14 +134,14 @@ export function ShareModal({
         <div>
           <div className="mb-1.5 text-xs font-medium uppercase tracking-wide text-ink-3">Quem participa</div>
           <ul className="space-y-1">
-            <li className="flex items-center gap-2 rounded-lg border border-line bg-black/20 px-3 py-2 text-sm">
+            <li className="flex items-center gap-2 rounded-lg border border-line bg-well px-3 py-2 text-sm">
               <Avatar me={board.owner} size={26} />
               <span className="font-medium">{board.owner.name}</span>
               <span className="text-ink-3">@{board.owner.username}</span>
               <span className="pill ml-auto px-1.5 py-0 text-[10px]">dono</span>
             </li>
             {board.members.map((m) => (
-              <li key={m.id} className="flex items-center gap-2 rounded-lg border border-line bg-black/20 px-3 py-2 text-sm">
+              <li key={m.id} className="flex items-center gap-2 rounded-lg border border-line bg-well px-3 py-2 text-sm">
                 <Avatar me={m} size={26} />
                 <span className="font-medium">{m.name}</span>
                 <span className="text-ink-3">@{m.username}</span>

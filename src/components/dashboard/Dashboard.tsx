@@ -66,7 +66,7 @@ function SegmentedBar({ counts }: { counts: DashboardDTO["counts"] }) {
     <div>
       <div className="flex h-7 w-full gap-[2px] overflow-hidden rounded-lg">
         {total === 0 ? (
-          <div className="h-full w-full rounded-lg bg-white/[0.05]" />
+          <div className="h-full w-full rounded-lg bg-fill-2" />
         ) : (
           segs
             .filter((s) => s.n > 0)

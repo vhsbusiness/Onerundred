@@ -16,7 +16,7 @@ export function MetasHeader({ title, subtitle }: { title?: string; subtitle?: st
         </h1>
         <p className="text-sm text-ink-2">{subtitle ?? "Compromissos de vários dias que você marca dia a dia."}</p>
       </div>
-      <nav className="flex items-center gap-1 rounded-full border border-line bg-white/[0.03] p-1">
+      <nav className="flex items-center gap-1 rounded-full border border-line bg-fill p-1">
         {subtabs.map((t) => {
           const active = pathname === t.href || pathname.startsWith("/metas/projetos");
           return (
@@ -24,7 +24,7 @@ export function MetasHeader({ title, subtitle }: { title?: string; subtitle?: st
               key={t.href}
               href={t.href}
               className={`rounded-full px-3.5 py-1.5 text-sm transition ${
-                active ? "bg-white/[0.08] text-ink" : "text-ink-2 hover:text-ink"
+                active ? "bg-fill-3 text-ink" : "text-ink-2 hover:text-ink"
               }`}
             >
               {t.label}

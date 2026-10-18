@@ -1,16 +1,39 @@
 @import "tailwindcss";
 
-@theme inline {
+/*
+ * Cores como variáveis (sem `inline`): as utilities viram var(--color-…) e o
+ * tema claro só redefine as variáveis em :root[data-theme="light"].
+ */
+@theme {
   --color-bg: #0b0c0f;
   --color-surface: #15171c;
   --color-surface-2: #1c1f26;
   --color-surface-3: #242830;
+  --color-card: #262b34;
+  --color-card-hover: #2c313b;
+  /* Colunas de lista do quadro (mais escuras que o card para destacar as tarefas) */
+  --color-list: #111318;
+  --color-list-hover: #15181e;
   --color-line: rgba(255, 255, 255, 0.07);
   --color-line-2: rgba(255, 255, 255, 0.12);
+  --color-line-3: rgba(255, 255, 255, 0.22);
+
+  /* Preenchimentos translúcidos (botões, chips, campos) e "poços" (listas internas) */
+  --color-fill: rgba(255, 255, 255, 0.04);
+  --color-fill-2: rgba(255, 255, 255, 0.06);
+  --color-fill-3: rgba(255, 255, 255, 0.1);
+  --color-well: rgba(0, 0, 0, 0.2);
+
+  /* Linhas de grade dos gráficos */
+  --color-grid: rgba(255, 255, 255, 0.07);
+  --color-grid-2: rgba(255, 255, 255, 0.18);
+  --color-grid-3: rgba(255, 255, 255, 0.35);
 
   --color-ink: #f4f5f7;
   --color-ink-2: #a3a9b4;
   --color-ink-3: #6b7280;
+  /* Texto sobre fundo "ink" (botão primário) */
+  --color-on-ink: #0b0c0f;
 
   /* Acentos pastel (UI) */
   --color-orange: #f5b06e;
@@ -22,11 +45,71 @@
   --color-orange-deep: #cc7a33;
   --color-green-deep: #2cab6c;
   --color-blue-deep: #3a84d6;
+}
 
+@theme inline {
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
 
   --radius-card: 1.25rem;
+}
+
+:root {
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 20px 40px -30px rgba(0, 0, 0, 0.8);
+  --shadow-float: 0 18px 40px -24px rgba(0, 0, 0, 0.9);
+  --grain-opacity: 0.045;
+  --glow-a: rgba(245, 176, 110, 0.11);
+  --glow-b: rgba(127, 183, 245, 0.1);
+  --glow-c: rgba(139, 227, 166, 0.07);
+  --blob-strength: 100%;
+  color-scheme: dark;
+}
+
+/* Tema claro: mesma estrutura, superfícies brancas e acentos mais fechados para ler bem no claro. */
+:root[data-theme="light"] {
+  --color-bg: #f3f1ec;
+  --color-surface: #ffffff;
+  --color-surface-2: #f6f4ef;
+  --color-surface-3: #ffffff;
+  --color-card: #ffffff;
+  --color-card-hover: #faf8f4;
+  --color-list: #eae7e0;
+  --color-list-hover: #e3dfd6;
+  --color-line: rgba(28, 25, 18, 0.09);
+  --color-line-2: rgba(28, 25, 18, 0.15);
+  --color-line-3: rgba(28, 25, 18, 0.26);
+
+  --color-fill: rgba(28, 25, 18, 0.04);
+  --color-fill-2: rgba(28, 25, 18, 0.06);
+  --color-fill-3: rgba(28, 25, 18, 0.1);
+  --color-well: rgba(28, 25, 18, 0.035);
+
+  --color-grid: rgba(28, 25, 18, 0.08);
+  --color-grid-2: rgba(28, 25, 18, 0.22);
+  --color-grid-3: rgba(28, 25, 18, 0.4);
+
+  --color-ink: #17181c;
+  --color-ink-2: #595f6b;
+  --color-ink-3: #8a8f99;
+  --color-on-ink: #ffffff;
+
+  --color-orange: #c7761f;
+  --color-green: #2a9a5c;
+  --color-blue: #2f74c4;
+  --color-red: #d04f4f;
+
+  --color-orange-deep: #d9842a;
+  --color-green-deep: #35a96a;
+  --color-blue-deep: #3f86d8;
+
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 18px 36px -30px rgba(40, 32, 18, 0.35);
+  --shadow-float: 0 18px 40px -26px rgba(40, 32, 18, 0.45);
+  --grain-opacity: 0.07;
+  --glow-a: rgba(245, 176, 110, 0.28);
+  --glow-b: rgba(127, 183, 245, 0.22);
+  --glow-c: rgba(139, 227, 166, 0.18);
+  --blob-strength: 55%;
+  color-scheme: light;
 }
 
 /* Telas de notebook (13"–15"): base um pouco menor para caber mais sem parecer zoom. */
@@ -37,7 +120,6 @@
 }
 
 html {
-  color-scheme: dark;
   /* Fundo próprio no html: assim o gradiente do body não "propaga" para a tela
      (que usa a altura da janela como referência) e cobre toda a altura da página. */
   background-color: var(--color-bg);
@@ -50,9 +132,9 @@ body {
   background-color: var(--color-bg);
   background-repeat: no-repeat;
   background-image:
-    radial-gradient(1100px 560px at 8% -12%, rgba(245, 176, 110, 0.11), transparent 62%),
-    radial-gradient(900px 520px at 100% -4%, rgba(127, 183, 245, 0.1), transparent 60%),
-    radial-gradient(800px 520px at 52% 112%, rgba(139, 227, 166, 0.07), transparent 60%);
+    radial-gradient(1100px 560px at 8% -12%, var(--glow-a), transparent 62%),
+    radial-gradient(900px 520px at 100% -4%, var(--glow-b), transparent 60%),
+    radial-gradient(800px 520px at 52% 112%, var(--glow-c), transparent 60%);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -63,7 +145,7 @@ body::before {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.045;
+  opacity: var(--grain-opacity);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 220px 220px;
 }
@@ -87,7 +169,7 @@ body {
   background-color: var(--color-surface);
   border: 1px solid var(--color-line);
   border-radius: var(--radius-card);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 20px 40px -30px rgba(0, 0, 0, 0.8);
+  box-shadow: var(--shadow-card);
 }
 
 @utility pill {
@@ -100,7 +182,7 @@ body {
   font-weight: 500;
   line-height: 1.2;
   border: 1px solid var(--color-line-2);
-  background-color: rgba(255, 255, 255, 0.04);
+  background-color: var(--color-fill);
   color: var(--color-ink-2);
   white-space: nowrap;
 }
@@ -136,13 +218,13 @@ body {
   font-size: 0.82rem;
   font-weight: 500;
   border: 1px solid var(--color-line-2);
-  background-color: rgba(255, 255, 255, 0.04);
+  background-color: var(--color-fill);
   color: var(--color-ink);
   transition: background-color 120ms ease, border-color 120ms ease, transform 120ms ease;
   cursor: pointer;
 }
 .btn:hover {
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: var(--color-fill-3);
 }
 .btn:active {
   transform: translateY(1px);
@@ -154,11 +236,14 @@ body {
 
 @utility btn-primary {
   background-color: var(--color-ink);
-  color: #0b0c0f;
+  color: var(--color-on-ink);
   border-color: transparent;
 }
 .btn-primary:hover {
-  background-color: #ffffff;
+  filter: brightness(1.12);
+}
+:root[data-theme="light"] .btn-primary:hover {
+  filter: brightness(1.35);
 }
 
 @utility btn-ghost {
@@ -175,7 +260,7 @@ body {
   border-radius: 0.75rem;
   padding: 0.55rem 0.8rem;
   font-size: 0.875rem;
-  background-color: rgba(255, 255, 255, 0.04);
+  background-color: var(--color-fill);
   border: 1px solid var(--color-line-2);
   color: var(--color-ink);
   outline: none;
@@ -185,8 +270,8 @@ body {
   color: var(--color-ink-3);
 }
 .input:focus {
-  border-color: rgba(255, 255, 255, 0.28);
-  background-color: rgba(255, 255, 255, 0.06);
+  border-color: var(--color-line-3);
+  background-color: var(--color-fill-2);
 }
 
 /* Blobs de gradiente (estilo dos cards coloridos da referência).
@@ -198,8 +283,8 @@ body {
   overflow: clip;
   isolation: isolate;
   background-image:
-    radial-gradient(60% 90% at 12% 0%, var(--blob-a, rgba(245, 176, 110, 0.5)) 0%, transparent 70%),
-    radial-gradient(55% 90% at 100% 110%, var(--blob-b, rgba(127, 183, 245, 0.5)) 0%, transparent 70%);
+    radial-gradient(60% 90% at 12% 0%, color-mix(in srgb, var(--blob-a, rgba(245, 176, 110, 0.5)) var(--blob-strength), transparent) 0%, transparent 70%),
+    radial-gradient(55% 90% at 100% 110%, color-mix(in srgb, var(--blob-b, rgba(127, 183, 245, 0.5)) var(--blob-strength), transparent) 0%, transparent 70%);
 }
 
 /* No celular, campos com 16px: abaixo disso o Safari do iPhone dá zoom ao focar
@@ -216,14 +301,14 @@ body {
 /* Scrollbar discreta */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+  scrollbar-color: var(--color-line-2) transparent;
 }
 *::-webkit-scrollbar {
   height: 8px;
   width: 8px;
 }
 *::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--color-line-2);
   border-radius: 999px;
 }
 

@@ -144,7 +144,7 @@ export function WorkTimer({ work, onChange }: { work: WorkState; onChange: (w: W
             {formatDuration(totalMs)} / {formatDuration(plannedMs)}
           </span>
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
+        <div className="h-2 overflow-hidden rounded-full bg-fill-2">
           <div
             className={`h-full rounded-full ${TONE_BAR[work.verdict.tone]} transition-[width] duration-700`}
             style={{ width: `${Math.round(progress * 100)}%` }}
@@ -165,7 +165,7 @@ export function WorkTimer({ work, onChange }: { work: WorkState; onChange: (w: W
               return (
                 <li
                   key={s.id}
-                  className="group flex items-center justify-between rounded-lg border border-line bg-black/20 px-3 py-1.5 text-sm"
+                  className="group flex items-center justify-between rounded-lg border border-line bg-well px-3 py-1.5 text-sm"
                 >
                   <span className="text-ink-2 tabular-nums">
                     {timeLabel(s.startedAt)} – {s.endedAt ? timeLabel(s.endedAt) : "agora"}

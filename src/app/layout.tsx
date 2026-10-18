@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from "next";
+import { cookies } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Nav } from "@/components/Nav";
 import { ConfirmProvider } from "@/components/ui/ConfirmProvider";
+import { DEFAULT_THEME, isTheme, THEME_COLOR, THEME_COOKIE, type Theme } from "@/lib/theme";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,8 +24,17 @@ export const metadata: Metadata = {
   icons: { apple: "/icons/apple-touch-icon.png" },
 };
 
-export const viewport: Viewport = {
-  themeColor: "#0b0c0f",
+/** Tema salvo no cookie (o servidor já renderiza com ele, sem piscar). */
+async function themeFromCookie(): Promise<Theme> {
+  const t = (await cookies()).get(THEME_COOKIE)?.value;
+  return isTheme(t) ? t : DEFAULT_THEME;
+}
+
+export async function generateViewport(): Promise<Viewport> {
+  return { ...viewportBase, themeColor: THEME_COLOR[await themeFromCookie()] };
+}
+
+const viewportBase: Viewport = {
   width: "device-width",
   initialScale: 1,
   // Sem zoom por pinça/foco: comportamento de app. Os campos têm 16px no celular,
@@ -33,10 +44,13 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const theme = await themeFromCookie();
   return (
     <html
       lang="pt-BR"
+      data-theme={theme}
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full">

@@ -54,7 +54,7 @@ function SleepChart({ logs }: { logs: SleepLogDTO[] }) {
         <rect x={padL} y={y(8)} width={innerW} height={y(7) - y(8)} fill="rgba(139,227,166,0.08)" />
         {[0, 4, 8].map((g) => (
           <g key={g}>
-            <line x1={padL} x2={W - padR} y1={y(g)} y2={y(g)} stroke="rgba(255,255,255,0.07)" />
+            <line x1={padL} x2={W - padR} y1={y(g)} y2={y(g)} stroke="var(--color-grid)" />
             <text x={padL - 6} y={y(g) + 3.5} fontSize={10} textAnchor="end" fill="var(--color-ink-3)">
               {g}h
             </text>
@@ -80,7 +80,7 @@ function SleepChart({ logs }: { logs: SleepLogDTO[] }) {
                   opacity={hover === null || hover === key ? 1 : 0.55}
                 />
               ) : (
-                <line x1={x} x2={x + barW} y1={padT + innerH - 1} y2={padT + innerH - 1} stroke="rgba(255,255,255,0.18)" strokeWidth={2} strokeDasharray="3 3" />
+                <line x1={x} x2={x + barW} y1={padT + innerH - 1} y2={padT + innerH - 1} stroke="var(--color-grid-2)" strokeWidth={2} strokeDasharray="3 3" />
               )}
               <text x={cx} y={H - 8} fontSize={10} textAnchor="middle" fill={key === todayKey() ? "var(--color-ink)" : "var(--color-ink-3)"}>
                 {weekdayShort(key)} {keyToDate(key).getDate()}
@@ -104,7 +104,7 @@ function SleepChart({ logs }: { logs: SleepLogDTO[] }) {
         <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-green-deep" /> 7–9h</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-blue-deep" /> 6–7h ou mais de 9h</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-orange-deep" /> menos de 6h</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-3 border-t border-dashed border-white/30" /> sem registro</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-3 border-t border-dashed border-line-3" /> sem registro</span>
       </div>
     </div>
   );
@@ -246,7 +246,7 @@ export function SleepPage() {
         ) : (
           <ul className="space-y-1.5">
             {data.logs.map((l) => (
-              <li key={l.id} className="group flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-line bg-black/20 px-3 py-2 text-sm">
+              <li key={l.id} className="group flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-line bg-well px-3 py-2 text-sm">
                 <span className="w-32 font-medium">
                   {weekdayShort(l.dayKey)}, {keyToDate(l.dayKey).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
                 </span>

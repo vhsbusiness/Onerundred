@@ -139,7 +139,7 @@ function CardMenu({
     onChanged();
   }
 
-  const item = "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition hover:bg-white/[0.06]";
+  const item = "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition hover:bg-fill-2";
 
   return (
     <div className="relative" ref={ref}>
@@ -270,7 +270,7 @@ export function ProjectsPage() {
                       {p.doneCount} feitos · {p.missedCount} não
                     </span>
                   </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
+                  <div className="h-2 overflow-hidden rounded-full bg-fill-2">
                     <div className="h-full rounded-full bg-green-deep transition-[width]" style={{ width: `${progress}%` }} />
                   </div>
                 </div>
@@ -308,7 +308,7 @@ export function ProjectsPage() {
           <h2 className="mb-2 text-sm font-medium text-ink-2">Arquivados</h2>
           <ul className="space-y-1 text-sm">
             {archived.map((p) => (
-              <li key={p.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-black/20 px-3 py-2">
+              <li key={p.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-well px-3 py-2">
                 <Link href={`/metas/projetos/${p.id}`} className="hover:underline">
                   {p.name}
                 </Link>

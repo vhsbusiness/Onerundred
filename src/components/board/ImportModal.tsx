@@ -224,7 +224,7 @@ export function ImportModal({
                   </div>
                   <div className="max-h-72 space-y-3 overflow-y-auto pr-1">
                     {plan.lists.map((l, i) => (
-                      <div key={i} className="rounded-xl border border-line bg-black/20 p-3">
+                      <div key={i} className="rounded-xl border border-line bg-well p-3">
                         <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
                           <span className="font-semibold">{l.name}</span>
                           <span className={priorityUi(l.priority).pill}>{priorityUi(l.priority).label}</span>
