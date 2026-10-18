@@ -16,6 +16,8 @@ model User {
   /// user | admin
   role         String        @default("user")
   active       Boolean       @default(true)
+  /// Foto de perfil como data URL (JPEG pequeno), opcional
+  avatar       String?
   createdAt    DateTime      @default(now())
   lastLoginAt  DateTime?
   boards       Board[]

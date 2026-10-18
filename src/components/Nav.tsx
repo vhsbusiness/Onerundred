@@ -1,6 +1,7 @@
 "use client";
 
-import { Archive, Gamepad2, LayoutDashboard, LogOut, Menu, Moon, Settings, ShieldCheck, SquareKanban, Target, X } from "lucide-react";
+import { Archive, Gamepad2, LayoutDashboard, LogOut, Menu, Moon, Settings, ShieldCheck, SquareKanban, Target, UserRound, X } from "lucide-react";
+import { Avatar } from "@/components/profile/ProfilePage";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -31,6 +32,23 @@ export function Logo() {
       <span className="text-[1.05rem] font-semibold tracking-tight">Onerundred</span>
     </span>
   );
+}
+
+/** Data e hora atuais, atualizadas a cada 30 s (só após montar, para não divergir do servidor). */
+function Clock() {
+  const [text, setText] = useState<string>("");
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date();
+      const hhmm = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      setText(`${formatDayLong(todayKey())} · ${hhmm}`);
+    };
+    // Sincroniza o relógio com a hora do navegador ao montar e a cada 30 s.
+    tick();
+    const id = setInterval(tick, 30000);
+    return () => clearInterval(id);
+  }, []);
+  return <span className="hidden text-sm text-ink-2 tabular-nums lg:inline">{text || formatDayLong(todayKey())}</span>;
 }
 
 function WorkIndicator() {
@@ -96,9 +114,7 @@ function UserMenu({ me }: { me: MeDTO }) {
         className="flex items-center gap-2 rounded-full border border-line bg-white/[0.03] py-1 pl-1 pr-3 text-sm transition hover:bg-white/[0.06]"
         aria-label="Menu do usuário"
       >
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-orange to-blue text-[11px] font-semibold uppercase text-bg">
-          {me.name.slice(0, 2)}
-        </span>
+        <Avatar me={me} size={28} />
         <span className="hidden max-w-[140px] truncate sm:inline">{me.name}</span>
       </button>
       {open && (
@@ -108,6 +124,9 @@ function UserMenu({ me }: { me: MeDTO }) {
             <div className="truncate text-xs text-ink-3">@{me.username} · {me.email}</div>
           </div>
           <div className="my-1 border-t border-line" />
+          <Link href="/perfil" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/[0.06]">
+            <UserRound size={14} className="text-ink-3" /> Meu perfil
+          </Link>
           <Link href="/arquivadas" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/[0.06] md:hidden">
             <Archive size={14} className="text-ink-3" /> Arquivadas
           </Link>
@@ -217,6 +236,18 @@ function MobileMenu({
               })}
               {me && (
                 <li>
+                  <Link
+                    href="/perfil"
+                    className={`flex items-center gap-3 rounded-xl border px-3 py-3 text-sm transition ${
+                      isActive("/perfil") ? "border-line-2 bg-white/[0.08] text-ink" : "border-line bg-black/20 text-ink-2"
+                    }`}
+                  >
+                    <UserRound size={18} strokeWidth={1.8} /> Meu perfil
+                  </Link>
+                </li>
+              )}
+              {me && (
+                <li>
                   <button
                     type="button"
                     onClick={logout}
@@ -240,10 +271,14 @@ export function Nav() {
 
   useEffect(() => {
     if (pathname === "/login") return;
-    fetch("/api/auth/me", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setMe(d?.user ?? null))
-      .catch(() => {});
+    const load = () =>
+      fetch("/api/auth/me", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => setMe(d?.user ?? null))
+        .catch(() => {});
+    load();
+    window.addEventListener("me-changed", load);
+    return () => window.removeEventListener("me-changed", load);
   }, [pathname]);
 
   if (pathname === "/login") return null;
@@ -280,7 +315,7 @@ export function Nav() {
 
         <div className="ml-auto flex items-center gap-3">
           <WorkIndicator />
-          <span className="hidden text-sm text-ink-2 lg:inline">{formatDayLong(todayKey())}</span>
+          <Clock />
           {me && <UserMenu me={me} />}
         </div>
         </div>

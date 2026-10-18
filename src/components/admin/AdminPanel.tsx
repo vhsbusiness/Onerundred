@@ -1,6 +1,7 @@
 "use client";
 
 import { Eye, ShieldCheck, Trash2, UserCheck, UserX } from "lucide-react";
+import { Avatar } from "@/components/profile/ProfilePage";
 import { useCallback, useEffect, useState } from "react";
 import { http } from "@/lib/client";
 import { formatDuration } from "@/lib/time";
@@ -200,9 +201,7 @@ export function AdminPanel() {
                   <tr key={u.id} className={`border-b border-line ${u.active ? "" : "opacity-50"}`}>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/[0.08] text-xs font-semibold uppercase">
-                          {u.name.slice(0, 2)}
-                        </span>
+                        <Avatar me={u} size={32} />
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 font-medium">
                             {u.name}

@@ -81,6 +81,7 @@ export async function listUsers(): Promise<AdminUser[]> {
     const workedTotal = sumSessions(u.workSessions);
     return {
       id: u.id,
+      avatar: u.avatar,
       name: u.name,
       email: u.email,
       username: u.username,

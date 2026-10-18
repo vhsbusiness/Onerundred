@@ -113,6 +113,7 @@ export interface MeDTO {
   username: string;
   name: string;
   role: "user" | "admin";
+  avatar: string | null;
 }
 
 export interface AppSettingsDTO {
@@ -141,6 +142,7 @@ export interface AiObservation {
 
 export interface AdminUser {
   id: string;
+  avatar: string | null;
   name: string;
   email: string;
   username: string;
