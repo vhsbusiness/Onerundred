@@ -24,7 +24,7 @@ export function ArchiveList() {
     if (!cards) return [];
     const map = new Map<string, ArchivedCard[]>();
     for (const c of cards) {
-      const key = c.completedAt ? dayKey(new Date(c.completedAt)) : "sem-data";
+      const key = dayKey(new Date(c.completedAt ?? c.archivedAt ?? c.createdAt));
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(c);
     }
@@ -73,7 +73,10 @@ export function ArchiveList() {
                   >
                     <span className={`h-2 w-2 shrink-0 rounded-full ${p.dot}`} />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm">{c.title}</div>
+                      <div className="flex items-center gap-2 truncate text-sm">
+                        {c.title}
+                        {!c.completedAt && <span className="pill px-1.5 py-0 text-[10px]">não concluída</span>}
+                      </div>
                       <div className="text-[11px] text-ink-3">
                         <Link href={`/quadros/${c.boardId}`} className="hover:text-ink">
                           {c.boardName}

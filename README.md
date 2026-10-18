@@ -32,7 +32,8 @@ source ~/.nvm/nvm.sh
 - **Quadros** (`/quadros`): abre direto no último quadro visto (`?lista=1` mostra todos); vários quadros; cada quadro tem listas com prioridade
   (Alta / Média / Baixa) e tipo (Normal, Amanhã, Feitas). Tarefas têm prioridade,
   estimativa em minutos, descrição, dia agendado e cronômetro. Arrastar e soltar
-  entre listas.
+  entre listas. Menu de cada lista: adicionar tarefa, copiar lista, mover todas
+  as tarefas para outra lista, arquivar todas as tarefas, mover lista, tipo e excluir.
 - **Metas › Projetos** (`/metas`): projeto de N dias com nome, descrição e
   obrigações diárias. Cada dia é marcado como feito ou não feito; dias sem
   marcação viram "não feito" na virada do dia (pode corrigir, com aviso para
@@ -50,8 +51,8 @@ source ~/.nvm/nvm.sh
 
 ## Mobile
 
-Layout responsivo com barra de navegação inferior no celular (Início, Quadros,
-Metas, Sono, Lazer; o resto fica no menu do usuário), botões de ação sempre
+Layout responsivo: no celular, um botão flutuante no canto inferior direito abre
+o menu com todas as abas e o "Sair"; botões de ação sempre
 visíveis no toque, listas do quadro com rolagem lateral e encaixe, e arrasto de
 tarefas por toque longo. Há manifesto PWA: no celular, "Adicionar à tela
 inicial" abre o app em tela cheia com o ícone do Onerundred.

@@ -2,7 +2,7 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { ArrowLeft, ArrowRight, Check, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { Archive, ArrowLeft, ArrowRight, Check, Copy, FolderInput, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { http, priorityUi } from "@/lib/client";
 import type { CardDTO, ListDTO, ListKind } from "@/lib/types";
@@ -16,6 +16,7 @@ const KIND_LABEL: Record<ListKind, string> = {
 
 export function ListColumn({
   list,
+  lists,
   index,
   count,
   now,
@@ -25,6 +26,7 @@ export function ListColumn({
   onTimer,
 }: {
   list: ListDTO;
+  lists: ListDTO[];
   index: number;
   count: number;
   now: number;
@@ -35,6 +37,7 @@ export function ListColumn({
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: list.id, data: { type: "list" } });
   const [menu, setMenu] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(list.name);
   const [adding, setAdding] = useState(false);
@@ -47,7 +50,10 @@ export function ListColumn({
   useEffect(() => {
     if (!menu) return;
     const onDoc = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenu(false);
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenu(false);
+        setMoveOpen(false);
+      }
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
@@ -76,6 +82,20 @@ export function ListColumn({
 
   async function cyclePriority() {
     await patch({ priority: (list.priority % 3) + 1 });
+  }
+
+  async function action(body: Record<string, unknown>) {
+    setMenu(false);
+    setMoveOpen(false);
+    await http.post(`/api/lists/${list.id}/acoes`, body);
+    onChanged();
+  }
+
+  async function archiveAll() {
+    const n = list.cards.length;
+    if (n === 0) return;
+    if (!confirm(`Arquivar as ${n} tarefas de "${list.name}"? Elas ficam na aba Arquivadas.`)) return;
+    await action({ action: "archiveCards" });
   }
 
   async function remove() {
@@ -164,7 +184,45 @@ export function ListColumn({
             <MoreHorizontal size={16} />
           </button>
           {menu && (
-            <div className="absolute right-0 top-8 z-20 w-52 rounded-xl border border-line-2 bg-surface-3 p-1 text-sm shadow-2xl">
+            <div className="absolute right-0 top-8 z-20 w-60 rounded-xl border border-line-2 bg-surface-3 p-1 text-sm shadow-2xl">
+              <MenuItem
+                icon={<Plus size={14} />}
+                label="Adicionar tarefa"
+                onClick={() => {
+                  setMenu(false);
+                  setAdding(true);
+                }}
+              />
+              <MenuItem icon={<Copy size={14} />} label="Copiar lista" onClick={() => action({ action: "copy" })} />
+              <MenuItem
+                icon={<FolderInput size={14} />}
+                label={moveOpen ? "Mover todas as tarefas para…" : "Mover todas as tarefas desta lista"}
+                disabled={list.cards.length === 0 || lists.length < 2}
+                onClick={() => setMoveOpen((o) => !o)}
+              />
+              {moveOpen && (
+                <div className="mb-1 ml-6 space-y-0.5 border-l border-line pl-2">
+                  {lists
+                    .filter((l) => l.id !== list.id)
+                    .map((l) => (
+                      <button
+                        key={l.id}
+                        type="button"
+                        onClick={() => action({ action: "moveCards", toListId: l.id })}
+                        className="block w-full truncate rounded-md px-2 py-1 text-left text-xs text-ink-2 hover:bg-white/[0.06] hover:text-ink"
+                      >
+                        {l.name}
+                      </button>
+                    ))}
+                </div>
+              )}
+              <MenuItem
+                icon={<Archive size={14} />}
+                label="Arquivar todas as tarefas desta lista"
+                disabled={list.cards.length === 0}
+                onClick={archiveAll}
+              />
+              <div className="my-1 border-t border-line" />
               <MenuItem
                 icon={<ArrowLeft size={14} />}
                 label="Mover para a esquerda"

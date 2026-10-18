@@ -376,6 +376,84 @@ export async function updateList(
   }
 }
 
+/** Duplica a lista (nome, prioridade, tipo) com as tarefas abertas, logo à direita da original. */
+export async function copyList(id: string, userId: string) {
+  const list = await ownedList(id, userId);
+  const cards = await prisma.card.findMany({
+    where: { listId: id, archivedAt: null },
+    orderBy: { position: "asc" },
+  });
+  const siblings = await prisma.list.findMany({
+    where: { boardId: list.boardId },
+    orderBy: { position: "asc" },
+  });
+  const created = await prisma.list.create({
+    data: {
+      boardId: list.boardId,
+      name: `${list.name} (cópia)`,
+      priority: list.priority,
+      kind: list.kind,
+      position: list.position + 1,
+      cards: {
+        create: cards.map((c, i) => ({
+          title: c.title,
+          description: c.description,
+          priority: c.priority,
+          position: i,
+          estimatedMinutes: c.estimatedMinutes,
+          scheduledFor: c.scheduledFor,
+          completedAt: c.completedAt,
+        })),
+      },
+    },
+  });
+  // Reposiciona as listas para abrir espaço logo após a original.
+  const idx = siblings.findIndex((l) => l.id === id);
+  const ordered = [...siblings.slice(0, idx + 1), created, ...siblings.slice(idx + 1)];
+  await prisma.$transaction(
+    ordered.map((l, i) => prisma.list.update({ where: { id: l.id }, data: { position: i } })),
+  );
+  return created;
+}
+
+/** Move todas as tarefas abertas de uma lista para o fim de outra lista do mesmo quadro. */
+export async function moveAllCards(fromListId: string, toListId: string, userId: string) {
+  const from = await ownedList(fromListId, userId);
+  const to = await ownedList(toListId, userId);
+  if (from.boardId !== to.boardId) throw new ApiError(400, "As listas precisam ser do mesmo quadro");
+  if (from.id === to.id) return 0;
+  const cards = await prisma.card.findMany({
+    where: { listId: fromListId, archivedAt: null },
+    orderBy: { position: "asc" },
+  });
+  const max = await prisma.card.aggregate({ where: { listId: toListId }, _max: { position: true } });
+  let pos = (max._max.position ?? -1) + 1;
+  await prisma.$transaction(
+    cards.map((c) =>
+      prisma.card.update({
+        where: { id: c.id },
+        data: { listId: toListId, position: pos++, ...kindEffects(to.kind, c) },
+      }),
+    ),
+  );
+  return cards.length;
+}
+
+/** Arquiva todas as tarefas da lista (concluídas ou não). Elas continuam na aba Arquivadas. */
+export async function archiveAllCards(listId: string, userId: string) {
+  await ownedList(listId, userId);
+  const now = new Date();
+  await prisma.taskSession.updateMany({
+    where: { endedAt: null, card: { listId } },
+    data: { endedAt: now },
+  });
+  const result = await prisma.card.updateMany({
+    where: { listId, archivedAt: null },
+    data: { archivedAt: now },
+  });
+  return result.count;
+}
+
 export async function deleteList(id: string, userId: string) {
   await ownedList(id, userId);
   await prisma.list.delete({ where: { id } });
@@ -768,7 +846,7 @@ export async function listArchived(userId: string): Promise<ArchivedCard[]> {
   await runMaintenance();
   const cards = await prisma.card.findMany({
     where: { archivedAt: { not: null }, list: { board: { userId } } },
-    orderBy: { completedAt: "desc" },
+    orderBy: { archivedAt: "desc" },
     include: { list: { include: { board: true } }, sessions: true },
     take: 500,
   });

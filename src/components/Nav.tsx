@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, Gamepad2, LayoutDashboard, LogOut, Moon, Settings, ShieldCheck, SquareKanban, Target } from "lucide-react";
+import { Archive, Gamepad2, LayoutDashboard, LogOut, Menu, Moon, Settings, ShieldCheck, SquareKanban, Target, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -17,8 +17,6 @@ const tabs = [
   { href: "/configuracoes", label: "Configurações", short: "Config.", icon: Settings },
 ];
 
-/** No mobile, a barra inferior mostra só as principais; o resto fica no menu do usuário. */
-const MOBILE_TABS = ["/", "/quadros", "/metas", "/sono", "/lazer"];
 
 export function Logo() {
   return (
@@ -138,6 +136,104 @@ function UserMenu({ me }: { me: MeDTO }) {
   );
 }
 
+function MobileMenu({
+  tabs: items,
+  isActive,
+  me,
+}: {
+  tabs: { href: string; label: string; short: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }> }[];
+  isActive: (href: string) => boolean;
+  me: MeDTO | null;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+
+  // Fecha ao navegar.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!open) return;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.replace("/login");
+    router.refresh();
+  }
+
+  return (
+    <div className="md:hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="btn btn-primary fixed right-4 z-40 h-14 w-14 rounded-full p-0 shadow-[0_18px_40px_-12px_rgba(0,0,0,0.9)]"
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 20px)" }}
+        aria-label="Abrir menu"
+      >
+        <Menu size={22} />
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-50" onClick={() => setOpen(false)}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div
+            className="card absolute inset-x-3 bg-surface-2 p-3"
+            style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-label="Menu"
+          >
+            <div className="mb-2 flex items-center justify-between px-1">
+              <Logo />
+              <button type="button" onClick={() => setOpen(false)} className="btn btn-ghost h-9 w-9 p-0" aria-label="Fechar menu">
+                <X size={18} />
+              </button>
+            </div>
+            <ul className="grid grid-cols-2 gap-2">
+              {items.map((t) => {
+                const Icon = t.icon;
+                const active = isActive(t.href);
+                return (
+                  <li key={t.href}>
+                    <Link
+                      href={t.href}
+                      className={`flex items-center gap-3 rounded-xl border px-3 py-3 text-sm transition ${
+                        active ? "border-line-2 bg-white/[0.08] text-ink" : "border-line bg-black/20 text-ink-2"
+                      }`}
+                    >
+                      <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
+                      {t.label}
+                    </Link>
+                  </li>
+                );
+              })}
+              {me && (
+                <li>
+                  <button
+                    type="button"
+                    onClick={logout}
+                    className="flex w-full items-center gap-3 rounded-xl border border-line bg-black/20 px-3 py-3 text-left text-sm text-ink-2"
+                  >
+                    <LogOut size={18} strokeWidth={1.8} /> Sair
+                  </button>
+                </li>
+              )}
+            </ul>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Nav() {
   const pathname = usePathname();
   const [me, setMe] = useState<MeDTO | null>(null);
@@ -153,38 +249,11 @@ export function Nav() {
   if (pathname === "/login") return null;
 
   const allTabs = me?.role === "admin" ? [...tabs, { href: "/admin", label: "Admin", short: "Admin", icon: ShieldCheck }] : tabs;
-  const mobileTabs = allTabs.filter((t) => MOBILE_TABS.includes(t.href));
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
   return (
     <>
-    <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-bg/85 px-2 pt-1.5 backdrop-blur-xl md:hidden"
-      style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6px)" }}
-      aria-label="Navegação principal"
-    >
-      <ul className="mx-auto flex max-w-md items-stretch justify-between">
-        {mobileTabs.map((t) => {
-          const Icon = t.icon;
-          const active = isActive(t.href);
-          return (
-            <li key={t.href} className="flex-1">
-              <Link
-                href={t.href}
-                className={`flex flex-col items-center gap-0.5 rounded-xl px-1 py-1.5 text-[11px] transition ${
-                  active ? "text-ink" : "text-ink-3"
-                }`}
-              >
-                <span className={`flex h-8 w-12 items-center justify-center rounded-full ${active ? "bg-white/[0.1]" : ""}`}>
-                  <Icon size={19} strokeWidth={active ? 2.2 : 1.8} />
-                </span>
-                {t.short}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
+    <MobileMenu tabs={allTabs} isActive={isActive} me={me} />
     <header className="sticky top-0 z-30 mb-6 pt-3">
       <div className="card w-full bg-surface/80 px-4 py-2.5 shadow-[0_18px_40px_-24px_rgba(0,0,0,0.9)] backdrop-blur-xl sm:px-5">
         <div className="flex min-h-11 items-center gap-4 sm:gap-6">

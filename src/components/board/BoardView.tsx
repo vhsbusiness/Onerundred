@@ -322,6 +322,7 @@ export function BoardView({ boardId }: { boardId: string }) {
             <ListColumn
               key={list.id}
               list={list}
+              lists={board.lists}
               index={i}
               count={board.lists.length}
               now={now}
