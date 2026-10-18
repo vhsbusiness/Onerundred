@@ -18,10 +18,10 @@ export function Logo() {
   return (
     <span className="flex items-center gap-2.5">
       <span className="relative flex h-7 w-7 items-center justify-center" aria-hidden>
-        <svg viewBox="0 0 28 28" className="h-7 w-7">
-          <rect x="3" y="15" width="6" height="10" rx="2" fill="#f5b06e" transform="skewX(-12)" />
-          <rect x="11" y="9" width="6" height="16" rx="2" fill="#8be3a6" transform="skewX(-12)" />
-          <rect x="19" y="3" width="6" height="22" rx="2" fill="#7fb7f5" transform="skewX(-12)" />
+        <svg viewBox="0 0 28 28" className="h-7 w-7" fill="currentColor">
+          <rect x="3" y="15" width="6" height="10" rx="1.5" />
+          <rect x="11" y="9" width="6" height="16" rx="1.5" />
+          <rect x="19" y="3" width="6" height="22" rx="1.5" />
         </svg>
       </span>
       <span className="text-[1.05rem] font-semibold tracking-tight">Onerundred</span>
