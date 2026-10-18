@@ -3,7 +3,7 @@ import { ApiError } from "./errors";
 import { sumSessions, dayRange, todayKey } from "./time";
 import type { AdminOverview, AdminUser, AppSettingsDTO } from "./types";
 
-const AI_DEFAULTS = { aiMinDaysTasks: 5, aiMinDaysWork: 5, aiMinNightsSleep: 7, aiMinDaysLeisure: 7 } as const;
+const AI_DEFAULTS = { aiMinDaysTasks: 3, aiMinDaysWork: 3, aiMinNightsSleep: 7, aiMinDaysLeisure: 7 } as const;
 type AiMinKey = keyof typeof AI_DEFAULTS;
 
 function readInt(v: string | undefined, fallback: number): number {

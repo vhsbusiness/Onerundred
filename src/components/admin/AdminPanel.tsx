@@ -149,7 +149,7 @@ export function AdminPanel() {
           <Eye size={15} className="text-blue" /> Período de observação da IA
         </h2>
         <p className="mt-1 text-xs text-ink-3">
-          Mínimo de dias com dados antes de a IA opinar em cada dimensão. Tarefas e tempo de trabalho liberam a análise completa; sono e lazer, enquanto não atingem o mínimo, ficam fora das conclusões. Zero desliga a observação daquela dimensão.
+          Mínimo de dias com dados antes de a IA opinar em cada dimensão (padrão: tarefas 3, trabalho 3, sono 7, lazer 7). Depois disso a IA continua aprendendo a cada análise. Tarefas e tempo de trabalho liberam a análise completa; sono e lazer, enquanto não atingem o mínimo, ficam fora das conclusões. Zero desliga a observação daquela dimensão.
         </p>
         <form onSubmit={saveObservation} className="mt-4 flex flex-wrap items-end gap-3">
           {OBS_FIELDS.map((f) => (

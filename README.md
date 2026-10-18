@@ -149,8 +149,9 @@ dia é gerada sozinha ao abrir o dashboard; "Atualizar" gera outra (limite de 12
 dia por usuário).
 
 **Período de observação.** Antes de opinar, a IA observa cada dimensão por um
-mínimo de dias com dados (padrão: tarefas 5 dias, tempo de trabalho 5 dias, sono
-7 noites, lazer 7 dias; ajustável no painel Admin). Tarefas e trabalho liberam a
+mínimo de dias com dados (padrão: tarefas 3 dias, tempo de trabalho 3 dias, sono
+7 noites, lazer 7 dias; ajustável no painel Admin). Depois disso a IA segue
+aprendendo: a memória de hábitos é reescrita a cada análise. Tarefas e trabalho liberam a
 análise completa; sono e lazer, enquanto não atingem o mínimo, ficam fora das
 conclusões. O card mostra o progresso de cada dimensão.
 
