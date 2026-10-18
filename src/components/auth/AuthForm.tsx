@@ -44,7 +44,7 @@ export function AuthForm() {
     }
     if (name.trim().length < 2) return "Informe seu nome";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return "Informe um e-mail válido";
-    if (!/^[a-z0-9_.]{3,24}$/.test(username)) return "Usuário deve ter de 3 a 24 caracteres (letras, números, ponto ou _)";
+    if (!/^[a-z0-9_.]{3,24}$/i.test(username)) return "Usuário deve ter de 3 a 24 caracteres (letras, números, ponto ou _)";
     if (password.length < 8) return `A senha precisa ter pelo menos 8 caracteres (tem ${password.length})`;
     return null;
   }
@@ -161,11 +161,16 @@ export function AuthForm() {
             />
             <input
               value={username}
-              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g, ""))}
+              onChange={(e) => setUsername(e.target.value.replace(/\s/g, ""))}
               placeholder="Nome de usuário (ex.: vitor.hugo)"
               className="input"
               autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
             />
+            <p className="-mt-3 text-xs text-ink-3">
+              Letras, números, ponto ou _ (sem espaços). Maiúsculas e minúsculas contam como iguais.
+            </p>
             <input
               type="password"
               value={password}
