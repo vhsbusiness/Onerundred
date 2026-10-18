@@ -36,8 +36,26 @@ export function AuthForm() {
     router.refresh();
   }
 
+  function validate(): string | null {
+    if (mode === "login") {
+      if (!identifier.trim()) return "Informe seu e-mail ou nome de usuário";
+      if (!password) return "Informe sua senha";
+      return null;
+    }
+    if (name.trim().length < 2) return "Informe seu nome";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return "Informe um e-mail válido";
+    if (!/^[a-z0-9_.]{3,24}$/.test(username)) return "Usuário deve ter de 3 a 24 caracteres (letras, números, ponto ou _)";
+    if (password.length < 8) return `A senha precisa ter pelo menos 8 caracteres (tem ${password.length})`;
+    return null;
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    const problem = validate();
+    if (problem) {
+      setError(problem);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -63,11 +81,6 @@ export function AuthForm() {
       setBusy(false);
     }
   }
-
-  const canSubmit =
-    mode === "login"
-      ? identifier.trim() && password
-      : name.trim() && email.trim() && username.trim() && password.length >= 8;
 
   return (
     <div className="flex min-h-[70dvh] items-center justify-center">
@@ -161,12 +174,15 @@ export function AuthForm() {
               className="input"
               autoComplete="new-password"
             />
+            {password.length > 0 && password.length < 8 && (
+              <p className="-mt-3 text-xs text-ink-3">{8 - password.length} caracteres faltando</p>
+            )}
           </>
         )}
 
         {error && <p className="text-sm text-red">{error}</p>}
 
-        <button type="submit" disabled={busy || !canSubmit} className="btn btn-primary w-full">
+        <button type="submit" disabled={busy} className="btn btn-primary w-full">
           {busy ? "Aguarde…" : mode === "login" ? "Entrar" : "Criar conta"}
         </button>
       </form>
