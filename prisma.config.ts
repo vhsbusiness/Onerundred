@@ -11,7 +11,23 @@ import { isPostgresUrl, isSqliteUrl, resolveDatabaseUrl } from "./src/lib/databa
 const POSTGRES_SCHEMA = "prisma/schema.prisma";
 const SQLITE_SCHEMA = "prisma/schema.sqlite.prisma";
 
-const url = resolveDatabaseUrl();
+/**
+ * Sem DATABASE_URL em produção (ex.: `npm install` rodando `prisma generate` num
+ * build antes de as variáveis existirem), usamos um placeholder Postgres: gerar o
+ * client não conecta em nada. O runtime (src/lib/db.ts) continua exigindo a variável.
+ */
+const BUILD_PLACEHOLDER_URL = "postgresql://placeholder:placeholder@localhost:5432/placeholder";
+
+function resolveUrlForCli(): string {
+  try {
+    return resolveDatabaseUrl();
+  } catch {
+    console.warn("[prisma.config] DATABASE_URL ausente; usando placeholder Postgres só para gerar o client.");
+    return BUILD_PLACEHOLDER_URL;
+  }
+}
+
+const url = resolveUrlForCli();
 
 if (!isSqliteUrl(url) && !isPostgresUrl(url)) {
   throw new Error(
