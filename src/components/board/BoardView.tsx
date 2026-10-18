@@ -15,7 +15,7 @@ import {
   type UniqueIdentifier,
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { ArrowLeft, Plus, Sparkles, Trash2 } from "lucide-react";
+import { ArrowLeft, MoreHorizontal, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -38,6 +38,17 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
   );
   const [addingList, setAddingList] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [boardMenu, setBoardMenu] = useState(false);
+  const boardMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!boardMenu) return;
+    const onDoc = (e: MouseEvent) => {
+      if (boardMenuRef.current && !boardMenuRef.current.contains(e.target as Node)) setBoardMenu(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [boardMenu]);
   const [listName, setListName] = useState("");
   const [editingName, setEditingName] = useState(false);
   const [boardName, setBoardName] = useState(initialBoard?.name ?? "");
@@ -290,15 +301,55 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
         <span className="pill pill-green">{doneCount} feitas</span>
 
         <div className="ml-auto flex items-center gap-2">
-          <button type="button" onClick={() => setImporting(true)} className="btn" title="Trazer dados do Trello por print">
-            <Sparkles size={14} className="text-blue" /> <span className="hidden sm:inline">Trazer dados</span>
-          </button>
           <button type="button" onClick={() => setAddingList(true)} className="btn">
             <Plus size={14} /> <span className="hidden sm:inline">Nova lista</span>
           </button>
-          <button type="button" onClick={removeBoard} className="btn btn-ghost text-ink-3 hover:text-red" title="Excluir quadro">
-            <Trash2 size={14} />
-          </button>
+          <div className="relative" ref={boardMenuRef}>
+            <button
+              type="button"
+              onClick={() => setBoardMenu((m) => !m)}
+              className="btn btn-ghost h-9 w-9 p-0"
+              aria-label="Opções do quadro"
+              title="Opções do quadro"
+            >
+              <MoreHorizontal size={16} />
+            </button>
+            {boardMenu && (
+              <div className="absolute right-0 top-10 z-30 w-60 rounded-xl border border-line-2 bg-surface-3 p-1 text-sm shadow-2xl">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBoardMenu(false);
+                    setImporting(true);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-white/[0.06]"
+                >
+                  <Sparkles size={14} className="text-blue" /> Trazer dados do Trello
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBoardMenu(false);
+                    setEditingName(true);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-white/[0.06]"
+                >
+                  <Pencil size={14} className="text-ink-3" /> Renomear quadro
+                </button>
+                <div className="my-1 border-t border-line" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBoardMenu(false);
+                    removeBoard();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-red hover:bg-white/[0.06]"
+                >
+                  <Trash2 size={14} /> Excluir quadro
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

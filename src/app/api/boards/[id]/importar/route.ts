@@ -8,8 +8,13 @@ type Ctx = { params: Promise<{ id: string }> };
 export const POST = withUser(async (user, req: Request, ctx: Ctx) => {
   const { id } = await ctx.params;
   const body = await readBody(req);
-  if (typeof body.image !== "string") throw new ApiError(400, "Envie a imagem (data URL)");
-  return json(await planImport(user.id, id, body.image));
+  const images = Array.isArray(body.images)
+    ? body.images.filter((i): i is string => typeof i === "string")
+    : typeof body.image === "string"
+      ? [body.image]
+      : [];
+  if (images.length === 0) throw new ApiError(400, "Envie pelo menos um print (data URL)");
+  return json(await planImport(user.id, id, images));
 });
 
 /** Aplica o plano: cria listas e tarefas que não existem. */

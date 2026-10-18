@@ -1,7 +1,7 @@
 "use client";
 
-import { Check, ImagePlus, Sparkles } from "lucide-react";
-import { useRef, useState } from "react";
+import { Check, ClipboardPaste, ImagePlus, Sparkles, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { http, priorityUi } from "@/lib/client";
 import { Modal } from "@/components/ui/Modal";
 import type { ImportPlan } from "@/lib/types";
@@ -32,7 +32,8 @@ export function ImportModal({
   onImported: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [image, setImage] = useState<string | null>(null);
+  const [images, setImages] = useState<string[]>([]);
+  const MAX_IMAGES = 8;
   const [plan, setPlan] = useState<ImportPlan | null>(null);
   const [includeDone, setIncludeDone] = useState(false);
   const [busy, setBusy] = useState<"read" | "apply" | null>(null);
@@ -40,37 +41,68 @@ export function ImportModal({
   const [result, setResult] = useState<{ lists: number; cards: number } | null>(null);
 
   function reset() {
-    setImage(null);
+    setImages([]);
     setPlan(null);
     setError(null);
     setResult(null);
     setBusy(null);
   }
 
-  async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setError("Escolha uma imagem (print do Trello)");
+  const addFiles = useCallback(async (files: File[]) => {
+    const valid = files.filter((f) => f.type.startsWith("image/"));
+    if (valid.length === 0) {
+      setError("Escolha ou cole uma imagem (print do Trello)");
       return;
     }
     setError(null);
     setPlan(null);
     setResult(null);
     try {
-      setImage(await toUploadDataUrl(file));
+      const urls = await Promise.all(valid.map(toUploadDataUrl));
+      setImages((prev) => {
+        const next = [...prev, ...urls];
+        if (next.length > MAX_IMAGES) setError(`No máximo ${MAX_IMAGES} prints por vez`);
+        return next.slice(0, MAX_IMAGES);
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível ler a imagem");
     }
+  }, []);
+
+  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (files.length) addFiles(files);
+  }
+
+  // Colar (Ctrl+V / Cmd+V) enquanto a janela está aberta: aceita quantos prints quiser.
+  useEffect(() => {
+    if (!open) return;
+    const onPaste = (e: ClipboardEvent) => {
+      const files = Array.from(e.clipboardData?.items ?? [])
+        .filter((it) => it.kind === "file" && it.type.startsWith("image/"))
+        .map((it) => it.getAsFile())
+        .filter((f): f is File => Boolean(f));
+      if (files.length) {
+        e.preventDefault();
+        addFiles(files);
+      }
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [open, addFiles]);
+
+  function removeImage(i: number) {
+    setImages((prev) => prev.filter((_, idx) => idx !== i));
+    setPlan(null);
   }
 
   async function analyze() {
-    if (!image) return;
+    if (images.length === 0) return;
     setBusy("read");
     setError(null);
     try {
-      setPlan(await http.post<ImportPlan>(`/api/boards/${boardId}/importar`, { image }));
+      setPlan(await http.post<ImportPlan>(`/api/boards/${boardId}/importar`, { images }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "A IA não conseguiu ler o print");
     } finally {
@@ -133,24 +165,43 @@ export function ImportModal({
       ) : (
         <div className="space-y-4">
           <p className="text-sm text-ink-2">
-            Tire um print do seu quadro no Trello (ou de qualquer lista de tarefas) e envie aqui. A IA lê a imagem, mostra o que encontrou e cria as listas e tarefas que ainda não existem neste quadro.
+            Tire prints do seu quadro no Trello (ou de qualquer lista de tarefas) e envie aqui: pode <span className="text-ink">colar com Ctrl+V</span> quantas vezes quiser ou escolher vários arquivos. A IA lê todos, junta as listas, mostra o que encontrou e cria só o que ainda não existe neste quadro.
           </p>
 
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" onClick={() => fileRef.current?.click()} disabled={busy !== null} className="btn">
-              <ImagePlus size={14} /> {image ? "Trocar print" : "Escolher print"}
+            <button type="button" onClick={() => fileRef.current?.click()} disabled={busy !== null || images.length >= MAX_IMAGES} className="btn">
+              <ImagePlus size={14} /> {images.length ? "Adicionar print" : "Escolher print"}
             </button>
-            <input ref={fileRef} type="file" accept="image/*" onChange={onPick} className="hidden" />
-            {image && !plan && (
+            <span className="pill">
+              <ClipboardPaste size={12} /> ou cole com Ctrl+V
+            </span>
+            <input ref={fileRef} type="file" accept="image/*" multiple onChange={onPick} className="hidden" />
+            {images.length > 0 && !plan && (
               <button type="button" onClick={analyze} disabled={busy !== null} className="btn btn-primary">
-                <Sparkles size={14} /> {busy === "read" ? "Lendo o print…" : "Ler com a IA"}
+                <Sparkles size={14} /> {busy === "read" ? `Lendo ${images.length} print(s)…` : `Ler ${images.length} print(s) com a IA`}
               </button>
             )}
           </div>
 
-          {image && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={image} alt="Print enviado" className="max-h-56 w-auto rounded-xl border border-line" />
+          {images.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {images.map((img, i) => (
+                <div key={i} className="group relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={img} alt={`Print ${i + 1}`} className="h-28 w-auto rounded-xl border border-line object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(i)}
+                    disabled={busy !== null}
+                    className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-line-2 bg-surface-3 text-ink-2 shadow hover:text-red"
+                    aria-label={`Remover print ${i + 1}`}
+                  >
+                    <X size={12} />
+                  </button>
+                  <span className="absolute bottom-1 left-1 rounded-md bg-black/60 px-1.5 text-[10px]">{i + 1}</span>
+                </div>
+              ))}
+            </div>
           )}
 
           {error && <p className="text-sm text-red">{error}</p>}

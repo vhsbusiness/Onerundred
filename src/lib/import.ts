@@ -111,15 +111,42 @@ function norm(s: string): string {
     .trim();
 }
 
+export const MAX_IMPORT_IMAGES = 8;
+
+/** Lê várias imagens e junta: listas com o mesmo nome viram uma só, tarefas repetidas são descartadas. */
+export async function extractFromImages(images: string[]): Promise<Extracted> {
+  if (images.length === 0) throw new ApiError(400, "Envie pelo menos um print");
+  if (images.length > MAX_IMPORT_IMAGES) throw new ApiError(400, `No máximo ${MAX_IMPORT_IMAGES} prints por vez`);
+  const results = await Promise.all(images.map((img) => extractFromImage(img)));
+  const merged: Extracted = { lists: [] };
+  const seenCards = new Set<string>();
+  for (const r of results) {
+    for (const l of r.lists) {
+      let target = merged.lists.find((m) => norm(m.name) === norm(l.name));
+      if (!target) {
+        target = { ...l, cards: [] };
+        merged.lists.push(target);
+      }
+      for (const c of l.cards) {
+        const key = norm(c.title);
+        if (seenCards.has(key)) continue;
+        seenCards.add(key);
+        target.cards.push(c);
+      }
+    }
+  }
+  return merged;
+}
+
 /** Compara o que a IA leu com o quadro atual e monta o plano: o que já existe e o que será criado. */
-export async function planImport(userId: string, boardId: string, image: string): Promise<ImportPlan> {
+export async function planImport(userId: string, boardId: string, images: string[]): Promise<ImportPlan> {
   const board = await prisma.board.findFirst({
     where: { id: boardId, userId },
     include: { lists: { include: { cards: { where: { archivedAt: null }, select: { title: true } } } } },
   });
   if (!board) throw new ApiError(404, "Quadro não encontrado");
 
-  const extracted = await extractFromImage(image);
+  const extracted = await extractFromImages(images);
   const existingTitles = new Set(board.lists.flatMap((l) => l.cards.map((c) => norm(c.title))));
   const seen = new Set<string>();
 
