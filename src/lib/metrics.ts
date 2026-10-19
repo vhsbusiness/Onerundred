@@ -41,6 +41,17 @@ export function asPriority(n: number): Priority {
   return n === 1 || n === 3 ? n : 2;
 }
 
+/**
+ * Atrasada: só tarefa aberta de uma lista normal de prioridade Alta cujo dia já
+ * passou. Tarefas em "Amanhã" e em listas de prioridade Média/Baixa nunca atrasam.
+ */
+export function isOverdue(
+  c: { completedAt: Date | string | null; scheduledFor: string; listPriority: number; listKind: string },
+  today: string,
+): boolean {
+  return !c.completedAt && c.listKind === "normal" && asPriority(c.listPriority) === 1 && c.scheduledFor < today;
+}
+
 export function cardWeight(c: Pick<MetricCard, "priority" | "listPriority">): number {
   return CARD_WEIGHT[asPriority(c.priority)] * LIST_MULTIPLIER[asPriority(c.listPriority)];
 }

@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { subDays } from "date-fns";
 import { prisma } from "./db";
 import { ApiError } from "./errors";
-import { PRIORITY_LABEL, asPriority } from "./metrics";
+import { PRIORITY_LABEL, asPriority, isOverdue } from "./metrics";
 import { boardAccess, getDashboard } from "./repo";
 import { computeStats, listSleep } from "./sleep";
 import { listProjects } from "./projects";
@@ -145,7 +145,7 @@ async function buildContext(userId: string, observation: AiObservation) {
     estimativaMin: c.estimatedMinutes,
     gastoMin: Math.round(c.spentMs / 60000),
     feita: Boolean(c.completedAt),
-    atrasada: !c.completedAt && c.scheduledFor < today,
+    atrasada: isOverdue(c, today),
     emAndamento: Boolean(c.runningSince),
   }));
 

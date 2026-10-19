@@ -335,6 +335,8 @@ export function ListColumn({
               key={card.id}
               card={card}
               listId={list.id}
+              listPriority={list.priority}
+              listKind={list.kind}
               now={now}
               todayKey={todayKey}
               onOpen={() => onOpenCard(card)}

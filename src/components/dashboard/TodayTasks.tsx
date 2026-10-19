@@ -2,6 +2,7 @@
 
 import { Check, Pause, Play, RotateCcw } from "lucide-react";
 import Link from "next/link";
+import { isOverdue } from "@/lib/metrics";
 import { elapsedSince, http, priorityUi, useNow } from "@/lib/client";
 import { formatDuration, minutesToLabel } from "@/lib/time";
 import type { CardDTO, TodayCard } from "@/lib/types";
@@ -47,7 +48,7 @@ export function TodayTasks({
         const done = Boolean(c.completedAt);
         const running = Boolean(c.runningSince);
         const spent = c.spentMs + (running ? elapsedSince(c.runningSince, now) : 0);
-        const overdue = !done && c.scheduledFor < todayKey;
+        const overdue = isOverdue(c, todayKey);
         return (
           <li
             key={c.id}

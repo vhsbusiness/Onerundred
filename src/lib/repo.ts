@@ -2,7 +2,7 @@ import { subDays } from "date-fns";
 import { prisma } from "./db";
 import { DEFAULT_THEME, isTheme } from "./theme";
 import { ApiError } from "./errors";
-import { periodScore, workVerdict, type MetricCard } from "./metrics";
+import { isOverdue, periodScore, type MetricCard, workVerdict } from "./metrics";
 import { autoMarkMissedDays } from "./projects";
 import { autoStopForgottenLeisure } from "./leisure";
 import {
@@ -1064,7 +1064,7 @@ export async function getDashboard(userId: string): Promise<DashboardDTO> {
     if (c.completedAt) counts.done += 1;
     else if (c.runningSince || c.spentMs > 0) counts.inProgress += 1;
     else counts.pending += 1;
-    if (!c.completedAt && c.scheduledFor < today) counts.overdue += 1;
+    if (isOverdue(c, today)) counts.overdue += 1;
   }
 
   const runningSession = await prisma.taskSession.findFirst({

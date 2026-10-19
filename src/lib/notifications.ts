@@ -307,7 +307,8 @@ export async function evaluateUser(userId: string, now = new Date()): Promise<st
   // 5. Tarefas atrasadas: 09:00
   if (pref.overdue && inWindow(now, 9 * 60, 60) && !(await alreadySent(userId, "overdue", today))) {
     const n = await prisma.card.count({
-      where: { list: { board: boardAccess(userId) }, archivedAt: null, completedAt: null, scheduledFor: { lt: today } },
+      // Só listas normais de prioridade Alta atrasam (ver isOverdue em metrics.ts).
+      where: { list: { board: boardAccess(userId), kind: "normal", priority: 1 }, archivedAt: null, completedAt: null, scheduledFor: { lt: today } },
     });
     if (n > 0) {
       await sendToUser(userId, {

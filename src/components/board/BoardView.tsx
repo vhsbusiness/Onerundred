@@ -539,7 +539,14 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
         <DragOverlay dropAnimation={null}>
           {activeCard ? (
             <div className="w-[276px]">
-              <CardBody card={activeCard} now={now} todayKey={today} dragging />
+              <CardBody
+                card={activeCard}
+                listPriority={board.lists.find((l) => l.id === activeCard.listId)?.priority}
+                listKind={board.lists.find((l) => l.id === activeCard.listId)?.kind}
+                now={now}
+                todayKey={today}
+                dragging
+              />
             </div>
           ) : null}
         </DragOverlay>

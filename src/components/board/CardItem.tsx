@@ -4,12 +4,15 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { AlignLeft, Pause, Play } from "lucide-react";
 import { elapsedSince, priorityUi } from "@/lib/client";
+import { isOverdue } from "@/lib/metrics";
 import { imageUrl } from "@/lib/images";
 import { formatDuration, minutesToLabel } from "@/lib/time";
 import type { CardDTO } from "@/lib/types";
 
 export function CardBody({
   card,
+  listPriority = 2,
+  listKind = "normal",
   now,
   todayKey,
   onOpen,
@@ -17,6 +20,8 @@ export function CardBody({
   dragging = false,
 }: {
   card: CardDTO;
+  listPriority?: number;
+  listKind?: string;
   now: number;
   todayKey: string;
   onOpen?: () => void;
@@ -27,7 +32,7 @@ export function CardBody({
   const running = Boolean(card.runningSince);
   const done = Boolean(card.completedAt);
   const spent = card.spentMs + (running ? elapsedSince(card.runningSince, now) : 0);
-  const overdue = !done && card.scheduledFor < todayKey;
+  const overdue = isOverdue({ ...card, listPriority, listKind }, todayKey);
   const future = !done && card.scheduledFor > todayKey;
 
   return (
@@ -89,6 +94,8 @@ export function CardBody({
 export function CardItem(props: {
   card: CardDTO;
   listId: string;
+  listPriority: number;
+  listKind: string;
   now: number;
   todayKey: string;
   onOpen: () => void;
