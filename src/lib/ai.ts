@@ -4,6 +4,7 @@ import { prisma } from "./db";
 import { ApiError } from "./errors";
 import { PRIORITY_LABEL, asPriority } from "./metrics";
 import { boardAccess, getDashboard } from "./repo";
+import type { Area } from "./area";
 import { computeStats, listSleep } from "./sleep";
 import { listProjects } from "./projects";
 import { computeLeisureStats, listLeisure } from "./leisure";
@@ -47,16 +48,17 @@ function openai(): OpenAI {
  * (configurável pelo admin). Tarefas e trabalho liberam a análise completa;
  * sono e lazer, enquanto não prontos, ficam fora das conclusões.
  */
-export async function getObservation(userId: string): Promise<AiObservation> {
+/** Sem `area`, conta as duas áreas juntas (usado pelas notificações). */
+export async function getObservation(userId: string, area?: Area): Promise<AiObservation> {
   const settings = await getAppSettings();
   const since = subDays(dayRange(todayKey()).start, 60);
 
   const [cards, work, sleepCount, leisure] = await Promise.all([
     prisma.card.findMany({
-      where: { list: { board: boardAccess(userId) }, createdAt: { gte: since } },
+      where: { list: { board: boardAccess(userId, area) }, createdAt: { gte: since } },
       select: { scheduledFor: true },
     }),
-    prisma.workSession.findMany({ where: { userId, startedAt: { gte: since } }, select: { startedAt: true } }),
+    prisma.workSession.findMany({ where: { userId, ...(area ? { area } : {}), startedAt: { gte: since } }, select: { startedAt: true } }),
     prisma.sleepLog.count({ where: { userId, wakeAt: { gte: since } } }),
     prisma.leisureLog.findMany({ where: { userId, startAt: { gte: since }, endAt: { not: null } }, select: { dayKey: true } }),
   ]);
@@ -85,29 +87,29 @@ export async function getObservation(userId: string): Promise<AiObservation> {
 
 /* ───────────── Contexto ───────────── */
 
-async function buildContext(userId: string, observation: AiObservation) {
+async function buildContext(userId: string, area: Area, observation: AiObservation) {
   const now = new Date();
   const today = todayKey();
-  const dash = await getDashboard(userId);
+  const dash = await getDashboard(userId, area);
   const since = subDays(dayRange(today).start, 14);
 
   const [workSessions, taskSessions, memory, tomorrowCards, sleepLogs, projects, leisureLogs] = await Promise.all([
     prisma.workSession.findMany({
-      where: { userId, startedAt: { gte: since } },
+      where: { userId, area, startedAt: { gte: since } },
       orderBy: { startedAt: "asc" },
     }),
     prisma.taskSession.findMany({
-      where: { startedAt: { gte: since }, card: { list: { board: boardAccess(userId) } } },
+      where: { startedAt: { gte: since }, card: { list: { board: boardAccess(userId, area) } } },
       select: { startedAt: true, endedAt: true },
     }),
     prisma.aiMemory.findUnique({ where: { userId } }),
     prisma.card.findMany({
-      where: { list: { board: boardAccess(userId) }, archivedAt: null, completedAt: null, scheduledFor: { gt: today } },
+      where: { list: { board: boardAccess(userId, area) }, archivedAt: null, completedAt: null, scheduledFor: { gt: today } },
       select: { title: true, priority: true, scheduledFor: true, estimatedMinutes: true },
       take: 20,
     }),
     listSleep(userId, 14),
-    listProjects(userId),
+    listProjects(userId, area),
     listLeisure(userId, 14),
   ]);
   const leisure = computeLeisureStats(leisureLogs.filter((l) => l.endAt));
@@ -298,13 +300,13 @@ async function generationsToday(userId: string): Promise<number> {
   return prisma.aiInsight.count({ where: { userId, dayKey: todayKey() } });
 }
 
-export async function getAiStatus(userId: string): Promise<AiStatusDTO> {
+export async function getAiStatus(userId: string, area: Area): Promise<AiStatusDTO> {
   const today = todayKey();
   const [latest, used, memory, observation] = await Promise.all([
-    prisma.aiInsight.findFirst({ where: { userId, dayKey: today }, orderBy: { createdAt: "desc" } }),
+    prisma.aiInsight.findFirst({ where: { userId, area, dayKey: today }, orderBy: { createdAt: "desc" } }),
     generationsToday(userId),
     prisma.aiMemory.findUnique({ where: { userId } }),
-    getObservation(userId),
+    getObservation(userId, area),
   ]);
   const remaining = Math.max(0, MAX_GENERATIONS_PER_DAY - used);
   return {
@@ -316,14 +318,14 @@ export async function getAiStatus(userId: string): Promise<AiStatusDTO> {
   };
 }
 
-export async function generateInsight(userId: string): Promise<AiInsightDTO> {
+export async function generateInsight(userId: string, area: Area): Promise<AiInsightDTO> {
   if (!aiEnabled()) throw new ApiError(503, "IA não configurada (OPENAI_API_KEY ausente)");
   const used = await generationsToday(userId);
   if (used >= MAX_GENERATIONS_PER_DAY) {
     throw new ApiError(429, `Limite de ${MAX_GENERATIONS_PER_DAY} análises por dia atingido`);
   }
 
-  const observation = await getObservation(userId);
+  const observation = await getObservation(userId, area);
   if (!observation.coreReady) {
     const pending = observation.dimensions
       .filter((d) => (d.key === "tasks" || d.key === "work") && !d.ready)
@@ -331,7 +333,7 @@ export async function generateInsight(userId: string): Promise<AiInsightDTO> {
       .join(", ");
     throw new ApiError(425, `A IA ainda está observando seus hábitos (${pending})`);
   }
-  const { payload } = await buildContext(userId, observation);
+  const { payload } = await buildContext(userId, area, observation);
   const model = modelName();
   const supportsReasoning = /^(gpt-5|o\d)/.test(model);
 
@@ -374,6 +376,7 @@ export async function generateInsight(userId: string): Promise<AiInsightDTO> {
     prisma.aiInsight.create({
       data: {
         userId,
+        area,
         dayKey: todayKey(),
         model,
         content: JSON.stringify(content),

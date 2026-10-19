@@ -1,4 +1,5 @@
 import { prisma } from "./db";
+import type { Area } from "./area";
 import { ApiError } from "./errors";
 import type { ReminderDTO } from "./types";
 
@@ -27,17 +28,17 @@ function parseInput(input: { title?: unknown; note?: unknown; at?: unknown; repe
   return { title, at, repeat, note };
 }
 
-export async function listReminders(userId: string): Promise<ReminderDTO[]> {
-  const rows = await prisma.reminder.findMany({ where: { userId }, orderBy: [{ active: "desc" }, { at: "asc" }], take: 200 });
+export async function listReminders(userId: string, area: Area): Promise<ReminderDTO[]> {
+  const rows = await prisma.reminder.findMany({ where: { userId, area }, orderBy: [{ active: "desc" }, { at: "asc" }], take: 200 });
   return rows.map(serialize);
 }
 
-export async function createReminder(userId: string, input: Record<string, unknown>): Promise<ReminderDTO> {
+export async function createReminder(userId: string, area: Area, input: Record<string, unknown>): Promise<ReminderDTO> {
   const data = parseInput(input);
   if (data.at.getTime() < Date.now() - 60_000 && data.repeat === "none") {
     throw new ApiError(400, "Esse horário já passou");
   }
-  const row = await prisma.reminder.create({ data: { userId, ...data } });
+  const row = await prisma.reminder.create({ data: { userId, area, ...data } });
   return serialize(row);
 }
 

@@ -3,7 +3,7 @@ import { getSettings, updateSettings } from "@/lib/repo";
 import { isTheme } from "@/lib/theme";
 import type { SettingsDTO } from "@/lib/types";
 
-export const GET = withUser(async (user) => json(await getSettings(user.id)));
+export const GET = withUser(async (user) => json(await getSettings(user.id, user.area)));
 
 export const PATCH = withUser(async (user, req: Request) => {
   const body = await readBody(req);
@@ -18,5 +18,5 @@ export const PATCH = withUser(async (user, req: Request) => {
     data.theme = body.theme;
   }
   if (Object.keys(data).length === 0) throw new ApiError(400, "Nada para salvar");
-  return json(await updateSettings(user.id, data));
+  return json(await updateSettings(user.id, user.area, data));
 });

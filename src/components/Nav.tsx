@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, Bell, Gamepad2, LayoutDashboard, LogOut, Moon, Settings, ShieldCheck, SquareKanban, Sun, Target, UserRound } from "lucide-react";
+import { Archive, ArrowLeftRight, Bell, Briefcase, Gamepad2, House, LayoutDashboard, LogOut, Moon, Settings, ShieldCheck, SquareKanban, Sun, Target, UserRound } from "lucide-react";
 import { Avatar } from "@/components/profile/ProfilePage";
 import { InviteBell } from "@/components/InviteBell";
 import Link from "next/link";
@@ -8,6 +8,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { formatDayLong, todayKey } from "@/lib/time";
 import { isTheme, type Theme } from "@/lib/theme";
+import { AREA_COOKIE, AREA_LABEL, otherArea, PERSONAL_ONLY_PATHS, type Area } from "@/lib/area";
 import { applyTheme, currentTheme } from "@/lib/theme-client";
 import type { MeDTO } from "@/lib/types";
 
@@ -23,7 +24,7 @@ const tabs = [
 ];
 
 
-export function Logo() {
+export function Logo({ compactMobile = false }: { compactMobile?: boolean }) {
   return (
     <span className="flex items-center gap-2.5">
       <span className="relative flex h-7 w-7 items-center justify-center" aria-hidden>
@@ -33,7 +34,7 @@ export function Logo() {
           <rect x="19" y="3" width="6" height="22" rx="1.5" />
         </svg>
       </span>
-      <span className="text-[1.05rem] font-semibold tracking-tight">Onerundred</span>
+      <span className={`text-[1.05rem] font-semibold tracking-tight ${compactMobile ? "hidden sm:inline" : ""}`}>Onerundred</span>
     </span>
   );
 }
@@ -95,6 +96,46 @@ function WorkIndicator() {
       <span className="live-dot h-1.5 w-1.5 rounded-full bg-green" />
       Trabalhando
     </span>
+  );
+}
+
+/**
+ * Botão de troca de área no cabeçalho: mostra a área atual e alterna para a
+ * outra. Grava o cookie e recarrega a página, porque todas as telas mudam de
+ * conteúdo (quadros, lembretes, metas, dashboard…).
+ */
+function AreaSwitch({ area }: { area: Area }) {
+  const pathname = usePathname();
+  const next = otherArea(area);
+  const Icon = area === "pessoal" ? House : Briefcase;
+
+  function switchArea() {
+    document.cookie = `${AREA_COOKIE}=${next}; Path=/; Max-Age=31536000; SameSite=Lax`;
+    // Páginas presas a um item da área atual (um quadro, uma meta) voltam para a lista.
+    let target = pathname;
+    if (pathname.startsWith("/quadros/")) target = "/quadros";
+    else if (pathname.startsWith("/metas/")) target = "/metas";
+    if (next === "profissional" && PERSONAL_ONLY_PATHS.some((p) => pathname.startsWith(p))) target = "/";
+    // Recarga completa de propósito: o estado dos componentes é todo da área anterior.
+    window.location.assign(new URL(target, window.location.origin).href);
+  }
+
+  const tone =
+    area === "pessoal"
+      ? "border-orange/50 bg-orange text-bg hover:brightness-110"
+      : "border-blue/50 bg-blue text-bg hover:brightness-110";
+  return (
+    <button
+      type="button"
+      onClick={switchArea}
+      title={`Trocar para a área ${AREA_LABEL[next]}`}
+      aria-label={`Área ${AREA_LABEL[area]}. Trocar para ${AREA_LABEL[next]}`}
+      className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[13px] font-semibold shadow-[0_8px_20px_-10px_rgba(0,0,0,0.7)] transition sm:px-3 ${tone}`}
+    >
+      <Icon size={15} strokeWidth={2.4} />
+      {AREA_LABEL[area]}
+      <ArrowLeftRight size={13} className="hidden opacity-70 sm:inline" />
+    </button>
   );
 }
 
@@ -231,7 +272,7 @@ function BottomNav({
 /** Cache do usuário logado entre navegações (evita uma chamada por página). */
 let meCache: MeDTO | null | undefined;
 
-export function Nav() {
+export function Nav({ area }: { area: Area }) {
   const pathname = usePathname();
   const [me, setMe] = useState<MeDTO | null>(meCache ?? null);
 
@@ -256,7 +297,8 @@ export function Nav() {
 
   if (pathname === "/login") return null;
 
-  const allTabs = me?.role === "admin" ? [...tabs, { href: "/admin", label: "Admin", short: "Admin", icon: ShieldCheck }] : tabs;
+  const areaTabs = area === "pessoal" ? tabs : tabs.filter((t) => !PERSONAL_ONLY_PATHS.includes(t.href));
+  const allTabs = me?.role === "admin" ? [...areaTabs, { href: "/admin", label: "Admin", short: "Admin", icon: ShieldCheck }] : areaTabs;
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
   return (
@@ -266,7 +308,8 @@ export function Nav() {
       <div className="card w-full bg-surface/90 px-4 py-2.5 shadow-[var(--shadow-float)] backdrop-blur-md sm:px-5">
         <div className="flex min-h-11 items-center gap-3 lg:gap-4 2xl:gap-6">
         <Link href="/" className="shrink-0">
-          <Logo />
+          {/* No celular só o ícone: sobra espaço para o botão de área, o sininho e o avatar. */}
+          <Logo compactMobile />
         </Link>
 
         <nav className="hidden min-w-0 items-center gap-0.5 overflow-x-auto rounded-full border border-line bg-fill p-1 md:flex 2xl:gap-1">
@@ -287,6 +330,7 @@ export function Nav() {
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-2 lg:gap-3">
+          <AreaSwitch area={area} />
           <WorkIndicator />
           <Clock />
           {me && <InviteBell />}

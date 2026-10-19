@@ -5,6 +5,7 @@ import "./globals.css";
 import { Nav } from "@/components/Nav";
 import { ConfirmProvider } from "@/components/ui/ConfirmProvider";
 import { DEFAULT_THEME, isTheme, THEME_COLOR, THEME_COOKIE, type Theme } from "@/lib/theme";
+import { currentArea } from "@/lib/current-user";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -45,7 +46,7 @@ const viewportBase: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const theme = await themeFromCookie();
+  const [theme, area] = await Promise.all([themeFromCookie(), currentArea()]);
   return (
     <html
       lang="pt-BR"
@@ -56,7 +57,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-full">
         <div id="app" className="mx-auto flex min-h-dvh w-full max-w-[1480px] flex-col px-4 pb-24 sm:px-6 md:pb-10"
           style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
-          <Nav />
+          <Nav area={area} />
           <main className="flex-1">{children}</main>
         </div>
         <ConfirmProvider />

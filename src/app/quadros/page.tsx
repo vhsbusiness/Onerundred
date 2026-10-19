@@ -12,7 +12,7 @@ export default async function QuadrosPage({
   const user = await requireUserPage("/quadros");
   const { lista } = await searchParams;
   if (!lista) {
-    const last = await lastBoardId(user.id);
+    const last = await lastBoardId(user.id, user.area);
     if (last) redirect(`/quadros/${last}`);
   }
   return <BoardsGrid />;
