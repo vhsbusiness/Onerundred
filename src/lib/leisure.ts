@@ -1,4 +1,4 @@
-import { addDays, subDays } from "date-fns";
+import { subDays } from "date-fns";
 import { prisma } from "./db";
 import { ApiError } from "./errors";
 import { dayKey, dayRange, keyToDate, todayKey, weekRange } from "./time";
@@ -47,7 +47,11 @@ function cleanActivity(v: string | undefined): string {
   return a || "Jogos";
 }
 
-/** Registro manual: dia + de HH:MM até HH:MM (se "até" for menor que "de", termina no dia seguinte). */
+/**
+ * Registro manual: dia + de HH:MM até HH:MM. Se "até" for menor que "de", o bloco
+ * atravessou a meia-noite: o dia informado é o do fim, e o início fica no dia anterior
+ * (ex.: dia 19, 23:40 → 03:00 = começou às 23:40 do dia 18).
+ */
 export async function createLeisure(
   userId: string,
   input: { dayKey: string; startTime: string; endTime: string; activity?: string; note?: string },
@@ -56,11 +60,11 @@ export async function createLeisure(
   const day = keyToDate(input.dayKey);
   const s = parseClock(input.startTime, "de");
   const e = parseClock(input.endTime, "até");
-  const startAt = new Date(day);
+  let startAt = new Date(day);
   startAt.setHours(s.h, s.m, 0, 0);
-  let endAt = new Date(day);
+  const endAt = new Date(day);
   endAt.setHours(e.h, e.m, 0, 0);
-  if (endAt <= startAt) endAt = addDays(endAt, 1);
+  if (endAt <= startAt) startAt = subDays(startAt, 1);
   if (endAt.getTime() - startAt.getTime() > 16 * 3600000) throw new ApiError(400, "Bloco de lazer longo demais; confira os horários");
   if (endAt > new Date()) throw new ApiError(400, "O horário final ainda não chegou");
 
