@@ -56,8 +56,6 @@ model AuthSession {
 model Board {
   id        String   @id @default(cuid())
   userId    String
-  /// pessoal | profissional
-  area      String   @default("pessoal")
   name      String
   position  Int      @default(0)
   createdAt DateTime @default(now())
@@ -66,7 +64,7 @@ model Board {
   members   BoardMember[]
   invites   BoardInvite[]
 
-  @@index([userId, area])
+  @@index([userId])
 }
 
 /// Usuário com acesso a um quadro de outra pessoa
@@ -153,8 +151,6 @@ model TaskSession {
 model WorkSession {
   id        String    @id @default(cuid())
   userId    String
-  /// pessoal | profissional
-  area      String   @default("pessoal")
   startedAt DateTime  @default(now())
   endedAt   DateTime?
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -182,8 +178,6 @@ model AppSetting {
 model AiInsight {
   id               String   @id @default(cuid())
   userId           String
-  /// pessoal | profissional
-  area      String   @default("pessoal")
   /// yyyy-MM-dd
   dayKey           String
   model            String
@@ -231,8 +225,6 @@ model SleepLog {
 model Project {
   id          String       @id @default(cuid())
   userId      String
-  /// pessoal | profissional
-  area      String   @default("pessoal")
   name        String
   description String       @default("")
   /// Obrigações diárias, uma por linha
@@ -352,8 +344,6 @@ model NotificationLog {
 model Reminder {
   id         String    @id @default(cuid())
   userId     String
-  /// pessoal | profissional
-  area      String   @default("pessoal")
   title      String
   note       String    @default("")
   /// próximo disparo

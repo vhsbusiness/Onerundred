@@ -2,13 +2,17 @@
 
 import { askConfirm } from "@/components/ui/ConfirmProvider";
 import { useDroppable } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Archive, ArrowLeft, ArrowRight, Check, Copy, FolderInput, Magnet, MoreHorizontal, Plus, Trash2, Undo2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { http, priorityUi } from "@/lib/client";
 import { imagesFromClipboard, toImageDataUrl } from "@/lib/images";
 import type { CardDTO, ListDTO, ListKind } from "@/lib/types";
 import { CardItem } from "./CardItem";
+
+/** Prefixo dos ids de ordenação das listas (distinto do id da lista, que é a área de soltar tarefas). */
+export const LIST_SORT_PREFIX = "list:";
 
 const KIND_LABEL: Record<ListKind, string> = {
   normal: "Normal",
@@ -44,6 +48,15 @@ export function ListColumn({
   onUndo?: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: list.id, data: { type: "list" } });
+  // A coluna inteira é arrastável pelo cabeçalho (como no Trello) para reordenar as listas.
+  const {
+    setNodeRef: setSortableRef,
+    transform: sortTransform,
+    transition: sortTransition,
+    isDragging: sorting,
+    attributes: sortAttributes,
+    listeners: sortListeners,
+  } = useSortable({ id: `${LIST_SORT_PREFIX}${list.id}`, data: { type: "listSort" } });
   const [menu, setMenu] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [pullOpen, setPullOpen] = useState(false);
@@ -149,11 +162,17 @@ export function ListColumn({
   return (
     <section
       data-no-pan
+      ref={setSortableRef}
+      style={{ transform: CSS.Translate.toString(sortTransform), transition: sortTransition }}
       className={`card flex max-h-full w-[86vw] max-w-[300px] shrink-0 snap-start flex-col bg-list transition md:w-[300px] ${
         isOver ? "border-line-2 bg-list-hover" : ""
-      }`}
+      } ${sorting ? "z-20 opacity-90 shadow-2xl ring-1 ring-line-3" : ""}`}
     >
-      <header className="flex items-center gap-2 px-3 pb-2 pt-3">
+      <header
+        className={`flex items-center gap-2 px-3 pb-2 pt-3 ${sorting ? "cursor-grabbing" : "cursor-grab"}`}
+        {...sortAttributes}
+        {...sortListeners}
+      >
         {editing ? (
           <input
             autoFocus

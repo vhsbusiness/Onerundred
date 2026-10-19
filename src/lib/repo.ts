@@ -1,6 +1,5 @@
 import { subDays } from "date-fns";
 import { prisma } from "./db";
-import { areaKey, type Area } from "./area";
 import { DEFAULT_THEME, isTheme } from "./theme";
 import { ApiError } from "./errors";
 import { periodScore, workVerdict, type MetricCard } from "./metrics";
@@ -96,9 +95,9 @@ const cardInclude = { sessions: true, images: { select: { id: true }, orderBy: {
 
 /* ───────────────────────── Propriedade / acesso ───────────────────────── */
 
-/** Filtro Prisma: quadros que o usuário possui ou dos quais é membro (opcionalmente só de uma área). */
-export function boardAccess(userId: string, area?: Area) {
-  return { OR: [{ userId }, { members: { some: { userId } } }], ...(area ? { area } : {}) };
+/** Filtro Prisma: quadros que o usuário possui ou dos quais é membro. */
+export function boardAccess(userId: string) {
+  return { OR: [{ userId }, { members: { some: { userId } } }] };
 }
 
 async function ownedBoard(id: string, userId: string) {
@@ -278,14 +277,13 @@ export async function undoLast(userId: string): Promise<{ label: string } | null
 
 /* ───────────────────────── Quadros ───────────────────────── */
 
-export async function ensureDefaultBoard(userId: string, area: Area): Promise<void> {
-  const count = await prisma.board.count({ where: { userId, area } });
+export async function ensureDefaultBoard(userId: string): Promise<void> {
+  const count = await prisma.board.count({ where: { userId } });
   if (count > 0) return;
   await prisma.board.create({
     data: {
       userId,
-      area,
-      name: area === "pessoal" ? "Meu dia" : "Trabalho",
+      name: "Meu dia",
       position: 0,
       lists: {
         create: [
@@ -300,21 +298,21 @@ export async function ensureDefaultBoard(userId: string, area: Area): Promise<vo
 }
 
 /** Id do último quadro aberto pelo usuário, se ele ainda existir. */
-export async function lastBoardId(userId: string, area: Area): Promise<string | null> {
-  const row = await prisma.setting.findUnique({ where: { userId_key: { userId, key: areaKey("lastBoardId", area) } } });
+export async function lastBoardId(userId: string): Promise<string | null> {
+  const row = await prisma.setting.findUnique({ where: { userId_key: { userId, key: "lastBoardId" } } });
   if (!row) return null;
-  const board = await prisma.board.findFirst({ where: { id: row.value, ...boardAccess(userId, area) }, select: { id: true } });
+  const board = await prisma.board.findFirst({ where: { id: row.value, ...boardAccess(userId) }, select: { id: true } });
   return board?.id ?? null;
 }
 
-export async function listBoards(userId: string, area: Area): Promise<BoardSummary[]> {
-  await ensureDefaultBoard(userId, area);
+export async function listBoards(userId: string): Promise<BoardSummary[]> {
+  await ensureDefaultBoard(userId);
   await runMaintenance();
   const today = todayKey();
   const { start, end } = dayRange(today);
 
   const boards = await prisma.board.findMany({
-    where: boardAccess(userId, area),
+    where: boardAccess(userId),
     orderBy: { position: "asc" },
     include: {
       user: { select: { username: true, name: true } },
@@ -351,12 +349,11 @@ export async function listBoards(userId: string, area: Area): Promise<BoardSumma
   });
 }
 
-export async function createBoard(userId: string, area: Area, name: string): Promise<BoardSummary> {
-  const max = await prisma.board.aggregate({ where: { userId, area }, _max: { position: true } });
+export async function createBoard(userId: string, name: string): Promise<BoardSummary> {
+  const max = await prisma.board.aggregate({ where: { userId }, _max: { position: true } });
   const board = await prisma.board.create({
     data: {
       userId,
-      area,
       name,
       position: (max._max.position ?? -1) + 1,
       lists: {
@@ -402,15 +399,13 @@ export async function getBoard(id: string, userId: string): Promise<BoardDTO> {
     },
   });
   if (!board) throw new ApiError(404, "Quadro não encontrado");
-  const lastKey = areaKey("lastBoardId", board.area as Area);
   await prisma.setting.upsert({
-    where: { userId_key: { userId, key: lastKey } },
-    create: { userId, key: lastKey, value: board.id },
+    where: { userId_key: { userId, key: "lastBoardId" } },
+    create: { userId, key: "lastBoardId", value: board.id },
     update: { value: board.id },
   });
   return {
     id: board.id,
-    area: board.area as Area,
     name: board.name,
     position: board.position,
     createdAt: board.createdAt.toISOString(),
@@ -894,12 +889,10 @@ export async function deleteTaskSession(userId: string, sessionId: string) {
 
 const DEFAULT_DAILY_GOAL = 8 * 60;
 
-/** Meta diária é por área; o tema vale para a conta toda. */
-export async function getSettings(userId: string, area: Area): Promise<SettingsDTO> {
-  const goalKey = areaKey("dailyGoalMinutes", area);
-  const rows = await prisma.setting.findMany({ where: { userId, key: { in: [goalKey, "theme"] } } });
+export async function getSettings(userId: string): Promise<SettingsDTO> {
+  const rows = await prisma.setting.findMany({ where: { userId, key: { in: ["dailyGoalMinutes", "theme"] } } });
   const get = (k: string) => rows.find((r) => r.key === k)?.value;
-  const n = Number(get(goalKey) ?? NaN);
+  const n = Number(get("dailyGoalMinutes") ?? NaN);
   const theme = get("theme");
   return {
     dailyGoalMinutes: Number.isFinite(n) && n > 0 ? n : DEFAULT_DAILY_GOAL,
@@ -907,9 +900,9 @@ export async function getSettings(userId: string, area: Area): Promise<SettingsD
   };
 }
 
-export async function updateSettings(userId: string, area: Area, data: Partial<SettingsDTO>): Promise<SettingsDTO> {
+export async function updateSettings(userId: string, data: Partial<SettingsDTO>): Promise<SettingsDTO> {
   const entries: [string, string][] = [];
-  if (data.dailyGoalMinutes !== undefined) entries.push([areaKey("dailyGoalMinutes", area), String(data.dailyGoalMinutes)]);
+  if (data.dailyGoalMinutes !== undefined) entries.push(["dailyGoalMinutes", String(data.dailyGoalMinutes)]);
   if (data.theme !== undefined) entries.push(["theme", data.theme]);
   for (const [key, value] of entries) {
     await prisma.setting.upsert({
@@ -918,15 +911,15 @@ export async function updateSettings(userId: string, area: Area, data: Partial<S
       update: { value },
     });
   }
-  return getSettings(userId, area);
+  return getSettings(userId);
 }
 
-async function plannedMinutesForToday(userId: string, area: Area): Promise<number> {
+async function plannedMinutesForToday(userId: string): Promise<number> {
   const today = todayKey();
   const { start } = dayRange(today);
   const cards = await prisma.card.findMany({
     where: {
-      list: { board: boardAccess(userId, area) },
+      list: { board: boardAccess(userId) },
       archivedAt: null,
       scheduledFor: { lte: today },
       OR: [{ completedAt: null }, { completedAt: { gte: start } }],
@@ -936,19 +929,19 @@ async function plannedMinutesForToday(userId: string, area: Area): Promise<numbe
   return cards.reduce((acc, c) => acc + (c.estimatedMinutes ?? 0), 0);
 }
 
-export async function getWorkState(userId: string, area: Area): Promise<WorkState> {
+export async function getWorkState(userId: string): Promise<WorkState> {
   const today = todayKey();
   const { start } = dayRange(today);
   const sessions = await prisma.workSession.findMany({
-    where: { userId, area, OR: [{ startedAt: { gte: start } }, { endedAt: null }] },
+    where: { userId, OR: [{ startedAt: { gte: start } }, { endedAt: null }] },
     orderBy: { startedAt: "desc" },
   });
   const running = sessions.find((s) => !s.endedAt) ?? null;
   const todayMs = sumSessions(sessions);
-  const settings = await getSettings(userId, area);
-  const estimated = await plannedMinutesForToday(userId, area);
+  const settings = await getSettings(userId);
+  const estimated = await plannedMinutesForToday(userId);
   const plannedMinutes = estimated > 0 ? estimated : settings.dailyGoalMinutes;
-  const endedRow = await prisma.setting.findUnique({ where: { userId_key: { userId, key: areaKey("workEndedDay", area) } } });
+  const endedRow = await prisma.setting.findUnique({ where: { userId_key: { userId, key: "workEndedDay" } } });
 
   return {
     todayMs,
@@ -961,41 +954,40 @@ export async function getWorkState(userId: string, area: Area): Promise<WorkStat
   };
 }
 
-async function setWorkEnded(userId: string, area: Area, ended: boolean) {
-  const key = areaKey("workEndedDay", area);
+async function setWorkEnded(userId: string, ended: boolean) {
   await prisma.setting.upsert({
-    where: { userId_key: { userId, key } },
-    create: { userId, key, value: ended ? todayKey() : "" },
+    where: { userId_key: { userId, key: "workEndedDay" } },
+    create: { userId, key: "workEndedDay", value: ended ? todayKey() : "" },
     update: { value: ended ? todayKey() : "" },
   });
 }
 
 /** Começar ou retomar: abre uma sessão (e reabre o dia, se estava encerrado). */
-export async function startWork(userId: string, area: Area): Promise<WorkState> {
-  const running = await prisma.workSession.findFirst({ where: { userId, area, endedAt: null } });
-  if (!running) await prisma.workSession.create({ data: { userId, area } });
-  await setWorkEnded(userId, area, false);
-  return getWorkState(userId, area);
+export async function startWork(userId: string): Promise<WorkState> {
+  const running = await prisma.workSession.findFirst({ where: { userId, endedAt: null } });
+  if (!running) await prisma.workSession.create({ data: { userId } });
+  await setWorkEnded(userId, false);
+  return getWorkState(userId);
 }
 
 /** Pausar: fecha a sessão em andamento (e o cronômetro de tarefa); o dia continua aberto. */
-export async function pauseWork(userId: string, area: Area): Promise<WorkState> {
+export async function pauseWork(userId: string): Promise<WorkState> {
   const now = new Date();
   await prisma.$transaction([
-    prisma.workSession.updateMany({ where: { userId, area, endedAt: null }, data: { endedAt: now } }),
+    prisma.workSession.updateMany({ where: { userId, endedAt: null }, data: { endedAt: now } }),
     prisma.taskSession.updateMany({
-      where: { endedAt: null, card: { list: { board: boardAccess(userId, area) } } },
+      where: { endedAt: null, card: { list: { board: boardAccess(userId) } } },
       data: { endedAt: now },
     }),
   ]);
-  return getWorkState(userId, area);
+  return getWorkState(userId);
 }
 
 /** Encerrar o dia: pausa e marca o dia como encerrado. */
-export async function endWork(userId: string, area: Area): Promise<WorkState> {
-  await pauseWork(userId, area);
-  await setWorkEnded(userId, area, true);
-  return getWorkState(userId, area);
+export async function endWork(userId: string): Promise<WorkState> {
+  await pauseWork(userId);
+  await setWorkEnded(userId, true);
+  return getWorkState(userId);
 }
 
 /** Compatibilidade: "stop" equivale a pausar. */
@@ -1009,8 +1001,8 @@ export async function deleteWorkSession(userId: string, id: string) {
 
 /* ───────────────────────── Dashboard ───────────────────────── */
 
-export async function getDashboard(userId: string, area: Area): Promise<DashboardDTO> {
-  await ensureDefaultBoard(userId, area);
+export async function getDashboard(userId: string): Promise<DashboardDTO> {
+  await ensureDefaultBoard(userId);
   await runMaintenance();
 
   const today = todayKey();
@@ -1020,7 +1012,7 @@ export async function getDashboard(userId: string, area: Area): Promise<Dashboar
   const monthR = monthRange(now);
 
   const cards = await prisma.card.findMany({
-    where: { list: { board: boardAccess(userId, area) } },
+    where: { list: { board: boardAccess(userId) } },
     include: { list: { include: { board: true } }, sessions: true, images: { select: { id: true } } },
   });
 
@@ -1076,7 +1068,7 @@ export async function getDashboard(userId: string, area: Area): Promise<Dashboar
   }
 
   const runningSession = await prisma.taskSession.findFirst({
-    where: { endedAt: null, card: { list: { board: boardAccess(userId, area) } } },
+    where: { endedAt: null, card: { list: { board: boardAccess(userId) } } },
     include: { card: { include: { list: true } } },
   });
 
@@ -1086,7 +1078,7 @@ export async function getDashboard(userId: string, area: Area): Promise<Dashboar
     week: periodScore(metricCards, weekR.start, weekR.end, weekR.endKey),
     month: periodScore(metricCards, monthR.start, monthR.end, monthR.endKey),
     history,
-    work: await getWorkState(userId, area),
+    work: await getWorkState(userId),
     todayCards,
     runningTask: runningSession
       ? {
@@ -1104,15 +1096,15 @@ export async function getDashboard(userId: string, area: Area): Promise<Dashboar
 /* ───────────────────────── Arquivadas ───────────────────────── */
 
 /** Apaga definitivamente todas as tarefas arquivadas do usuário. */
-export async function deleteAllArchived(userId: string, area: Area): Promise<number> {
-  const r = await prisma.card.deleteMany({ where: { archivedAt: { not: null }, list: { board: boardAccess(userId, area) } } });
+export async function deleteAllArchived(userId: string): Promise<number> {
+  const r = await prisma.card.deleteMany({ where: { archivedAt: { not: null }, list: { board: boardAccess(userId) } } });
   return r.count;
 }
 
-export async function listArchived(userId: string, area: Area): Promise<ArchivedCard[]> {
+export async function listArchived(userId: string): Promise<ArchivedCard[]> {
   await runMaintenance();
   const cards = await prisma.card.findMany({
-    where: { archivedAt: { not: null }, list: { board: boardAccess(userId, area) } },
+    where: { archivedAt: { not: null }, list: { board: boardAccess(userId) } },
     orderBy: { archivedAt: "desc" },
     include: { list: { include: { board: true } }, sessions: true, images: { select: { id: true } } },
     take: 500,

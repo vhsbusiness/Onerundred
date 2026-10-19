@@ -6,15 +6,17 @@ import {
   KeyboardSensor,
   MouseSensor,
   TouchSensor,
+  closestCenter,
   closestCorners,
   useSensor,
+  type CollisionDetection,
   useSensors,
   type DragEndEvent,
   type DragOverEvent,
   type DragStartEvent,
   type UniqueIdentifier,
 } from "@dnd-kit/core";
-import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { SortableContext, arrayMove, horizontalListSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { ArrowLeft, LogOut, MoreHorizontal, Pencil, Plus, Sparkles, Trash2, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -29,7 +31,7 @@ import { CardContextMenu, type ContextMenuState } from "./CardContextMenu";
 import { ShareModal } from "./ShareModal";
 import { Avatar } from "@/components/profile/ProfilePage";
 import { askConfirm } from "@/components/ui/ConfirmProvider";
-import { ListColumn } from "./ListColumn";
+import { LIST_SORT_PREFIX, ListColumn } from "./ListColumn";
 
 export function BoardView({ boardId, initialBoard }: { boardId: string; initialBoard?: BoardDTO }) {
   const router = useRouter();
@@ -145,7 +147,9 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
   const findListId = useCallback(
     (id: UniqueIdentifier): string | null => {
       if (!board) return null;
-      if (board.lists.some((l) => l.id === id)) return String(id);
+      const raw = String(id);
+      if (raw.startsWith(LIST_SORT_PREFIX)) return raw.slice(LIST_SORT_PREFIX.length);
+      if (board.lists.some((l) => l.id === id)) return raw;
       const list = board.lists.find((l) => l.cards.some((c) => c.id === id));
       return list ? list.id : null;
     },
@@ -170,6 +174,19 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
     return null;
   }, [board, openCardId]);
 
+  const isListDrag = (id: UniqueIdentifier) => String(id).startsWith(LIST_SORT_PREFIX);
+
+  // Arrastando uma lista, só as outras colunas contam como alvo (não as tarefas dentro delas).
+  const collision: CollisionDetection = useCallback((args) => {
+    if (isListDrag(args.active.id)) {
+      return closestCenter({
+        ...args,
+        droppableContainers: args.droppableContainers.filter((c) => isListDrag(c.id)),
+      });
+    }
+    return closestCorners(args);
+  }, []);
+
   function onDragStart(e: DragStartEvent) {
     setActiveId(e.active.id);
   }
@@ -177,6 +194,8 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
   function onDragOver(e: DragOverEvent) {
     const { active, over } = e;
     if (!over || !board) return;
+    // Arrastar lista: a ordenação horizontal cuida do visual; só gravamos no fim.
+    if (isListDrag(active.id)) return;
     const from = findListId(active.id);
     const to = findListId(over.id);
     if (!from || !to || from === to) return;
@@ -218,6 +237,23 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
     const { active, over } = e;
     setActiveId(null);
     if (!over || !board) return;
+
+    if (isListDrag(active.id)) {
+      const fromId = String(active.id).slice(LIST_SORT_PREFIX.length);
+      const toId = findListId(over.id);
+      if (!toId || toId === fromId) return;
+      const oldIndex = board.lists.findIndex((l) => l.id === fromId);
+      const newIndex = board.lists.findIndex((l) => l.id === toId);
+      if (oldIndex === -1 || newIndex === -1) return;
+      setBoard({ ...board, lists: arrayMove(board.lists, oldIndex, newIndex) });
+      try {
+        await http.patch(`/api/lists/${fromId}`, { toIndex: newIndex });
+      } finally {
+        load();
+      }
+      return;
+    }
+
     const from = findListId(active.id);
     const to = findListId(over.id);
     if (!from || !to) return;
@@ -428,7 +464,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
       <DndContext
         id={`board-${boardId}`}
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={collision}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
         onDragEnd={onDragEnd}
@@ -447,6 +483,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
             panning ? "cursor-grabbing select-none" : "cursor-grab"
           }`}
         >
+          <SortableContext items={board.lists.map((l) => `${LIST_SORT_PREFIX}${l.id}`)} strategy={horizontalListSortingStrategy}>
           {board.lists.map((list, i) => (
             <ListColumn
               key={list.id}
@@ -464,6 +501,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
               onUndo={undo}
             />
           ))}
+          </SortableContext>
 
           {addingList ? (
             <form onSubmit={addList} data-no-pan className="card w-[86vw] max-w-[300px] shrink-0 snap-start space-y-2 p-3 md:w-[300px]">

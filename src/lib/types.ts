@@ -1,4 +1,3 @@
-import type { Area } from "./area";
 import type { Theme } from "./theme";
 import type { PeriodScore, Tone, WorkVerdict } from "./metrics";
 
@@ -50,7 +49,6 @@ export interface UserBrief {
 
 export interface BoardDTO {
   id: string;
-  area: Area;
   name: string;
   position: number;
   createdAt: string;

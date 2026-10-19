@@ -1,7 +1,6 @@
 import { randomBytes, scrypt as scryptCb, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { prisma } from "./db";
-import { DEFAULT_AREA, type Area } from "./area";
 import { ApiError } from "./errors";
 
 const scrypt = promisify(scryptCb);
@@ -18,12 +17,10 @@ export interface CurrentUser {
   name: string;
   role: Role;
   avatar: string | null;
-  /** Área em uso nesta requisição (cookie); Pessoal por padrão. */
-  area: Area;
 }
 
 function toCurrentUser(u: { id: string; email: string; username: string; name: string; role: string; avatar: string | null }): CurrentUser {
-  return { id: u.id, email: u.email, username: u.username, name: u.name, role: u.role as Role, avatar: u.avatar, area: DEFAULT_AREA };
+  return { id: u.id, email: u.email, username: u.username, name: u.name, role: u.role as Role, avatar: u.avatar };
 }
 
 /* ───────────── Senhas ───────────── */

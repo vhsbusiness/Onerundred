@@ -5,6 +5,9 @@
  * tema claro só redefine as variáveis em :root[data-theme="light"].
  */
 @theme {
+  /* Monitores largos: só aqui o cabeçalho mostra data por extenso e nome do usuário. */
+  --breakpoint-3xl: 1800px;
+
   --color-bg: #0b0c0f;
   --color-surface: #15171c;
   --color-surface-2: #1c1f26;

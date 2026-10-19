@@ -6,7 +6,7 @@ import { getSettings } from "@/lib/repo";
 /** Quem está logado (ou null) e se o cadastro está aberto. */
 export const GET = handle(async () => {
   const user = await getCurrentUser();
-  const theme = user ? (await getSettings(user.id, user.area)).theme : null;
+  const theme = user ? (await getSettings(user.id)).theme : null;
   return json({ user, theme, allowRegistration: await registrationAllowed() });
 });
 

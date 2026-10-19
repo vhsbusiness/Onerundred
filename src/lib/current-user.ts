@@ -1,21 +1,12 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ApiError } from "./errors";
-import { AREA_COOKIE, DEFAULT_AREA, isArea, type Area } from "./area";
 import { SESSION_COOKIE, userFromSession, type CurrentUser } from "./auth";
 
 /** Usuário logado (lê o cookie da requisição atual), ou null. */
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   const store = await cookies();
-  const user = await userFromSession(store.get(SESSION_COOKIE)?.value);
-  if (!user) return null;
-  return { ...user, area: await currentArea() };
-}
-
-/** Área (Pessoal/Profissional) escolhida no cabeçalho, guardada em cookie. */
-export async function currentArea(): Promise<Area> {
-  const v = (await cookies()).get(AREA_COOKIE)?.value;
-  return isArea(v) ? v : DEFAULT_AREA;
+  return userFromSession(store.get(SESSION_COOKIE)?.value);
 }
 
 /** Para rotas de API: 401 se não houver sessão. */

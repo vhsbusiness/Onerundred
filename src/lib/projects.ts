@@ -1,6 +1,5 @@
 import { addDays } from "date-fns";
 import { prisma } from "./db";
-import type { Area } from "./area";
 import { ApiError } from "./errors";
 import { dayKey, keyToDate, todayKey } from "./time";
 import type { ProjectDTO, ProjectDayDTO, ProjectDayStatus } from "./types";
@@ -129,11 +128,10 @@ function serialize(p: ProjectRow): ProjectDTO {
 
 const include = { checks: { select: { dayKey: true, done: true, auto: true, note: true } } } as const;
 
-/** Sem `area`, lista as duas áreas (usado pelas notificações). */
-export async function listProjects(userId: string, area?: Area): Promise<ProjectDTO[]> {
+export async function listProjects(userId: string): Promise<ProjectDTO[]> {
   await autoMarkMissedDays();
   const rows = await prisma.project.findMany({
-    where: { userId, ...(area ? { area } : {}) },
+    where: { userId },
     orderBy: [{ archivedAt: "asc" }, { createdAt: "desc" }],
     include,
   });
@@ -157,14 +155,12 @@ function validate(input: { name: string; days: number; startDate: string }) {
 
 export async function createProject(
   userId: string,
-  area: Area,
   input: { name: string; description: string; obligations: string; startDate: string; days: number },
 ): Promise<ProjectDTO> {
   validate(input);
   const row = await prisma.project.create({
     data: {
       userId,
-      area,
       name: input.name.trim(),
       description: input.description.trim(),
       obligations: parseObligations(input.obligations).join("\n"),
