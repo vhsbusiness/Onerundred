@@ -23,7 +23,7 @@ const tabs = [
 ];
 
 
-export function Logo() {
+export function Logo({ compact = false }: { compact?: boolean }) {
   return (
     <span className="flex items-center gap-2.5">
       <span className="relative flex h-7 w-7 items-center justify-center" aria-hidden>
@@ -33,7 +33,8 @@ export function Logo() {
           <rect x="19" y="3" width="6" height="22" rx="1.5" />
         </svg>
       </span>
-      <span className="text-[1.05rem] font-semibold tracking-tight">Onerundred</span>
+      {/* compact: até o tablet só o ícone, para sobrar espaço no cabeçalho. */}
+      <span className={`text-[1.05rem] font-semibold tracking-tight ${compact ? "hidden xl:inline" : ""}`}>Onerundred</span>
     </span>
   );
 }
@@ -57,7 +58,7 @@ function Clock() {
   // Até ~1800px só dia/mês e hora (o cabeçalho tem abas, sininho e avatar); acima, data por extenso.
   return (
     <>
-      <span className="hidden whitespace-nowrap text-sm text-ink-2 tabular-nums lg:inline 3xl:hidden">{short}</span>
+      <span className="hidden whitespace-nowrap text-sm text-ink-2 tabular-nums xl:inline 3xl:hidden">{short}</span>
       <span className="hidden whitespace-nowrap text-sm text-ink-2 tabular-nums 3xl:inline">{full || formatDayLong(todayKey())}</span>
     </>
   );
@@ -93,7 +94,7 @@ function WorkIndicator() {
   return (
     <span className="pill pill-green">
       <span className="live-dot h-1.5 w-1.5 rounded-full bg-green" />
-      Trabalhando
+      <span className="hidden lg:inline">Trabalhando</span>
     </span>
   );
 }
@@ -266,7 +267,7 @@ export function Nav() {
       <div className="card w-full bg-surface/90 px-4 py-2.5 shadow-[var(--shadow-float)] backdrop-blur-md sm:px-5">
         <div className="flex min-h-11 items-center gap-3 lg:gap-4 2xl:gap-6">
         <Link href="/" className="shrink-0">
-          <Logo />
+          <Logo compact />
         </Link>
 
         <nav className="hidden min-w-0 items-center gap-0.5 overflow-x-auto rounded-full border border-line bg-fill p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:flex 2xl:gap-1">
@@ -276,11 +277,13 @@ export function Nav() {
               <Link
                 key={t.href}
                 href={t.href}
-                className={`whitespace-nowrap rounded-full px-2 py-1.5 text-[13px] transition lg:px-2.5 2xl:px-3.5 2xl:text-sm ${
+                className={`whitespace-nowrap rounded-full px-1.5 py-1.5 text-[13px] transition lg:px-2 xl:px-2.5 2xl:px-3.5 2xl:text-sm ${
                   active ? "bg-fill-3 text-ink" : "text-ink-2 hover:text-ink"
                 }`}
               >
-                {t.label}
+                {/* Tablet: nomes curtos; a partir de lg, nomes completos. */}
+                <span className="xl:hidden">{t.short}</span>
+                <span className="hidden xl:inline">{t.label}</span>
               </Link>
             );
           })}
