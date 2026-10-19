@@ -301,6 +301,14 @@ body {
   }
 }
 
+/* Sem barra de rolagem visível (a faixa de abas do cabeçalho) */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Scrollbar discreta */
 * {
   scrollbar-width: thin;

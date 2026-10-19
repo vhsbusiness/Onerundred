@@ -58,7 +58,7 @@ function Clock() {
   // Até ~1800px só dia/mês e hora (o cabeçalho tem abas, sininho e avatar); acima, data por extenso.
   return (
     <>
-      <span className="hidden whitespace-nowrap text-sm text-ink-2 tabular-nums xl:inline 3xl:hidden">{short}</span>
+      <span className="hidden whitespace-nowrap text-sm text-ink-2 tabular-nums xl:max-3xl:inline">{short}</span>
       <span className="hidden whitespace-nowrap text-sm text-ink-2 tabular-nums 3xl:inline">{full || formatDayLong(todayKey())}</span>
     </>
   );
@@ -270,14 +270,14 @@ export function Nav() {
           <Logo compact />
         </Link>
 
-        <nav className="hidden min-w-0 items-center gap-0.5 overflow-x-auto rounded-full border border-line bg-fill p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:flex 2xl:gap-1">
+        <nav className="hidden min-w-0 items-center gap-0.5 overflow-x-auto rounded-full border border-line bg-fill p-1 no-scrollbar md:flex">
           {allTabs.map((t) => {
             const active = t.href === "/" ? pathname === "/" : pathname.startsWith(t.href);
             return (
               <Link
                 key={t.href}
                 href={t.href}
-                className={`whitespace-nowrap rounded-full px-1.5 py-1.5 text-[13px] transition lg:px-2 xl:px-2.5 2xl:px-3.5 2xl:text-sm ${
+                className={`whitespace-nowrap rounded-full px-1.5 py-1.5 text-[13px] transition lg:px-2 xl:px-2.5 ${
                   active ? "bg-fill-3 text-ink" : "text-ink-2 hover:text-ink"
                 }`}
               >
