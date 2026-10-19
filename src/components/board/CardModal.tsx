@@ -1,7 +1,7 @@
 "use client";
 
 import { askConfirm } from "@/components/ui/ConfirmProvider";
-import { Archive, Check, Copy, ImagePlus, Pause, Play, RotateCcw, Trash2, X } from "lucide-react";
+import { Archive, Check, Copy, ImagePlus, ListChecks, Pause, Play, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { elapsedSince, http, priorityUi, useNow } from "@/lib/client";
 import { imageUrl, imagesFromClipboard, toImageDataUrl } from "@/lib/images";
@@ -39,6 +39,8 @@ export function CardModal({
   const now = useNow(running);
   const imgRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [newItem, setNewItem] = useState("");
+  const [addingItem, setAddingItem] = useState(false);
   const cardId = card?.id;
 
   // Colar imagem (Ctrl+V) com o modal aberto anexa à tarefa.
@@ -78,6 +80,29 @@ export function CardModal({
 
   async function removeImage(imageId: string) {
     await http.del(`/api/cards/${card!.id}/imagens`, { imageId });
+    onChanged();
+  }
+
+  async function addItem() {
+    const text = newItem.trim();
+    if (!text || addingItem) return;
+    setAddingItem(true);
+    try {
+      await http.post(`/api/cards/${card!.id}/checklist`, { text });
+      setNewItem("");
+      onChanged();
+    } finally {
+      setAddingItem(false);
+    }
+  }
+
+  async function toggleItem(itemId: string, done: boolean) {
+    await http.patch(`/api/cards/${card!.id}/checklist`, { itemId, done });
+    onChanged();
+  }
+
+  async function removeItem(itemId: string) {
+    await http.del(`/api/cards/${card!.id}/checklist`, { itemId });
     onChanged();
   }
 
@@ -165,9 +190,72 @@ export function CardModal({
                 if (description !== card.description) patch({ description });
               }}
               rows={5}
-              placeholder="Detalhes, links, checklist…"
+              placeholder="Detalhes, links…"
               className="input resize-y"
             />
+          </div>
+
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-ink-3">
+                <ListChecks size={13} /> Checklist
+              </label>
+              {card.checklist.length > 0 && (
+                <span className={`text-xs tabular-nums ${card.checklist.every((i) => i.done) ? "text-green" : "text-ink-3"}`}>
+                  {card.checklist.filter((i) => i.done).length}/{card.checklist.length}
+                </span>
+              )}
+            </div>
+            {card.checklist.length > 0 && (
+              <div className="mb-2 h-1.5 overflow-hidden rounded-full bg-fill-2">
+                <div
+                  className={`h-full rounded-full transition-all ${card.checklist.every((i) => i.done) ? "bg-green-deep" : "bg-blue-deep"}`}
+                  style={{ width: `${Math.round((card.checklist.filter((i) => i.done).length / card.checklist.length) * 100)}%` }}
+                />
+              </div>
+            )}
+            <ul className="space-y-1">
+              {card.checklist.map((item) => (
+                <li key={item.id} className="group flex items-center gap-2 rounded-lg border border-line bg-well px-2 py-1.5 text-sm">
+                  <button
+                    type="button"
+                    onClick={() => toggleItem(item.id, !item.done)}
+                    aria-label={item.done ? "Desmarcar" : "Marcar como feito"}
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition ${
+                      item.done ? "border-green/60 bg-green-deep text-bg" : "border-line-3 hover:border-green/60"
+                    }`}
+                  >
+                    {item.done && <Check size={12} strokeWidth={3} />}
+                  </button>
+                  <span className={`min-w-0 flex-1 break-words ${item.done ? "text-ink-3 line-through" : ""}`}>{item.text}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeItem(item.id)}
+                    aria-label="Remover item"
+                    className="text-ink-3 opacity-0 transition hover:text-red focus:opacity-100 group-hover:opacity-100"
+                  >
+                    <X size={14} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                addItem();
+              }}
+              className="mt-1.5 flex gap-2"
+            >
+              <input
+                value={newItem}
+                onChange={(e) => setNewItem(e.target.value)}
+                placeholder="Adicionar item…"
+                className="input h-9 py-1 text-sm"
+              />
+              <button type="submit" disabled={!newItem.trim() || addingItem} className="btn h-9 shrink-0 px-3 text-xs">
+                <Plus size={13} /> Adicionar
+              </button>
+            </form>
           </div>
 
           <div>

@@ -55,6 +55,7 @@ interface CardRow {
   completedAt: Date | null;
   archivedAt: Date | null;
   sessions: SessionRow[];
+  checklist?: { id: string; text: string; done: boolean; position: number }[];
   images?: { id: string }[];
 }
 
@@ -84,6 +85,7 @@ export function serializeCard(c: CardRow): CardDTO {
     spentMs: sumSessions(closed),
     runningSince: running ? running.startedAt.toISOString() : null,
     imageIds: (c.images ?? []).map((i) => i.id),
+    checklist: (c.checklist ?? []).map((i) => ({ id: i.id, text: i.text, done: i.done, position: i.position })),
     sessions: c.sessions
       .slice()
       .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime())
@@ -91,7 +93,11 @@ export function serializeCard(c: CardRow): CardDTO {
   };
 }
 
-const cardInclude = { sessions: true, images: { select: { id: true }, orderBy: { createdAt: "asc" } } } as const;
+const cardInclude = {
+  sessions: true,
+  images: { select: { id: true }, orderBy: { createdAt: "asc" } },
+  checklist: { orderBy: { position: "asc" } },
+} as const;
 
 /* ───────────────────────── Propriedade / acesso ───────────────────────── */
 
@@ -699,6 +705,12 @@ export async function copyCard(userId: string, cardId: string): Promise<CardDTO>
   if (images.length) {
     await prisma.cardImage.createMany({ data: images.map((i) => ({ cardId: created.id, data: i.data })) });
   }
+  const checklist = await prisma.checklistItem.findMany({ where: { cardId }, orderBy: { position: "asc" } });
+  if (checklist.length) {
+    await prisma.checklistItem.createMany({
+      data: checklist.map((i) => ({ cardId: created.id, text: i.text, done: i.done, position: i.position })),
+    });
+  }
   const idx = siblings.findIndex((c) => c.id === cardId);
   const ordered = [...siblings.slice(0, idx + 1), created, ...siblings.slice(idx + 1)];
   await prisma.$transaction(
@@ -827,6 +839,43 @@ export async function reopenCard(userId: string, cardId: string): Promise<CardDT
 
 export const MAX_CARD_IMAGE_CHARS = 700 * 1024; // ~500 KB de imagem em base64
 export const MAX_CARD_IMAGES = 10;
+
+/* ───────────────────────── Checklist ───────────────────────── */
+
+const MAX_CHECKLIST_ITEMS = 50;
+
+export async function addChecklistItem(userId: string, cardId: string, text: string): Promise<CardDTO> {
+  await ownedCard(cardId, userId);
+  const clean = text.trim().slice(0, 200);
+  if (!clean) throw new ApiError(400, "Escreva o item");
+  const count = await prisma.checklistItem.count({ where: { cardId } });
+  if (count >= MAX_CHECKLIST_ITEMS) throw new ApiError(400, `No máximo ${MAX_CHECKLIST_ITEMS} itens por tarefa`);
+  await prisma.checklistItem.create({ data: { cardId, text: clean, position: count } });
+  return getCard(cardId, userId);
+}
+
+export async function updateChecklistItem(
+  userId: string,
+  cardId: string,
+  itemId: string,
+  data: { text?: string; done?: boolean },
+): Promise<CardDTO> {
+  await ownedCard(cardId, userId);
+  const item = await prisma.checklistItem.findFirst({ where: { id: itemId, cardId } });
+  if (!item) throw new ApiError(404, "Item não encontrado");
+  const text = data.text === undefined ? undefined : data.text.trim().slice(0, 200);
+  if (text !== undefined && !text) throw new ApiError(400, "O item não pode ficar vazio");
+  await prisma.checklistItem.update({ where: { id: itemId }, data: { text, done: data.done } });
+  return getCard(cardId, userId);
+}
+
+export async function removeChecklistItem(userId: string, cardId: string, itemId: string): Promise<CardDTO> {
+  await ownedCard(cardId, userId);
+  await prisma.checklistItem.deleteMany({ where: { id: itemId, cardId } });
+  const rest = await prisma.checklistItem.findMany({ where: { cardId }, orderBy: { position: "asc" } });
+  await prisma.$transaction(rest.map((i, idx) => prisma.checklistItem.update({ where: { id: i.id }, data: { position: idx } })));
+  return getCard(cardId, userId);
+}
 
 export async function addCardImage(userId: string, cardId: string, data: string): Promise<CardDTO> {
   await ownedCard(cardId, userId);

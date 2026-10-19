@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { AlignLeft, Pause, Play } from "lucide-react";
+import { AlignLeft, ListChecks, Pause, Play } from "lucide-react";
 import { elapsedSince, priorityUi } from "@/lib/client";
 import { isOverdue } from "@/lib/metrics";
 import { imageUrl } from "@/lib/images";
@@ -61,6 +61,14 @@ export function CardBody({
           <div className={`text-sm leading-snug ${done ? "line-through" : ""}`}>{card.title}</div>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-ink-3">
             {card.description ? <AlignLeft size={11} className="text-ink-3" /> : null}
+            {card.checklist.length > 0 ? (
+              <span
+                className={`inline-flex items-center gap-0.5 ${card.checklist.every((i) => i.done) ? "text-green" : ""}`}
+                title="Checklist"
+              >
+                <ListChecks size={11} /> {card.checklist.filter((i) => i.done).length}/{card.checklist.length}
+              </span>
+            ) : null}
             {card.imageIds.length > 1 ? <span>{card.imageIds.length} imagens</span> : null}
             {card.estimatedMinutes ? <span>est. {minutesToLabel(card.estimatedMinutes)}</span> : null}
             {spent > 0 ? (

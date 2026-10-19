@@ -28,6 +28,15 @@ export interface CardDTO {
   sessions?: SessionDTO[];
   /** Ids das imagens anexadas (URL: /api/imagens/{id}); a primeira é a capa. */
   imageIds: string[];
+  /** Itens da checklist, em ordem. */
+  checklist: ChecklistItemDTO[];
+}
+
+export interface ChecklistItemDTO {
+  id: string;
+  text: string;
+  done: boolean;
+  position: number;
 }
 
 export interface ListDTO {
