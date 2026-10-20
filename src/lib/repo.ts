@@ -542,6 +542,9 @@ export async function moveAllCards(fromListId: string, toListId: string, userId:
   });
   const max = await prisma.card.aggregate({ where: { listId: toListId }, _max: { position: true } });
   let pos = (max._max.position ?? -1) + 1;
+  if (to.kind === "done") {
+    await prisma.taskSession.updateMany({ where: { card: { listId: fromListId }, endedAt: null }, data: { endedAt: new Date() } });
+  }
   await prisma.$transaction(
     cards.map((c) =>
       prisma.card.update({
@@ -798,6 +801,11 @@ export async function moveCard(userId: string, cardId: string, toListId: string,
     sourceCards.forEach((c, i) => {
       ops.push(prisma.card.update({ where: { id: c.id }, data: { position: i } }));
     });
+  }
+
+  // Tarefa concluída não fica com o cronômetro rodando: ao cair em "Feitas", a sessão aberta encerra.
+  if (target.kind === "done") {
+    await prisma.taskSession.updateMany({ where: { cardId, endedAt: null }, data: { endedAt: new Date() } });
   }
 
   await prisma.$transaction(ops);

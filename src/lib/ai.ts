@@ -3,12 +3,12 @@ import { subDays } from "date-fns";
 import { prisma } from "./db";
 import { ApiError } from "./errors";
 import { PRIORITY_LABEL, asPriority, isOverdue } from "./metrics";
-import { boardAccess, getDashboard, reorderListCards } from "./repo";
+import { boardAccess, getDashboard, getWorkState, reorderListCards } from "./repo";
 import { computeStats, listSleep } from "./sleep";
 import { listProjects } from "./projects";
 import { computeLeisureStats, listLeisure } from "./leisure";
 import { dayKey, dayRange, formatDuration, todayKey } from "./time";
-import type { AiInsightContent, AiInsightDTO, AiObservation, AiStatusDTO } from "./types";
+import type { AiInsightContent, AiInsightDTO, AiObservation, AiStatusDTO, WorkSessionInsightDTO } from "./types";
 import { getAppSettings } from "./admin";
 
 /*
@@ -389,6 +389,117 @@ export async function generateInsight(userId: string): Promise<AiInsightDTO> {
   ]);
 
   return serializeInsight(row, Math.max(0, MAX_GENERATIONS_PER_DAY - used - 1));
+}
+
+/* ───────────── Visão de uma sessão de trabalho ───────────── */
+
+const MAX_SESSION_INSIGHTS_PER_DAY = 12;
+
+const SESSION_SYSTEM_PROMPT = `Você é um coach de produtividade direto e gentil, em português do Brasil.
+Recebe os dados de UMA sessão de trabalho encerrada de um usuário (horário, duração, tarefas em que ele
+ligou o cronômetro, tarefas concluídas, meta do dia e as outras sessões do dia) e devolve uma visão curta:
+- headline: uma frase de até 60 caracteres resumindo a sessão;
+- summary: 2 a 3 frases sobre como foi (ritmo, foco, o que rendeu), sem repetir números que já estão na tela;
+- highlights: até 4 observações concretas (ex.: muito tempo numa tarefa só, sessão sem cronômetro em tarefa,
+  horário em que rendeu, pausa longa), cada uma com até 90 caracteres;
+- suggestion: uma sugestão prática para a próxima sessão, até 140 caracteres.
+Não invente dados. Se faltar informação (ex.: nenhuma tarefa com cronômetro), diga isso de forma útil.`;
+
+const sessionSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    headline: { type: "string" },
+    summary: { type: "string" },
+    highlights: { type: "array", items: { type: "string" } },
+    suggestion: { type: "string" },
+  },
+  required: ["headline", "summary", "highlights", "suggestion"],
+} as const;
+
+/** Visão da IA sobre uma sessão de trabalho já encerrada. */
+export async function analyzeWorkSession(userId: string, sessionId: string): Promise<WorkSessionInsightDTO> {
+  if (!aiEnabled()) throw new ApiError(503, "IA não configurada (OPENAI_API_KEY ausente)");
+  const session = await prisma.workSession.findFirst({ where: { id: sessionId, userId } });
+  if (!session) throw new ApiError(404, "Sessão não encontrada");
+  if (!session.endedAt) throw new ApiError(400, "Encerre ou pause a sessão antes de pedir a visão da IA");
+
+  const dayStart = dayRange(dayKey(session.startedAt)).start;
+  const used = await prisma.aiUsage.count({ where: { userId, kind: "session", createdAt: { gte: dayRange(todayKey()).start } } });
+  if (used >= MAX_SESSION_INSIGHTS_PER_DAY) throw new ApiError(429, `Limite de ${MAX_SESSION_INSIGHTS_PER_DAY} visões de sessão por dia atingido`);
+
+  const start = session.startedAt;
+  const end = session.endedAt;
+  const clip = (a: Date, b: Date | null) => {
+    const s = Math.max(a.getTime(), start.getTime());
+    const e = Math.min((b ?? new Date()).getTime(), end.getTime());
+    return Math.max(0, e - s);
+  };
+
+  const [taskSessions, completed, daySessions, work] = await Promise.all([
+    prisma.taskSession.findMany({
+      where: { startedAt: { lt: end }, OR: [{ endedAt: null }, { endedAt: { gt: start } }], card: { list: { board: boardAccess(userId) } } },
+      include: { card: { select: { id: true, title: true, priority: true, estimatedMinutes: true, completedAt: true, list: { select: { name: true } } } } },
+    }),
+    prisma.card.findMany({
+      where: { completedAt: { gte: start, lte: end }, list: { board: boardAccess(userId) } },
+      select: { id: true, title: true, priority: true, estimatedMinutes: true },
+    }),
+    prisma.workSession.findMany({ where: { userId, startedAt: { gte: dayStart, lt: dayRange(dayKey(session.startedAt)).end } }, orderBy: { startedAt: "asc" } }),
+    getWorkState(userId),
+  ]);
+
+  const byCard = new Map<string, { title: string; minutes: number; done: boolean; priority: number; estimatedMinutes: number | null; list: string }>();
+  for (const ts of taskSessions) {
+    const cur = byCard.get(ts.card.id) ?? { title: ts.card.title, minutes: 0, done: Boolean(ts.card.completedAt), priority: ts.card.priority, estimatedMinutes: ts.card.estimatedMinutes, list: ts.card.list.name };
+    cur.minutes += Math.round(clip(ts.startedAt, ts.endedAt) / 60000);
+    byCard.set(ts.card.id, cur);
+  }
+  const tasks = [...byCard.values()].sort((a, b) => b.minutes - a.minutes);
+  const durationMin = Math.round((end.getTime() - start.getTime()) / 60000);
+  const focusedMin = tasks.reduce((acc, t) => acc + t.minutes, 0);
+  const idx = daySessions.findIndex((s) => s.id === session.id);
+  const fmt = (d: Date) => d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+  const payload = {
+    sessao: { inicio: fmt(start), fim: fmt(end), duracaoMin: durationMin, numeroNoDia: idx + 1, totalSessoesNoDia: daySessions.length },
+    minutosComCronometroDeTarefa: focusedMin,
+    tarefasComCronometro: tasks.map((t) => ({ titulo: t.title, lista: t.list, minutos: t.minutes, prioridade: PRIORITY_LABEL[asPriority(t.priority)], estimativaMin: t.estimatedMinutes, concluida: t.done })),
+    tarefasConcluidasNaSessao: completed.map((c) => ({ titulo: c.title, prioridade: PRIORITY_LABEL[asPriority(c.priority)], estimativaMin: c.estimatedMinutes })),
+    outrasSessoesDoDia: daySessions.filter((s) => s.id !== session.id).map((s) => ({ inicio: fmt(s.startedAt), fim: s.endedAt ? fmt(s.endedAt) : "em andamento", duracaoMin: Math.round(((s.endedAt ?? new Date()).getTime() - s.startedAt.getTime()) / 60000) })),
+    metaDoDiaMin: work.plannedMinutes,
+    trabalhadoNoDiaMin: Math.round(work.todayMs / 60000),
+  };
+
+  const model = modelName();
+  const completion = await openai().chat.completions.create({
+    model,
+    ...(/^(gpt-5|o\d)/.test(model) ? { reasoning_effort: "low" as const } : {}),
+    messages: [
+      { role: "system", content: SESSION_SYSTEM_PROMPT },
+      { role: "user", content: `Dados da sessão em JSON:\n${JSON.stringify(payload)}` },
+    ],
+    response_format: { type: "json_schema", json_schema: { name: "visao_sessao", strict: true, schema: sessionSchema } },
+  });
+  await prisma.aiUsage.create({
+    data: { userId, kind: "session", model, promptTokens: completion.usage?.prompt_tokens ?? 0, completionTokens: completion.usage?.completion_tokens ?? 0 },
+  });
+  const raw = completion.choices[0]?.message?.content;
+  if (!raw) throw new ApiError(502, "A IA não retornou conteúdo");
+  const parsed = JSON.parse(raw) as { headline: string; summary: string; highlights: string[]; suggestion: string };
+
+  return {
+    sessionId: session.id,
+    startedAt: start.toISOString(),
+    endedAt: end.toISOString(),
+    durationMin,
+    focusedMin,
+    tasks: tasks.map((t) => ({ title: t.title, minutes: t.minutes, done: t.done })),
+    headline: parsed.headline.slice(0, 80),
+    summary: parsed.summary.slice(0, 600),
+    highlights: parsed.highlights.slice(0, 4).map((h) => h.slice(0, 120)),
+    suggestion: parsed.suggestion.slice(0, 200),
+  };
 }
 
 /* ───────────── Organizar lista por importância ───────────── */

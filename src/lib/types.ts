@@ -232,6 +232,21 @@ export interface AiInsightContent {
   schedule: AiSchedule;
 }
 
+/** Visão da IA sobre uma sessão de trabalho encerrada. */
+export interface WorkSessionInsightDTO {
+  sessionId: string;
+  startedAt: string;
+  endedAt: string;
+  durationMin: number;
+  /** Minutos com cronômetro de tarefa ligado dentro da sessão. */
+  focusedMin: number;
+  tasks: { title: string; minutes: number; done: boolean }[];
+  headline: string;
+  summary: string;
+  highlights: string[];
+  suggestion: string;
+}
+
 export interface AiInsightDTO extends AiInsightContent {
   id: string;
   dayKey: string;
