@@ -610,6 +610,22 @@ export async function archiveAllCards(listId: string, userId: string) {
   return result.count;
 }
 
+/** Reordena as tarefas abertas de uma lista na ordem dada (ids), guardando a ordem anterior para desfazer. */
+export async function reorderListCards(listId: string, userId: string, orderedIds: string[], label: string): Promise<number> {
+  const list = await ownedList(listId, userId);
+  const cards = await prisma.card.findMany({ where: { listId: list.id, archivedAt: null }, orderBy: { position: "asc" } });
+  const byId = new Map(cards.map((c) => [c.id, c]));
+  const seen = new Set<string>();
+  const ordered = orderedIds.filter((id) => byId.has(id) && !seen.has(id) && seen.add(id)).map((id) => byId.get(id)!);
+  // Tarefas que a ordem não mencionou ficam no fim, na ordem atual.
+  for (const c of cards) if (!seen.has(c.id)) ordered.push(c);
+  const changed = ordered.some((c, i) => c.id !== cards[i]?.id);
+  if (!changed) return 0;
+  await recordUndo(userId, label, { kind: "restoreCards", cards: snapshotCards(cards) });
+  await prisma.$transaction(ordered.map((c, i) => prisma.card.update({ where: { id: c.id }, data: { position: i } })));
+  return ordered.length;
+}
+
 export async function deleteList(id: string, userId: string) {
   await ownedList(id, userId);
   await prisma.list.delete({ where: { id } });

@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Info } from "lucide-react";
+import { AlertTriangle, Info, Undo2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Modal } from "./Modal";
 
@@ -19,6 +19,8 @@ export interface ConfirmOptions {
   confirmLabel?: string;
   cancelLabel?: string;
   danger?: boolean;
+  /** Destaque laranja no botão de confirmar (ex.: desfazer). */
+  accent?: boolean;
 }
 
 interface Pending extends ConfirmOptions {
@@ -71,7 +73,13 @@ export function ConfirmProvider() {
         title={
           pending ? (
             <h2 className="flex items-center gap-2 text-lg font-semibold">
-              {pending.danger ? <AlertTriangle size={18} className="text-red" /> : <Info size={18} className="text-blue" />}
+              {pending.danger ? (
+                <AlertTriangle size={18} className="text-red" />
+              ) : pending.accent ? (
+                <Undo2 size={18} className="text-orange" />
+              ) : (
+                <Info size={18} className="text-blue" />
+              )}
               {pending.title ?? "Confirmar"}
             </h2>
           ) : null
@@ -88,7 +96,7 @@ export function ConfirmProvider() {
                 type="button"
                 autoFocus
                 onClick={() => answer(true)}
-                className={`btn ${pending.danger ? "pill-red border-red/40" : "btn-primary"}`}
+                className={`btn ${pending.danger ? "pill-red border-red/40" : pending.accent ? "pill-orange border-orange/40" : "btn-primary"}`}
               >
                 {pending.confirmLabel ?? "Confirmar"}
               </button>

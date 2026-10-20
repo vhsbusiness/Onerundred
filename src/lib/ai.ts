@@ -3,7 +3,7 @@ import { subDays } from "date-fns";
 import { prisma } from "./db";
 import { ApiError } from "./errors";
 import { PRIORITY_LABEL, asPriority, isOverdue } from "./metrics";
-import { boardAccess, getDashboard } from "./repo";
+import { boardAccess, getDashboard, reorderListCards } from "./repo";
 import { computeStats, listSleep } from "./sleep";
 import { listProjects } from "./projects";
 import { computeLeisureStats, listLeisure } from "./leisure";
@@ -389,6 +389,74 @@ export async function generateInsight(userId: string): Promise<AiInsightDTO> {
   ]);
 
   return serializeInsight(row, Math.max(0, MAX_GENERATIONS_PER_DAY - used - 1));
+}
+
+/* ───────────── Organizar lista por importância ───────────── */
+
+const SORT_SYSTEM_PROMPT = `Você organiza a lista de tarefas de um usuário brasileiro por importância.
+Devolva os ids de TODAS as tarefas recebidas, da mais importante para a menos importante.
+Critérios, nesta ordem: tarefas atrasadas primeiro; prioridade Alta antes de Média antes de Baixa;
+prazos mais próximos antes; entre iguais, tarefas que parecem bloquear outras, ou de maior impacto
+(dinheiro, clientes, saúde, compromissos com outras pessoas) antes de tarefas rotineiras ou vagas;
+por último, tarefas curtas antes de longas. Não invente ids.`;
+
+const sortSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    order: { type: "array", items: { type: "string" }, description: "Ids das tarefas, da mais importante para a menos importante" },
+    reason: { type: "string", description: "Uma frase curta, em português, explicando o critério principal usado" },
+  },
+  required: ["order", "reason"],
+} as const;
+
+/** Pede à IA a ordem de importância das tarefas abertas de uma lista e aplica (com desfazer). */
+export async function organizeListByImportance(userId: string, listId: string): Promise<{ moved: number; reason: string }> {
+  if (!aiEnabled()) throw new ApiError(503, "IA não configurada (OPENAI_API_KEY ausente)");
+  const list = await prisma.list.findFirst({ where: { id: listId, board: boardAccess(userId) } });
+  if (!list) throw new ApiError(404, "Lista não encontrada");
+  const cards = await prisma.card.findMany({
+    where: { listId, archivedAt: null, completedAt: null },
+    orderBy: { position: "asc" },
+    select: { id: true, title: true, description: true, priority: true, estimatedMinutes: true, scheduledFor: true },
+  });
+  if (cards.length < 2) throw new ApiError(400, "A lista precisa ter pelo menos 2 tarefas abertas");
+
+  const today = todayKey();
+  const payload = cards.map((c) => ({
+    id: c.id,
+    titulo: c.title,
+    descricao: c.description.slice(0, 300),
+    prioridade: PRIORITY_LABEL[asPriority(c.priority)],
+    estimativaMin: c.estimatedMinutes,
+    dia: c.scheduledFor,
+    atrasada: isOverdue({ completedAt: null, scheduledFor: c.scheduledFor, listPriority: list.priority, listKind: list.kind }, today),
+  }));
+
+  const model = modelName();
+  const completion = await openai().chat.completions.create({
+    model,
+    ...(/^(gpt-5|o\d)/.test(model) ? { reasoning_effort: "low" as const } : {}),
+    messages: [
+      { role: "system", content: SORT_SYSTEM_PROMPT },
+      { role: "user", content: `Hoje é ${today}. Lista "${list.name}" (prioridade da lista: ${PRIORITY_LABEL[asPriority(list.priority)]}).\nTarefas em JSON:\n${JSON.stringify(payload)}` },
+    ],
+    response_format: { type: "json_schema", json_schema: { name: "ordem_importancia", strict: true, schema: sortSchema } },
+  });
+  await prisma.aiUsage.create({
+    data: {
+      userId,
+      kind: "sortList",
+      model,
+      promptTokens: completion.usage?.prompt_tokens ?? 0,
+      completionTokens: completion.usage?.completion_tokens ?? 0,
+    },
+  });
+  const raw = completion.choices[0]?.message?.content;
+  if (!raw) throw new ApiError(502, "A IA não retornou conteúdo");
+  const parsed = JSON.parse(raw) as { order: string[]; reason: string };
+  const moved = await reorderListCards(listId, userId, parsed.order, `organizar "${list.name}" por importância (IA)`);
+  return { moved, reason: parsed.reason.slice(0, 200) };
 }
 
 /** Apaga a memória de hábitos e o histórico de análises do usuário. Os dados (tarefas, sono, lazer) ficam. */

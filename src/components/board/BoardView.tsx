@@ -113,7 +113,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
 
   async function undo() {
     if (!board?.lastUndo) return;
-    if (!(await askConfirm({ title: "Desfazer", message: `Desfazer: ${board.lastUndo.label}?`, confirmLabel: "Desfazer" }))) return;
+    if (!(await askConfirm({ title: "Desfazer", message: `Desfazer: ${board.lastUndo.label}?`, confirmLabel: "Desfazer", accent: true }))) return;
     await http.post("/api/undo");
     load();
   }

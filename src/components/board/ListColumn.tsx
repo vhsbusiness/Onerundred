@@ -1,10 +1,10 @@
 "use client";
 
-import { askConfirm } from "@/components/ui/ConfirmProvider";
+import { askConfirm, notify } from "@/components/ui/ConfirmProvider";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Archive, ArrowLeft, ArrowRight, Check, Copy, FolderInput, Magnet, MoreHorizontal, Plus, Trash2, Undo2 } from "lucide-react";
+import { Archive, ArrowLeft, ArrowRight, Check, Copy, FolderInput, Magnet, MoreHorizontal, Plus, Sparkles, Trash2, Undo2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { http, priorityUi } from "@/lib/client";
 import { imagesFromClipboard, toImageDataUrl } from "@/lib/images";
@@ -67,6 +67,22 @@ export function ListColumn({
   const [priority, setPriority] = useState(2);
   const [estimate, setEstimate] = useState("");
   const [pendingImages, setPendingImages] = useState<string[]>([]);
+  const [aiSorting, setAiSorting] = useState(false);
+
+  /** Pede à IA para ordenar as tarefas abertas da lista por importância (dá para desfazer). */
+  async function aiSort() {
+    setMenu(false);
+    setAiSorting(true);
+    try {
+      const r = await http.post<{ moved: number; reason: string }>(`/api/lists/${list.id}/acoes`, { action: "aiSort" });
+      notify(r.moved === 0 ? "A IA manteve a ordem que já estava." : `Lista organizada pela IA: ${r.reason}`);
+      onChanged();
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Não foi possível organizar", "error");
+    } finally {
+      setAiSorting(false);
+    }
+  }
 
   async function onPasteNewCard(e: React.ClipboardEvent) {
     const files = imagesFromClipboard(e.clipboardData);
@@ -288,6 +304,13 @@ export function ListColumn({
                 disabled={list.cards.length === 0}
                 onClick={archiveAll}
               />
+              <MenuItem
+                icon={<Sparkles size={14} />}
+                label={aiSorting ? "Organizando…" : "Organizar por importância (IA)"}
+                disabled={aiSorting || openCount < 2}
+                onClick={aiSort}
+                accent="blue"
+              />
               <div className="my-1 border-t border-line" />
               <MenuItem
                 icon={<Undo2 size={14} />}
@@ -297,6 +320,7 @@ export function ListColumn({
                   setMenu(false);
                   onUndo?.();
                 }}
+                accent="orange"
               />
               <div className="my-1 border-t border-line" />
               <MenuItem
@@ -435,23 +459,25 @@ function MenuItem({
   onClick,
   disabled,
   danger,
+  accent,
 }: {
   icon: React.ReactNode;
   label: string;
   onClick: () => void;
   disabled?: boolean;
   danger?: boolean;
+  /** Cor de destaque (texto e ícone), para ações especiais como desfazer e IA. */
+  accent?: "orange" | "blue";
 }) {
+  const tone = danger ? "text-red" : accent === "orange" ? "text-orange" : accent === "blue" ? "text-blue" : "";
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition hover:bg-fill-2 disabled:opacity-40 ${
-        danger ? "text-red" : ""
-      }`}
+      className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition hover:bg-fill-2 disabled:opacity-40 ${tone}`}
     >
-      <span className="text-ink-3">{icon}</span>
+      <span className={tone || "text-ink-3"}>{icon}</span>
       {label}
     </button>
   );
