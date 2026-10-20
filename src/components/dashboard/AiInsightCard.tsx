@@ -11,7 +11,10 @@ function timeLabel(iso: string) {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
-export function AiInsightCard({ todayCards, initialStatus }: { todayCards: TodayCard[]; initialStatus?: AiStatusDTO }) {
+/** Análise do dia; com `dayKey` de um dia passado vira retrospectiva (sem gerar sozinha). */
+export function AiInsightCard({ todayCards, initialStatus, dayKey }: { todayCards: TodayCard[]; initialStatus?: AiStatusDTO; dayKey?: string }) {
+  const retro = Boolean(dayKey);
+  const query = dayKey ? `?dia=${dayKey}` : "";
   const [status, setStatus] = useState<AiStatusDTO | null>(initialStatus ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,35 +50,35 @@ export function AiInsightCard({ todayCards, initialStatus }: { todayCards: Today
     setBusy(true);
     setError(null);
     try {
-      const insight = await http.post<AiInsightDTO>("/api/ai/insight");
+      const insight = await http.post<AiInsightDTO>("/api/ai/insight", dayKey ? { dayKey } : {});
       setStatus((s) => (s ? { ...s, insight, remainingToday: insight.remainingToday } : s));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível gerar a análise");
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [dayKey]);
 
   const load = useCallback(async () => {
     try {
-      const s = await http.get<AiStatusDTO>("/api/ai/insight");
+      const s = await http.get<AiStatusDTO>(`/api/ai/insight${query}`);
       setStatus(s);
       // A primeira análise do dia é gerada sozinha quando há tarefas e ainda não existe análise.
-      if (!autoTried.current && s.enabled && s.observation.coreReady && !s.insight && s.remainingToday > 0 && cardsCount.current > 0) {
+      if (!retro && !autoTried.current && s.enabled && s.observation.coreReady && !s.insight && s.remainingToday > 0 && cardsCount.current > 0) {
         autoTried.current = true;
         await generate();
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao carregar a análise");
     }
-  }, [generate]);
+  }, [generate, query, retro]);
 
   useEffect(() => {
     // Com dados iniciais do servidor, só dispara a análise automática se couber; senão busca.
     // (o setState ocorre após o await, não de forma síncrona)
     const s = initialStatus;
     if (s) {
-      if (!autoTried.current && s.enabled && s.observation.coreReady && !s.insight && s.remainingToday > 0 && cardsCount.current > 0) {
+      if (!retro && !autoTried.current && s.enabled && s.observation.coreReady && !s.insight && s.remainingToday > 0 && cardsCount.current > 0) {
         autoTried.current = true;
         generate();
       }
@@ -83,7 +86,7 @@ export function AiInsightCard({ todayCards, initialStatus }: { todayCards: Today
       // eslint-disable-next-line react-hooks/set-state-in-effect
       load();
     }
-  }, [load, generate, initialStatus]);
+  }, [load, generate, initialStatus, retro]);
 
   const boardOf = (cardId: string) => todayCards.find((c) => c.id === cardId)?.boardId;
 
@@ -108,7 +111,7 @@ export function AiInsightCard({ todayCards, initialStatus }: { todayCards: Today
     >
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="flex items-center gap-2 text-sm font-medium">
-          <Brain size={15} className="text-blue" /> Análise do dia
+          <Brain size={15} className="text-blue" /> {retro ? "Análise deste dia" : "Análise do dia"}
         </h3>
         {insight && !observing && <span className={TONE_PILL[tone]}>nota IA {insight.score}%</span>}
         {observing && <span className="pill pill-blue">observando</span>}
@@ -125,7 +128,7 @@ export function AiInsightCard({ todayCards, initialStatus }: { todayCards: Today
             title={status ? `${status.remainingToday} análises restantes hoje` : undefined}
           >
             <RefreshCw size={13} className={busy ? "animate-spin" : ""} />
-            {busy ? "Analisando…" : insight ? "Atualizar" : "Gerar análise"}
+            {busy ? "Analisando…" : insight ? "Atualizar" : retro ? "Gerar análise deste dia" : "Gerar análise"}
           </button>
           <button
             type="button"
@@ -178,9 +181,11 @@ export function AiInsightCard({ todayCards, initialStatus }: { todayCards: Today
         <p className="mt-3 text-sm text-ink-3">
           {busy
             ? "A IA está lendo suas tarefas, prioridades e tempo de trabalho…"
-            : todayCards.length === 0
-              ? "Crie tarefas para hoje e a IA analisa seu dia."
-              : "Clique em “Gerar análise” para a IA avaliar seu dia."}
+            : retro
+              ? "Clique em “Gerar análise deste dia” para a IA fazer a retrospectiva."
+              : todayCards.length === 0
+                ? "Crie tarefas para hoje e a IA analisa seu dia."
+                : "Clique em “Gerar análise” para a IA avaliar seu dia."}
         </p>
       )}
 

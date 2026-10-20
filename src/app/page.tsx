@@ -11,7 +11,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
   const { dia } = await searchParams;
   const today = todayKey();
   if (dia && /^\d{4}-\d{2}-\d{2}$/.test(dia) && dia < today) {
-    return <DayReview data={await getDayReview(user.id, dia)} />;
+    const [review, ai] = await Promise.all([getDayReview(user.id, dia), getAiStatus(user.id, dia)]);
+    return <DayReview data={review} initialAi={ai} />;
   }
   const [initialData, initialAi] = await Promise.all([getDashboard(user.id), getAiStatus(user.id)]);
   return <Dashboard initialData={initialData} initialAi={initialAi} />;

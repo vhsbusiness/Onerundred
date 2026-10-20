@@ -5,21 +5,22 @@ import Link from "next/link";
 import { formatPercent, priorityUi, TONE_PILL, TONE_TEXT } from "@/lib/client";
 import { scoreTone } from "@/lib/metrics";
 import { formatDayLong, formatDuration } from "@/lib/time";
-import type { DayReviewDTO } from "@/lib/types";
+import type { AiStatusDTO, DayReviewDTO } from "@/lib/types";
+import { AiInsightCard } from "./AiInsightCard";
 import { DayPicker } from "./DayPicker";
 
 function timeLabel(iso: string) {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
-function dateTime(iso: string, dayOf: string) {
-  const d = new Date(iso);
-  const sameDay = d.toISOString().slice(0, 10) === new Date(dayOf).toISOString().slice(0, 10);
-  const day = sameDay ? "" : d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + " ";
-  return day + timeLabel(iso);
+/** Hora do fim; com dia/mês na frente quando a sessão terminou em outro dia. */
+function endLabel(endIso: string, startIso: string) {
+  const d = new Date(endIso);
+  const sameDay = d.toDateString() === new Date(startIso).toDateString();
+  return (sameDay ? "" : d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + " ") + timeLabel(endIso);
 }
 
 /** Revisão de um dia passado: nota, tarefas feitas, sessões de trabalho e lazer. */
-export function DayReview({ data }: { data: DayReviewDTO }) {
+export function DayReview({ data, initialAi }: { data: DayReviewDTO; initialAi?: AiStatusDTO }) {
   const tone = scoreTone(data.score.score);
   return (
     <div className="space-y-4">
@@ -72,6 +73,8 @@ export function DayReview({ data }: { data: DayReviewDTO }) {
         </div>
       </section>
 
+      <AiInsightCard todayCards={[]} initialStatus={initialAi} dayKey={data.dayKey} />
+
       <div className="grid gap-4 lg:grid-cols-12">
         <section className="card p-5 lg:col-span-7">
           <h2 className="flex items-center gap-2 text-sm font-medium text-ink-2">
@@ -111,13 +114,13 @@ export function DayReview({ data }: { data: DayReviewDTO }) {
             <Clock size={15} className="text-blue" /> Sessões de trabalho
           </h2>
           {data.workSessions.length === 0 ? (
-            <p className="mt-3 text-sm text-ink-3">Nenhuma sessão terminou neste dia.</p>
+            <p className="mt-3 text-sm text-ink-3">Nenhuma sessão começou neste dia.</p>
           ) : (
             <ul className="mt-3 space-y-1.5">
               {data.workSessions.map((s) => (
                 <li key={s.id} className="flex items-center justify-between rounded-lg border border-line bg-well px-3 py-1.5 text-sm">
                   <span className="text-ink-2 tabular-nums">
-                    {dateTime(s.startedAt, s.endedAt)} – {timeLabel(s.endedAt)}
+                    {timeLabel(s.startedAt)} – {endLabel(s.endedAt, s.startedAt)}
                   </span>
                   <span className="tabular-nums">{formatDuration(s.ms)}</span>
                 </li>

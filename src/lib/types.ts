@@ -1,7 +1,7 @@
 import type { Theme } from "./theme";
 import type { PeriodScore, Tone, WorkVerdict } from "./metrics";
 
-export type ListKind = "normal" | "tomorrow" | "done";
+export type ListKind = "normal" | "today" | "tomorrow" | "done";
 
 export interface SessionDTO {
   id: string;
@@ -116,6 +116,8 @@ export interface DashboardDTO {
   week: PeriodScore;
   month: PeriodScore;
   history: HistoryPoint[];
+  /** As mesmas notas contando as tarefas abertas de todas as listas (não só a "Hoje"). */
+  allLists: { today: PeriodScore; week: PeriodScore; month: PeriodScore };
   work: WorkState;
   todayCards: TodayCard[];
   runningTask: { cardId: string; boardId: string; title: string; startedAt: string } | null;

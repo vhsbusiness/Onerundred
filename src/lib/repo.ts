@@ -172,14 +172,15 @@ export async function runMaintenance(): Promise<void> {
       cards: { where: { archivedAt: null, scheduledFor: { lte: today } } },
       board: {
         include: {
-          lists: { where: { kind: "normal" }, orderBy: { position: "asc" }, take: 1 },
+          lists: { where: { kind: { in: ["today", "normal"] } }, orderBy: { position: "asc" } },
         },
       },
     },
   });
 
   for (const list of tomorrowLists) {
-    const target = list.board.lists[0];
+    // Prefere a lista "Hoje"; sem ela, a primeira lista normal.
+    const target = list.board.lists.find((l) => l.kind === "today") ?? list.board.lists[0];
     if (!target || list.cards.length === 0) continue;
     const max = await prisma.card.aggregate({
       where: { listId: target.id },
@@ -288,7 +289,7 @@ export async function ensureDefaultBoard(userId: string): Promise<void> {
       position: 0,
       lists: {
         create: [
-          { name: "Hoje", position: 0, priority: 1, kind: "normal" },
+          { name: "Hoje", position: 0, priority: 1, kind: "today" },
           { name: "Esta semana", position: 1, priority: 2, kind: "normal" },
           { name: "Amanhã", position: 2, priority: 2, kind: "tomorrow" },
           { name: "Feitas", position: 3, priority: 2, kind: "done" },
@@ -330,7 +331,7 @@ export async function listBoards(userId: string): Promise<BoardSummary[]> {
     let doneTodayCount = 0;
     for (const l of b.lists) {
       for (const c of l.cards) {
-        metricCards.push({ ...c, listPriority: l.priority });
+        metricCards.push({ ...c, listPriority: l.priority, listKind: l.kind });
         if (!c.completedAt) openCount += 1;
         else if (c.completedAt >= start && c.completedAt < end) doneTodayCount += 1;
       }
@@ -842,10 +843,9 @@ export async function reopenCard(userId: string, cardId: string): Promise<CardDT
   });
 
   if (card.list.kind === "done" || card.archivedAt) {
-    const normal = await prisma.list.findFirst({
-      where: { boardId: card.list.boardId, kind: "normal" },
-      orderBy: { position: "asc" },
-    });
+    const normal =
+      (await prisma.list.findFirst({ where: { boardId: card.list.boardId, kind: "today" }, orderBy: { position: "asc" } })) ??
+      (await prisma.list.findFirst({ where: { boardId: card.list.boardId, kind: "normal" }, orderBy: { position: "asc" } }));
     if (normal) {
       const max = await prisma.card.aggregate({ where: { listId: normal.id }, _max: { position: true } });
       await moveCard(userId, cardId, normal.id, (max._max.position ?? -1) + 1);
@@ -1000,10 +1000,10 @@ async function plannedMinutesForToday(userId: string): Promise<number> {
 export async function getWorkState(userId: string): Promise<WorkState> {
   const today = todayKey();
   const { start } = dayRange(today);
-  // Uma sessão conta no dia em que terminou (ou hoje, se ainda está rodando), inteira:
-  // sessão não é dividida pela meia-noite.
+  // Uma sessão conta inteira no dia em que começou (não é dividida pela meia-noite).
+  // A que está rodando aparece sempre, para o cronômetro continuar na tela.
   const sessions = await prisma.workSession.findMany({
-    where: { userId, OR: [{ endedAt: { gte: start } }, { endedAt: null }] },
+    where: { userId, OR: [{ startedAt: { gte: start } }, { endedAt: null }] },
     orderBy: { startedAt: "desc" },
   });
   const running = sessions.find((s) => !s.endedAt) ?? null;
@@ -1086,7 +1086,7 @@ export async function getDashboard(userId: string): Promise<DashboardDTO> {
     include: { list: { include: { board: true } }, sessions: true, images: { select: { id: true } } },
   });
 
-  const metricCards: MetricCard[] = cards.map((c) => ({ ...c, listPriority: c.list.priority }));
+  const metricCards: MetricCard[] = cards.map((c) => ({ ...c, listPriority: c.list.priority, listKind: c.list.kind }));
 
   const history = [];
   for (let i = 13; i >= 0; i--) {
@@ -1108,12 +1108,15 @@ export async function getDashboard(userId: string): Promise<DashboardDTO> {
   const todayScore = periodScore(metricCards, todayR.start, todayR.end, today);
   if (todayScore.score !== null && todayScore.score >= 70) streak += 1;
 
+  // Com lista "Hoje" no quadro, as abertas do dia são só as dela; as feitas de hoje entram de qualquer lista.
+  const hasTodayList = cards.some((c) => c.list.kind === "today");
   const todayCards: TodayCard[] = cards
     .filter(
       (c) =>
         !c.archivedAt &&
         c.scheduledFor <= today &&
-        (!c.completedAt || c.completedAt >= todayR.start),
+        (!c.completedAt || c.completedAt >= todayR.start) &&
+        (c.completedAt || !hasTodayList || c.list.kind === "today"),
     )
     .sort((a, b) => {
       if (Boolean(a.completedAt) !== Boolean(b.completedAt)) return a.completedAt ? 1 : -1;
@@ -1171,6 +1174,11 @@ export async function getDashboard(userId: string): Promise<DashboardDTO> {
     week: periodScore(metricCards, weekR.start, weekR.end, weekR.endKey),
     month: periodScore(metricCards, monthR.start, monthR.end, monthR.endKey),
     history,
+    allLists: {
+      today: periodScore(metricCards, todayR.start, todayR.end, today, { allLists: true }),
+      week: periodScore(metricCards, weekR.start, weekR.end, weekR.endKey, { allLists: true }),
+      month: periodScore(metricCards, monthR.start, monthR.end, monthR.endKey, { allLists: true }),
+    },
     work: await getWorkState(userId),
     todayCards,
     runningTask: runningSession
@@ -1198,10 +1206,10 @@ export async function getDayReview(userId: string, key: string): Promise<DayRevi
       where: { list: { board: boardAccess(userId) } },
       include: { list: { include: { board: true } }, sessions: true },
     }),
-    prisma.workSession.findMany({ where: { userId, endedAt: { gte: start, lt: end } }, orderBy: { startedAt: "asc" } }),
+    prisma.workSession.findMany({ where: { userId, startedAt: { gte: start, lt: end }, endedAt: { not: null } }, orderBy: { startedAt: "asc" } }),
     prisma.leisureLog.findMany({ where: { userId, dayKey: key, endAt: { not: null } } }),
   ]);
-  const metricCards: MetricCard[] = cards.map((c) => ({ ...c, listPriority: c.list.priority }));
+  const metricCards: MetricCard[] = cards.map((c) => ({ ...c, listPriority: c.list.priority, listKind: c.list.kind }));
   const done = cards
     .filter((c) => c.completedAt && c.completedAt >= start && c.completedAt < end)
     .sort((a, b) => a.completedAt!.getTime() - b.completedAt!.getTime())

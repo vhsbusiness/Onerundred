@@ -31,6 +31,8 @@ export const PRIORITY_LABEL: Record<Priority, string> = {
 export interface MetricCard {
   priority: number;
   listPriority: number;
+  /** Tipo da lista; com alguma lista "Hoje" no conjunto, só as abertas dela contam na nota. */
+  listKind?: string;
   scheduledFor: string; // yyyy-MM-dd
   createdAt: Date | string;
   completedAt: Date | string | null;
@@ -42,14 +44,15 @@ export function asPriority(n: number): Priority {
 }
 
 /**
- * Atrasada: só tarefa aberta de uma lista normal de prioridade Alta cujo dia já
- * passou. Tarefas em "Amanhã" e em listas de prioridade Média/Baixa nunca atrasam.
+ * Atrasada: tarefa aberta cujo dia já passou numa lista "Hoje" ou numa lista normal
+ * de prioridade Alta. Tarefas em "Amanhã" e em listas Média/Baixa nunca atrasam.
  */
 export function isOverdue(
   c: { completedAt: Date | string | null; scheduledFor: string; listPriority: number; listKind: string },
   today: string,
 ): boolean {
-  return !c.completedAt && c.listKind === "normal" && asPriority(c.listPriority) === 1 && c.scheduledFor < today;
+  const strict = c.listKind === "today" || (c.listKind === "normal" && asPriority(c.listPriority) === 1);
+  return !c.completedAt && strict && c.scheduledFor < today;
 }
 
 export function cardWeight(c: Pick<MetricCard, "priority" | "listPriority">): number {
@@ -79,11 +82,15 @@ export function periodScore(
   start: Date,
   end: Date,
   endKey: string,
+  opts: { allLists?: boolean } = {},
 ): PeriodScore {
   let doneWeight = 0;
   let openWeight = 0;
   let doneCount = 0;
   let openCount = 0;
+  // Havendo lista do tipo "Hoje", só as tarefas abertas dela pesam contra a nota;
+  // as de outras listas (Esta semana, Amanhã…) ficam de fora até irem para a Hoje.
+  const hasTodayList = !opts.allLists && cards.some((c) => c.listKind === "today");
 
   for (const c of cards) {
     const w = cardWeight(c);
@@ -101,8 +108,9 @@ export function periodScore(
     const stillOpenAtEnd = !completedAt || completedAt >= end;
     const notArchivedAtEnd = !archivedAt || archivedAt >= end;
     const dueByEnd = c.scheduledFor <= endKey;
+    const countsAsOpen = !hasTodayList || c.listKind === "today";
 
-    if (existedAtEnd && stillOpenAtEnd && notArchivedAtEnd && dueByEnd) {
+    if (existedAtEnd && stillOpenAtEnd && notArchivedAtEnd && dueByEnd && countsAsOpen) {
       openWeight += w;
       openCount += 1;
     }

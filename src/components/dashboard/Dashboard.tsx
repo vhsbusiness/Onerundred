@@ -155,6 +155,8 @@ export function Dashboard({ initialData, initialAi }: { initialData?: DashboardD
 
   const onWork = (w: WorkState) => setData((d) => (d ? { ...d, work: w } : d));
   const todayHint = `${data.today.doneCount} feitas · ${data.today.openCount} abertas`;
+  // No tooltip, a mesma nota contando as tarefas abertas de todas as listas.
+  const allOf = (s: PeriodScore) => `Contando todas as listas: ${formatPercent(s.score)} (${s.doneCount} feitas · ${s.openCount} abertas).`;
   const weekHint = `${data.week.doneCount} feitas · ${data.week.openCount} abertas`;
   const monthHint = `${data.month.doneCount} feitas · ${data.month.openCount} abertas`;
 
@@ -187,19 +189,19 @@ export function Dashboard({ initialData, initialAi }: { initialData?: DashboardD
               label="Hoje"
               score={data.today}
               hint={todayHint}
-              help="Quanto do que você planejou para hoje já foi concluído. Tarefas de prioridade alta valem mais, e o que ficou aberto puxa a nota para baixo. Tarefas de amanhã não contam hoje."
+              help={`Quanto do que você planejou para hoje já foi concluído. Só as tarefas abertas da lista "Hoje" puxam a nota para baixo; prioridade alta vale mais. ${allOf(data.allLists.today)}`}
             />
             <ScoreTile
               label="Esta semana"
               score={data.week}
               hint={weekHint}
-              help="A mesma nota, olhando a semana inteira (segunda a domingo): o que você concluiu contra o que ficou em aberto."
+              help={`A mesma nota, olhando a semana inteira (segunda a domingo): o que você concluiu contra o que ficou em aberto na lista "Hoje". ${allOf(data.allLists.week)}`}
             />
             <ScoreTile
               label="Este mês"
               score={data.month}
               hint={monthHint}
-              help="A mesma nota, olhando o mês inteiro: o que você concluiu contra o que ficou em aberto."
+              help={`A mesma nota, olhando o mês inteiro: o que você concluiu contra o que ficou em aberto na lista "Hoje". ${allOf(data.allLists.month)}`}
             />
             <PlainTile
               value={formatDuration(data.work.todayMs)}

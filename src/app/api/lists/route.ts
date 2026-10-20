@@ -2,7 +2,7 @@ import { ApiError, json, optionalPriority, readBody, requireString, withUser } f
 import { createList } from "@/lib/repo";
 import type { ListKind } from "@/lib/types";
 
-const KINDS: ListKind[] = ["normal", "tomorrow", "done"];
+const KINDS: ListKind[] = ["normal", "today", "tomorrow", "done"];
 
 export const POST = withUser(async (user, req: Request) => {
   const body = await readBody(req);

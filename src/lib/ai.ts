@@ -3,7 +3,7 @@ import { subDays } from "date-fns";
 import { prisma } from "./db";
 import { ApiError } from "./errors";
 import { PRIORITY_LABEL, asPriority, isOverdue } from "./metrics";
-import { boardAccess, getDashboard, getWorkState, reorderListCards } from "./repo";
+import { boardAccess, getDashboard, getDayReview, getWorkState, reorderListCards } from "./repo";
 import { computeStats, listSleep } from "./sleep";
 import { listProjects } from "./projects";
 import { computeLeisureStats, listLeisure } from "./leisure";
@@ -85,10 +85,13 @@ export async function getObservation(userId: string): Promise<AiObservation> {
 
 /* ───────────── Contexto ───────────── */
 
-async function buildContext(userId: string, observation: AiObservation) {
+async function buildContext(userId: string, observation: AiObservation, day: string) {
   const now = new Date();
   const today = todayKey();
+  const isToday = day === today;
   const dash = await getDashboard(userId);
+  // Dia passado: a retrospectiva usa o que foi feito e trabalhado naquele dia.
+  const review = isToday ? null : await getDayReview(userId, day);
   const since = subDays(dayRange(today).start, 14);
 
   const [workSessions, taskSessions, memory, tomorrowCards, sleepLogs, projects, leisureLogs] = await Promise.all([
@@ -136,18 +139,31 @@ async function buildContext(userId: string, observation: AiObservation) {
     }
   }
 
-  const tasks = dash.todayCards.map((c) => ({
-    id: c.id,
-    titulo: c.title,
-    lista: c.listName,
-    prioridadeLista: PRIORITY_LABEL[asPriority(c.listPriority)],
-    prioridade: PRIORITY_LABEL[asPriority(c.priority)],
-    estimativaMin: c.estimatedMinutes,
-    gastoMin: Math.round(c.spentMs / 60000),
-    feita: Boolean(c.completedAt),
-    atrasada: isOverdue(c, today),
-    emAndamento: Boolean(c.runningSince),
-  }));
+  const tasks = review
+    ? review.done.map((c) => ({
+        id: c.id,
+        titulo: c.title,
+        lista: c.listName,
+        prioridadeLista: "—",
+        prioridade: PRIORITY_LABEL[asPriority(c.priority)],
+        estimativaMin: c.estimatedMinutes,
+        gastoMin: Math.round(c.spentMs / 60000),
+        feita: true,
+        atrasada: false,
+        emAndamento: false,
+      }))
+    : dash.todayCards.map((c) => ({
+        id: c.id,
+        titulo: c.title,
+        lista: c.listName,
+        prioridadeLista: PRIORITY_LABEL[asPriority(c.listPriority)],
+        prioridade: PRIORITY_LABEL[asPriority(c.priority)],
+        estimativaMin: c.estimatedMinutes,
+        gastoMin: Math.round(c.spentMs / 60000),
+        feita: Boolean(c.completedAt),
+        atrasada: isOverdue(c, today),
+        emAndamento: Boolean(c.runningSince),
+      }));
 
   return {
     dash,
@@ -160,15 +176,17 @@ async function buildContext(userId: string, observation: AiObservation) {
         pronta: d.ready,
       })),
       agora: now.toLocaleString("pt-BR", { weekday: "long", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }),
+      diaAnalisado: day,
+      ehHoje: isToday,
       metaDiariaMin: dash.work.dailyGoalMinutes,
-      planejadoHojeMin: dash.work.plannedMinutes,
-      trabalhadoHojeMin: Math.round(dash.work.todayMs / 60000),
-      sessaoDeTrabalhoAtiva: Boolean(dash.work.running),
-      notaHoje: dash.today.score,
+      planejadoHojeMin: review ? dash.work.dailyGoalMinutes : dash.work.plannedMinutes,
+      trabalhadoHojeMin: review ? Math.round(review.workMs / 60000) : Math.round(dash.work.todayMs / 60000),
+      sessaoDeTrabalhoAtiva: review ? false : Boolean(dash.work.running),
+      notaHoje: review ? review.score.score : dash.today.score,
       notaSemana: dash.week.score,
       notaMes: dash.month.score,
       sequenciaDias70: dash.streak,
-      contagens: dash.counts,
+      contagens: review ? { done: review.done.length, inProgress: 0, pending: review.score.openCount, overdue: 0 } : dash.counts,
       tarefasDeHoje: tasks,
       tarefasFuturas: tomorrowCards.map((c) => ({
         titulo: c.title,
@@ -294,14 +312,14 @@ function serializeInsight(
   };
 }
 
+/** Gerações feitas hoje (qualquer dia analisado): limite diário. */
 async function generationsToday(userId: string): Promise<number> {
-  return prisma.aiInsight.count({ where: { userId, dayKey: todayKey() } });
+  return prisma.aiInsight.count({ where: { userId, createdAt: { gte: dayRange(todayKey()).start } } });
 }
 
-export async function getAiStatus(userId: string): Promise<AiStatusDTO> {
-  const today = todayKey();
+export async function getAiStatus(userId: string, day: string = todayKey()): Promise<AiStatusDTO> {
   const [latest, used, memory, observation] = await Promise.all([
-    prisma.aiInsight.findFirst({ where: { userId, dayKey: today }, orderBy: { createdAt: "desc" } }),
+    prisma.aiInsight.findFirst({ where: { userId, dayKey: day }, orderBy: { createdAt: "desc" } }),
     generationsToday(userId),
     prisma.aiMemory.findUnique({ where: { userId } }),
     getObservation(userId),
@@ -316,8 +334,9 @@ export async function getAiStatus(userId: string): Promise<AiStatusDTO> {
   };
 }
 
-export async function generateInsight(userId: string): Promise<AiInsightDTO> {
+export async function generateInsight(userId: string, day: string = todayKey()): Promise<AiInsightDTO> {
   if (!aiEnabled()) throw new ApiError(503, "IA não configurada (OPENAI_API_KEY ausente)");
+  if (day > todayKey()) throw new ApiError(400, "Não dá para analisar um dia que ainda não chegou");
   const used = await generationsToday(userId);
   if (used >= MAX_GENERATIONS_PER_DAY) {
     throw new ApiError(429, `Limite de ${MAX_GENERATIONS_PER_DAY} análises por dia atingido`);
@@ -331,7 +350,8 @@ export async function generateInsight(userId: string): Promise<AiInsightDTO> {
       .join(", ");
     throw new ApiError(425, `A IA ainda está observando seus hábitos (${pending})`);
   }
-  const { payload } = await buildContext(userId, observation);
+  const { payload } = await buildContext(userId, observation, day);
+  const retro = day !== todayKey();
   const model = modelName();
   const supportsReasoning = /^(gpt-5|o\d)/.test(model);
 
@@ -342,7 +362,7 @@ export async function generateInsight(userId: string): Promise<AiInsightDTO> {
       { role: "system", content: SYSTEM_PROMPT },
       {
         role: "user",
-        content: `Dados do usuário em JSON:\n${JSON.stringify(payload)}\n\nTempo trabalhado hoje formatado: ${formatDuration(payload.trabalhadoHojeMin * 60000)}.`,
+        content: `${retro ? `RETROSPECTIVA: analise o dia ${day} (já passou). Fale no passado, avalie o que foi feito e trabalhado nesse dia e deixe nextTasks vazio e schedule vazio.\n` : ""}Dados do usuário em JSON:\n${JSON.stringify(payload)}\n\nTempo trabalhado ${retro ? "nesse dia" : "hoje"} formatado: ${formatDuration(payload.trabalhadoHojeMin * 60000)}.`,
       },
     ],
     response_format: {
@@ -374,7 +394,7 @@ export async function generateInsight(userId: string): Promise<AiInsightDTO> {
     prisma.aiInsight.create({
       data: {
         userId,
-        dayKey: todayKey(),
+        dayKey: day,
         model,
         content: JSON.stringify(content),
         promptTokens: completion.usage?.prompt_tokens ?? 0,
@@ -424,7 +444,7 @@ export async function analyzeWorkSession(userId: string, sessionId: string): Pro
   if (!session) throw new ApiError(404, "Sessão não encontrada");
   if (!session.endedAt) throw new ApiError(400, "Encerre ou pause a sessão antes de pedir a visão da IA");
 
-  const endDay = dayRange(dayKey(session.endedAt));
+  const startDay = dayRange(dayKey(session.startedAt));
   const used = await prisma.aiUsage.count({ where: { userId, kind: "session", createdAt: { gte: dayRange(todayKey()).start } } });
   if (used >= MAX_SESSION_INSIGHTS_PER_DAY) throw new ApiError(429, `Limite de ${MAX_SESSION_INSIGHTS_PER_DAY} visões de sessão por dia atingido`);
 
@@ -445,7 +465,7 @@ export async function analyzeWorkSession(userId: string, sessionId: string): Pro
       where: { completedAt: { gte: start, lte: end }, list: { board: boardAccess(userId) } },
       select: { id: true, title: true, priority: true, estimatedMinutes: true },
     }),
-    prisma.workSession.findMany({ where: { userId, OR: [{ endedAt: { gte: endDay.start, lt: endDay.end } }, { endedAt: null }] }, orderBy: { startedAt: "asc" } }),
+    prisma.workSession.findMany({ where: { userId, startedAt: { gte: startDay.start, lt: startDay.end } }, orderBy: { startedAt: "asc" } }),
     getWorkState(userId),
   ]);
 
@@ -459,9 +479,9 @@ export async function analyzeWorkSession(userId: string, sessionId: string): Pro
   const durationMin = Math.round((end.getTime() - start.getTime()) / 60000);
   const focusedMin = tasks.reduce((acc, t) => acc + t.minutes, 0);
   const idx = daySessions.findIndex((s) => s.id === session.id);
-  // Hora; com dia/mês na frente quando a sessão atravessou a meia-noite.
+  // Hora; o fim leva dia/mês na frente quando a sessão atravessou a meia-noite.
   const fmt = (d: Date) =>
-    (dayKey(d) !== dayKey(end) ? d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + " " : "") +
+    (dayKey(d) !== dayKey(start) ? d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + " " : "") +
     d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
   const payload = {

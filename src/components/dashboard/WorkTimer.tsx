@@ -11,11 +11,11 @@ import { Modal } from "@/components/ui/Modal";
 function timeLabel(iso: string) {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
-/** Hora; com dia/mês na frente quando não é de hoje (sessão que atravessou a meia-noite). */
-function startLabel(iso: string) {
-  const d = new Date(iso);
-  const sameDay = d.toDateString() === new Date().toDateString();
-  return (sameDay ? "" : d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + " ") + timeLabel(iso);
+/** Hora do fim; com dia/mês na frente quando a sessão terminou em outro dia (atravessou a meia-noite). */
+function endLabel(endIso: string, startIso: string) {
+  const d = new Date(endIso);
+  const sameDay = d.toDateString() === new Date(startIso).toDateString();
+  return (sameDay ? "" : d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + " ") + timeLabel(endIso);
 }
 
 export function WorkTimer({ work, onChange }: { work: WorkState; onChange: (w: WorkState) => void }) {
@@ -199,7 +199,7 @@ export function WorkTimer({ work, onChange }: { work: WorkState; onChange: (w: W
                   className="group flex items-center justify-between rounded-lg border border-line bg-well px-3 py-1.5 text-sm"
                 >
                   <span className="text-ink-2 tabular-nums">
-                    {startLabel(s.startedAt)} – {s.endedAt ? timeLabel(s.endedAt) : "agora"}
+                    {timeLabel(s.startedAt)} – {s.endedAt ? endLabel(s.endedAt, s.startedAt) : "agora"}
                   </span>
                   <span className="flex items-center gap-2">
                     <span className="tabular-nums">{formatDuration(ms)}</span>
@@ -255,7 +255,7 @@ export function WorkTimer({ work, onChange }: { work: WorkState; onChange: (w: W
             <div>
               <div className="text-base font-semibold">{insight.headline}</div>
               <div className="mt-0.5 text-xs text-ink-3 tabular-nums">
-                {startLabel(insight.startedAt)} – {timeLabel(insight.endedAt)} · {formatDuration(insight.durationMin * 60000)} ·{" "}
+                {timeLabel(insight.startedAt)} – {endLabel(insight.endedAt, insight.startedAt)} · {formatDuration(insight.durationMin * 60000)} ·{" "}
                 {insight.focusedMin > 0 ? `${formatDuration(insight.focusedMin * 60000)} com cronômetro em tarefa` : "sem cronômetro em tarefa"}
               </div>
             </div>

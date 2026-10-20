@@ -16,6 +16,7 @@ export const LIST_SORT_PREFIX = "list:";
 
 const KIND_LABEL: Record<ListKind, string> = {
   normal: "Normal",
+  today: "Hoje",
   tomorrow: "Amanhã",
   done: "Feitas",
 };

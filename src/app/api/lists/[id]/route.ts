@@ -3,7 +3,7 @@ import { deleteList, updateList } from "@/lib/repo";
 import type { ListKind } from "@/lib/types";
 
 type Ctx = { params: Promise<{ id: string }> };
-const KINDS: ListKind[] = ["normal", "tomorrow", "done"];
+const KINDS: ListKind[] = ["normal", "today", "tomorrow", "done"];
 
 export const PATCH = withUser(async (user, req: Request, ctx: Ctx) => {
   const { id } = await ctx.params;
