@@ -545,7 +545,7 @@ export async function moveAllCards(fromListId: string, toListId: string, userId:
     cards.map((c) =>
       prisma.card.update({
         where: { id: c.id },
-        data: { listId: toListId, position: pos++, ...kindEffects(to.kind, c) },
+        data: { listId: toListId, position: pos++, ...kindEffects(to, c) },
       }),
     ),
   );
@@ -578,7 +578,7 @@ export async function pullByPriority(listId: string, priority: number, userId: s
     cards.map((c) =>
       prisma.card.update({
         where: { id: c.id },
-        data: { listId, position: pos++, ...kindEffects(target.kind, c) },
+        data: { listId, position: pos++, ...kindEffects(target, c) },
       }),
     ),
   );
@@ -747,16 +747,27 @@ export async function archiveCard(userId: string, cardId: string): Promise<void>
 }
 
 /** Ajustes de estado ao entrar numa lista de determinado tipo. */
-function kindEffects(kind: string, card: { completedAt: Date | null; scheduledFor: string }) {
+/**
+ * O que muda numa tarefa ao cair numa lista. `entering` = veio de outra lista: ao entrar numa
+ * lista "Hoje" (ou normal de prioridade Alta), a data vira hoje, para o atraso contar a partir
+ * de agora e não da data antiga.
+ */
+function kindEffects(
+  list: { kind: string; priority: number },
+  card: { completedAt: Date | null; scheduledFor: string },
+  entering = true,
+) {
   const today = todayKey();
   const data: { completedAt?: Date | null; scheduledFor?: string } = {};
-  if (kind === "done") {
+  if (list.kind === "done") {
     if (!card.completedAt) data.completedAt = new Date();
   } else {
     if (card.completedAt) data.completedAt = null;
-    if (kind === "tomorrow") {
+    if (list.kind === "tomorrow") {
       if (card.scheduledFor <= today) data.scheduledFor = tomorrowKey();
     } else if (card.scheduledFor > today) {
+      data.scheduledFor = today;
+    } else if (entering && card.scheduledFor < today && (list.kind === "today" || (list.kind === "normal" && list.priority === 1))) {
       data.scheduledFor = today;
     }
   }
@@ -784,7 +795,7 @@ export async function moveCard(userId: string, cardId: string, toListId: string,
       where: { id: c.id },
       data:
         c.id === cardId
-          ? { listId: toListId, position: i, ...kindEffects(target.kind, card) }
+          ? { listId: toListId, position: i, ...kindEffects(target, card, fromListId !== toListId) }
           : { position: i },
     }),
   );
