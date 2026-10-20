@@ -1145,6 +1145,29 @@ export async function getDashboard(userId: string): Promise<DashboardDTO> {
     include: { card: { include: { list: true } } },
   });
 
+  // Tempo que falta para fechar o dia: estimativa menos o já gasto; sem estimativa, a média
+  // do que as tarefas concluídas nos últimos 30 dias levaram (ou a média das estimativas; ou 30 min).
+  const since30 = subDays(now, 30);
+  const recentDone = cards.filter((c) => c.completedAt && c.completedAt >= since30);
+  const spentOf = (c: (typeof cards)[number]) => sumSessions(c.sessions.filter((s) => s.endedAt)) + (c.sessions.some((s) => !s.endedAt) ? now.getTime() - c.sessions.find((s) => !s.endedAt)!.startedAt.getTime() : 0);
+  const measured = recentDone.map(spentOf).filter((ms) => ms >= 60000);
+  const estimates = recentDone.map((c) => c.estimatedMinutes ?? 0).filter((m) => m > 0);
+  const avgMinutes = measured.length >= 3
+    ? Math.round(measured.reduce((a, b) => a + b, 0) / measured.length / 60000)
+    : estimates.length > 0
+      ? Math.round(estimates.reduce((a, b) => a + b, 0) / estimates.length)
+      : 30;
+  const openToday = todayCards.filter((c) => !c.completedAt);
+  let remainingMin = 0;
+  let estimatedCount = 0;
+  for (const c of openToday) {
+    const est = c.estimatedMinutes ?? avgMinutes;
+    if (c.estimatedMinutes) estimatedCount += 1;
+    const spentMin = (c.spentMs + (c.runningSince ? now.getTime() - new Date(c.runningSince).getTime() : 0)) / 60000;
+    remainingMin += Math.max(est - spentMin, 5);
+  }
+  const remaining = { minutes: Math.round(remainingMin), openCount: openToday.length, estimatedCount, avgMinutes };
+
   return {
     todayKey: today,
     today: todayScore,
@@ -1163,6 +1186,7 @@ export async function getDashboard(userId: string): Promise<DashboardDTO> {
       : null,
     counts,
     streak,
+    remaining,
   };
 }
 

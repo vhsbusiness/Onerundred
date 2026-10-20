@@ -121,6 +121,16 @@ export interface DashboardDTO {
   runningTask: { cardId: string; boardId: string; title: string; startedAt: string } | null;
   counts: { done: number; inProgress: number; pending: number; overdue: number };
   streak: number;
+  /** Quanto falta para fechar as tarefas abertas de hoje. */
+  remaining: {
+    /** Minutos que faltam, somando estimativa menos tempo gasto (ou a média, sem estimativa). */
+    minutes: number;
+    openCount: number;
+    /** Quantas das abertas têm estimativa própria. */
+    estimatedCount: number;
+    /** Média histórica usada nas tarefas sem estimativa (min). */
+    avgMinutes: number;
+  };
 }
 
 export interface ArchivedCard extends CardDTO {

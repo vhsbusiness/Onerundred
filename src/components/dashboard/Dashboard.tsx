@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { formatPercent, http, TONE_PILL, TONE_TEXT } from "@/lib/client";
+import { formatPercent, http, TONE_PILL, TONE_TEXT, useNow } from "@/lib/client";
 import { scoreTone, type PeriodScore } from "@/lib/metrics";
 import { formatDayLong, formatDuration } from "@/lib/time";
 import type { AiStatusDTO, DashboardDTO, WorkState } from "@/lib/types";
@@ -35,17 +35,20 @@ function PlainTile({
   pill,
   pillClass = "pill",
   help,
+  compact = false,
 }: {
   value: string;
   label: string;
   pill: string;
   pillClass?: string;
   help?: string;
+  /** Valor mais comprido (ex.: "~10h 40m"): fonte menor para não quebrar linha. */
+  compact?: boolean;
 }) {
   return (
     <div className="min-w-0">
       <Tip text={help ?? ""} className={help ? "cursor-help" : ""}>
-        <div className="text-[2rem] font-semibold leading-none tracking-tight tabular-nums">{value}</div>
+        <div className={`whitespace-nowrap font-semibold leading-none tracking-tight tabular-nums ${compact ? "text-[1.6rem] pt-1" : "text-[2rem]"}`}>{value}</div>
         <div className={`mt-1.5 text-sm text-ink-2 ${help ? "underline decoration-dotted decoration-ink-3/60 underline-offset-4" : ""}`}>{label}</div>
       </Tip>
       <div className="mt-2">
@@ -124,6 +127,9 @@ export function Dashboard({ initialData, initialAi }: { initialData?: DashboardD
     };
   }, [load, initialData]);
 
+  // Relógio (a cada minuto) para o horário previsto de terminar; vale 0 até montar.
+  const nowMs = useNow(true, 60000);
+
   if (error) {
     return (
       <div className="card p-6 text-sm text-red">
@@ -172,7 +178,7 @@ export function Dashboard({ initialData, initialAi }: { initialData?: DashboardD
 
       <div className="grid gap-4 lg:grid-cols-12">
         <section className="card p-5 lg:col-span-8">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 xl:grid-cols-5">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 xl:grid-cols-6">
             <ScoreTile
               label="Hoje"
               score={data.today}
@@ -197,6 +203,24 @@ export function Dashboard({ initialData, initialAi }: { initialData?: DashboardD
               pill={data.work.verdict.label}
               pillClass={TONE_PILL[data.work.verdict.tone]}
               help="Tempo total das suas sessões de trabalho de hoje. O selo diz se você está abaixo, no ritmo ou acima do que planejou para o dia."
+            />
+            <PlainTile
+              value={data.remaining.openCount === 0 ? "0m" : `~${formatDuration(data.remaining.minutes * 60000)}`}
+              label="Para terminar hoje"
+              compact
+              pill={
+                data.remaining.openCount === 0
+                  ? "Tudo feito"
+                  : nowMs === 0
+                    ? `${data.remaining.openCount} abertas`
+                    : `termina ~${new Date(nowMs + data.remaining.minutes * 60000).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
+              }
+              pillClass={data.remaining.openCount === 0 ? "pill pill-green" : data.remaining.minutes > 8 * 60 ? "pill pill-red" : "pill pill-blue"}
+              help={`Soma do que falta nas ${data.remaining.openCount} tarefas abertas de hoje: a estimativa de cada uma menos o tempo já gasto. ${
+                data.remaining.openCount - data.remaining.estimatedCount > 0
+                  ? `${data.remaining.openCount - data.remaining.estimatedCount} sem estimativa entram com a sua média de ${data.remaining.avgMinutes} min por tarefa.`
+                  : "Todas têm estimativa."
+              } O horário é se você seguir direto, sem pausas.`}
             />
             <PlainTile
               value={`${data.streak}d`}
