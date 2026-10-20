@@ -11,6 +11,7 @@ import { HistoryChart } from "./HistoryChart";
 import { Tip } from "@/components/ui/Tip";
 import { TodayTasks } from "./TodayTasks";
 import { WorkTimer } from "./WorkTimer";
+import { DayPicker } from "./DayPicker";
 
 function ScoreTile({ label, score, hint, help }: { label: string; score: PeriodScore; hint: string; help: string }) {
   const tone = scoreTone(score.score);
@@ -164,6 +165,8 @@ export function Dashboard({ initialData, initialAi }: { initialData?: DashboardD
           <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Seu dia</h1>
           <p className="text-sm text-ink-2">{formatDayLong(data.todayKey)}</p>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+        <DayPicker value={data.todayKey} />
         {data.runningTask && (
           <Link
             href={`/quadros/${data.runningTask.boardId}?card=${data.runningTask.cardId}`}
@@ -174,6 +177,7 @@ export function Dashboard({ initialData, initialAi }: { initialData?: DashboardD
             Fazendo: {data.runningTask.title}
           </Link>
         )}
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-12">

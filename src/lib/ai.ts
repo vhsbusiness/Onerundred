@@ -424,7 +424,7 @@ export async function analyzeWorkSession(userId: string, sessionId: string): Pro
   if (!session) throw new ApiError(404, "Sessão não encontrada");
   if (!session.endedAt) throw new ApiError(400, "Encerre ou pause a sessão antes de pedir a visão da IA");
 
-  const dayStart = dayRange(dayKey(session.startedAt)).start;
+  const endDay = dayRange(dayKey(session.endedAt));
   const used = await prisma.aiUsage.count({ where: { userId, kind: "session", createdAt: { gte: dayRange(todayKey()).start } } });
   if (used >= MAX_SESSION_INSIGHTS_PER_DAY) throw new ApiError(429, `Limite de ${MAX_SESSION_INSIGHTS_PER_DAY} visões de sessão por dia atingido`);
 
@@ -445,7 +445,7 @@ export async function analyzeWorkSession(userId: string, sessionId: string): Pro
       where: { completedAt: { gte: start, lte: end }, list: { board: boardAccess(userId) } },
       select: { id: true, title: true, priority: true, estimatedMinutes: true },
     }),
-    prisma.workSession.findMany({ where: { userId, startedAt: { gte: dayStart, lt: dayRange(dayKey(session.startedAt)).end } }, orderBy: { startedAt: "asc" } }),
+    prisma.workSession.findMany({ where: { userId, OR: [{ endedAt: { gte: endDay.start, lt: endDay.end } }, { endedAt: null }] }, orderBy: { startedAt: "asc" } }),
     getWorkState(userId),
   ]);
 
@@ -459,10 +459,13 @@ export async function analyzeWorkSession(userId: string, sessionId: string): Pro
   const durationMin = Math.round((end.getTime() - start.getTime()) / 60000);
   const focusedMin = tasks.reduce((acc, t) => acc + t.minutes, 0);
   const idx = daySessions.findIndex((s) => s.id === session.id);
-  const fmt = (d: Date) => d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  // Hora; com dia/mês na frente quando a sessão atravessou a meia-noite.
+  const fmt = (d: Date) =>
+    (dayKey(d) !== dayKey(end) ? d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + " " : "") +
+    d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
   const payload = {
-    sessao: { inicio: fmt(start), fim: fmt(end), duracaoMin: durationMin, numeroNoDia: idx + 1, totalSessoesNoDia: daySessions.length },
+    sessao: { inicio: fmt(start), fim: fmt(end), atravessouMeiaNoite: dayKey(start) !== dayKey(end), duracaoMin: durationMin, numeroNoDia: idx + 1, totalSessoesNoDia: daySessions.length },
     minutosComCronometroDeTarefa: focusedMin,
     tarefasComCronometro: tasks.map((t) => ({ titulo: t.title, lista: t.list, minutos: t.minutes, prioridade: PRIORITY_LABEL[asPriority(t.priority)], estimativaMin: t.estimatedMinutes, concluida: t.done })),
     tarefasConcluidasNaSessao: completed.map((c) => ({ titulo: c.title, prioridade: PRIORITY_LABEL[asPriority(c.priority)], estimativaMin: c.estimatedMinutes })),

@@ -133,6 +133,27 @@ export interface DashboardDTO {
   };
 }
 
+/** Revisão de um dia já passado (ou de hoje): o que foi feito. */
+export interface DayReviewDTO {
+  dayKey: string;
+  score: PeriodScore;
+  done: {
+    id: string;
+    title: string;
+    priority: number;
+    listName: string;
+    boardId: string;
+    boardName: string;
+    completedAt: string;
+    spentMs: number;
+    estimatedMinutes: number | null;
+    archived: boolean;
+  }[];
+  workSessions: { id: string; startedAt: string; endedAt: string; ms: number }[];
+  workMs: number;
+  leisureMin: number;
+}
+
 export interface ArchivedCard extends CardDTO {
   listName: string;
   boardId: string;

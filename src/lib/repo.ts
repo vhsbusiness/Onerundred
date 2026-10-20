@@ -24,6 +24,7 @@ import type {
   ListKind,
   SessionDTO,
   SettingsDTO,
+  DayReviewDTO,
   TodayCard,
   WorkState,
 } from "./types";
@@ -138,6 +139,7 @@ async function ownedCard(id: string, userId: string) {
  */
 let lastMaintenanceAt = 0;
 let lastMaintenanceDay = "";
+const FORGOTTEN_AFTER_MS = 16 * 3600000;
 
 export async function runMaintenance(): Promise<void> {
   const today = todayKey();
@@ -152,23 +154,16 @@ export async function runMaintenance(): Promise<void> {
     data: { archivedAt: new Date() },
   });
 
-  const forgottenWork = await prisma.workSession.findMany({
-    where: { endedAt: null, startedAt: { lt: start } },
-  });
+  // Sessões de trabalho e cronômetros de tarefa atravessam a meia-noite normalmente.
+  // Só o que ficou ligado por mais de 16 h é considerado esquecido e fecha em início + 16 h.
+  const forgottenBefore = new Date(Date.now() - FORGOTTEN_AFTER_MS);
+  const forgottenWork = await prisma.workSession.findMany({ where: { endedAt: null, startedAt: { lt: forgottenBefore } } });
   for (const s of forgottenWork) {
-    await prisma.workSession.update({
-      where: { id: s.id },
-      data: { endedAt: dayRange(dayKey(s.startedAt)).end },
-    });
+    await prisma.workSession.update({ where: { id: s.id }, data: { endedAt: new Date(s.startedAt.getTime() + FORGOTTEN_AFTER_MS) } });
   }
-  const forgottenTasks = await prisma.taskSession.findMany({
-    where: { endedAt: null, startedAt: { lt: start } },
-  });
+  const forgottenTasks = await prisma.taskSession.findMany({ where: { endedAt: null, startedAt: { lt: forgottenBefore } } });
   for (const s of forgottenTasks) {
-    await prisma.taskSession.update({
-      where: { id: s.id },
-      data: { endedAt: dayRange(dayKey(s.startedAt)).end },
-    });
+    await prisma.taskSession.update({ where: { id: s.id }, data: { endedAt: new Date(s.startedAt.getTime() + FORGOTTEN_AFTER_MS) } });
   }
 
   const tomorrowLists = await prisma.list.findMany({
@@ -1005,8 +1000,10 @@ async function plannedMinutesForToday(userId: string): Promise<number> {
 export async function getWorkState(userId: string): Promise<WorkState> {
   const today = todayKey();
   const { start } = dayRange(today);
+  // Uma sessão conta no dia em que terminou (ou hoje, se ainda está rodando), inteira:
+  // sessão não é dividida pela meia-noite.
   const sessions = await prisma.workSession.findMany({
-    where: { userId, OR: [{ startedAt: { gte: start } }, { endedAt: null }] },
+    where: { userId, OR: [{ endedAt: { gte: start } }, { endedAt: null }] },
     orderBy: { startedAt: "desc" },
   });
   const running = sessions.find((s) => !s.endedAt) ?? null;
@@ -1187,6 +1184,52 @@ export async function getDashboard(userId: string): Promise<DashboardDTO> {
     counts,
     streak,
     remaining,
+  };
+}
+
+/* ───────────────────────── Revisão de um dia ───────────────────────── */
+
+/** O que aconteceu num dia: nota, tarefas feitas, sessões de trabalho e lazer. */
+export async function getDayReview(userId: string, key: string): Promise<DayReviewDTO> {
+  await runMaintenance();
+  const { start, end } = dayRange(key);
+  const [cards, workSessions, leisure] = await Promise.all([
+    prisma.card.findMany({
+      where: { list: { board: boardAccess(userId) } },
+      include: { list: { include: { board: true } }, sessions: true },
+    }),
+    prisma.workSession.findMany({ where: { userId, endedAt: { gte: start, lt: end } }, orderBy: { startedAt: "asc" } }),
+    prisma.leisureLog.findMany({ where: { userId, dayKey: key, endAt: { not: null } } }),
+  ]);
+  const metricCards: MetricCard[] = cards.map((c) => ({ ...c, listPriority: c.list.priority }));
+  const done = cards
+    .filter((c) => c.completedAt && c.completedAt >= start && c.completedAt < end)
+    .sort((a, b) => a.completedAt!.getTime() - b.completedAt!.getTime())
+    .map((c) => ({
+      id: c.id,
+      title: c.title,
+      priority: c.priority,
+      listName: c.list.name,
+      boardId: c.list.boardId,
+      boardName: c.list.board.name,
+      completedAt: c.completedAt!.toISOString(),
+      spentMs: sumSessions(c.sessions.filter((s) => s.endedAt)),
+      estimatedMinutes: c.estimatedMinutes,
+      archived: Boolean(c.archivedAt),
+    }));
+  const sessions = workSessions.map((s) => ({
+    id: s.id,
+    startedAt: s.startedAt.toISOString(),
+    endedAt: s.endedAt!.toISOString(),
+    ms: s.endedAt!.getTime() - s.startedAt.getTime(),
+  }));
+  return {
+    dayKey: key,
+    score: periodScore(metricCards, start, end, key),
+    done,
+    workSessions: sessions,
+    workMs: sessions.reduce((acc, s) => acc + s.ms, 0),
+    leisureMin: leisure.reduce((acc, l) => acc + Math.round((l.endAt!.getTime() - l.startAt.getTime()) / 60000), 0),
   };
 }
 
