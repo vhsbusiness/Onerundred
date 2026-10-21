@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, BellOff, Check, Plus, Repeat, Trash2 } from "lucide-react";
+import { Archive, Bell, BellOff, Check, ChevronDown, ChevronUp, Pencil, Plus, Repeat, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { http } from "@/lib/client";
@@ -13,6 +13,70 @@ const REPEAT_LABEL = { none: "Uma vez", daily: "Todo dia", weekly: "Toda semana"
 
 function fmt(iso: string) {
   return new Date(iso).toLocaleString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+function localDateKey(iso: string) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function localTime(iso: string) {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+/** Formulário de edição de um lembrete (título, detalhe, dia, hora e repetição). */
+function ReminderEditor({ reminder, onDone, onCancel }: { reminder: ReminderDTO; onDone: () => void; onCancel: () => void }) {
+  const [title, setTitle] = useState(reminder.title);
+  const [note, setNote] = useState(reminder.note);
+  const [date, setDate] = useState(localDateKey(reminder.at));
+  const [time, setTime] = useState(localTime(reminder.at));
+  const [repeat, setRepeat] = useState(reminder.repeat);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const [y, m, d] = date.split("-").map(Number);
+      const [h, min] = time.split(":").map(Number);
+      const at = new Date(y, m - 1, d, h, min, 0, 0);
+      // Mudar o horário reativa o lembrete (serve para reagendar um já disparado).
+      await http.patch(`/api/lembretes/${reminder.id}`, { title, note, at: at.toISOString(), repeat, active: true });
+      onDone();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível salvar");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={save} className="w-full space-y-2 rounded-xl border border-line-2 bg-well p-3">
+      <input value={title} onChange={(e) => setTitle(e.target.value)} className="input" maxLength={120} placeholder="Título" autoFocus />
+      <input value={note} onChange={(e) => setNote(e.target.value)} className="input" maxLength={300} placeholder="Detalhe (opcional)" />
+      <div className="grid grid-cols-2 gap-2">
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input" aria-label="Dia" />
+        <TimeField value={time} onChange={setTime} ariaLabel="Hora" />
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {(Object.keys(REPEAT_LABEL) as (keyof typeof REPEAT_LABEL)[]).map((k) => (
+          <button key={k} type="button" onClick={() => setRepeat(k)} className={`pill cursor-pointer ${repeat === k ? "pill-blue" : ""}`}>
+            {REPEAT_LABEL[k]}
+          </button>
+        ))}
+        <span className="ml-auto flex gap-1.5">
+          <button type="button" onClick={onCancel} className="btn btn-ghost h-8 px-2 text-xs">
+            <X size={13} /> Cancelar
+          </button>
+          <button type="submit" disabled={busy || !title.trim()} className="btn btn-primary h-8 px-3 text-xs">
+            <Check size={13} /> {busy ? "Salvando…" : "Salvar"}
+          </button>
+        </span>
+      </div>
+      {error && <p className="text-xs text-red">{error}</p>}
+    </form>
+  );
 }
 
 export function RemindersPage() {
@@ -28,6 +92,8 @@ export function RemindersPage() {
   const [repeat, setRepeat] = useState<"none" | "daily" | "weekly">("none");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [archiveOpen, setArchiveOpen] = useState(false);
 
   const load = useCallback(async () => {
     const [list, p] = await Promise.all([http.get<ReminderDTO[]>("/api/lembretes"), http.get<NotificationPrefsDTO>("/api/notificacoes")]);
@@ -73,7 +139,9 @@ export function RemindersPage() {
 
   const notifOk = Boolean(prefs?.enabled && prefs.types.reminders);
   const upcoming = items?.filter((r) => r.active) ?? [];
-  const past = items?.filter((r) => !r.active) ?? [];
+  // Pausados pelo usuário continuam à vista; os "uma vez" que já apitaram vão para Arquivados.
+  const paused = items?.filter((r) => !r.active && !(r.repeat === "none" && r.lastSentAt)) ?? [];
+  const archived = items?.filter((r) => !r.active && r.repeat === "none" && r.lastSentAt) ?? [];
 
   return (
     <div className="space-y-4">
@@ -138,6 +206,17 @@ export function RemindersPage() {
               <ul className="space-y-1.5">
                 {upcoming.map((r) => (
                   <li key={r.id} className="group flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line bg-well px-3 py-2 text-sm">
+                    {editing === r.id ? (
+                      <ReminderEditor
+                        reminder={r}
+                        onDone={() => {
+                          setEditing(null);
+                          load();
+                        }}
+                        onCancel={() => setEditing(null)}
+                      />
+                    ) : (
+                    <>
                     <Bell size={14} className="text-orange" />
                     <span className="font-medium">{r.title}</span>
                     {r.note && <span className="truncate text-xs text-ink-3">{r.note}</span>}
@@ -147,36 +226,104 @@ export function RemindersPage() {
                         <Repeat size={10} /> {REPEAT_LABEL[r.repeat]}
                       </span>
                     )}
+                    <button type="button" onClick={() => setEditing(r.id)} className="btn btn-ghost h-8 w-8 p-0 text-ink-3 hover:text-ink" aria-label="Editar" title="Editar lembrete">
+                      <Pencil size={14} />
+                    </button>
                     <button type="button" onClick={() => toggleActive(r)} className="btn btn-ghost h-8 px-2 text-xs" title="Pausar lembrete">
                       Pausar
                     </button>
                     <button type="button" onClick={() => remove(r)} className="btn btn-ghost h-8 w-8 p-0 text-ink-3 hover:text-red" aria-label="Apagar">
                       <Trash2 size={14} />
                     </button>
+                    </>
+                    )}
                   </li>
                 ))}
               </ul>
             )}
           </section>
 
-          {past.length > 0 && (
+          {paused.length > 0 && (
             <section className="card p-5">
-              <h2 className="mb-3 text-sm font-medium text-ink-2">Enviados ou pausados</h2>
+              <h2 className="mb-3 text-sm font-medium text-ink-2">Pausados</h2>
               <ul className="space-y-1.5">
-                {past.map((r) => (
-                  <li key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line bg-well px-3 py-2 text-sm opacity-70">
-                    <Check size={14} className="text-green" />
+                {paused.map((r) => (
+                  <li key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line bg-well px-3 py-2 text-sm opacity-80">
+                    {editing === r.id ? (
+                      <ReminderEditor
+                        reminder={r}
+                        onDone={() => {
+                          setEditing(null);
+                          load();
+                        }}
+                        onCancel={() => setEditing(null)}
+                      />
+                    ) : (
+                    <>
+                    <BellOff size={14} className="text-ink-3" />
                     <span>{r.title}</span>
-                    <span className="ml-auto text-xs text-ink-3 tabular-nums">{r.lastSentAt ? `enviado ${fmt(r.lastSentAt)}` : fmt(r.at)}</span>
+                    <span className="ml-auto text-xs text-ink-3 tabular-nums">{fmt(r.at)}</span>
+                    {r.repeat !== "none" && (
+                      <span className="pill">
+                        <Repeat size={10} /> {REPEAT_LABEL[r.repeat]}
+                      </span>
+                    )}
+                    <button type="button" onClick={() => setEditing(r.id)} className="btn btn-ghost h-8 w-8 p-0 text-ink-3 hover:text-ink" aria-label="Editar" title="Editar lembrete">
+                      <Pencil size={14} />
+                    </button>
                     <button type="button" onClick={() => toggleActive(r)} className="btn btn-ghost h-8 px-2 text-xs">
                       Reativar
                     </button>
                     <button type="button" onClick={() => remove(r)} className="btn btn-ghost h-8 w-8 p-0 text-ink-3 hover:text-red" aria-label="Apagar">
                       <Trash2 size={14} />
                     </button>
+                    </>
+                    )}
                   </li>
                 ))}
               </ul>
+            </section>
+          )}
+
+          {archived.length > 0 && (
+            <section className="card p-5">
+              <button type="button" onClick={() => setArchiveOpen((o) => !o)} className="flex w-full items-center gap-2 text-left text-sm font-medium text-ink-2">
+                <Archive size={15} className="text-ink-3" /> Arquivados
+                <span className="pill px-1.5 py-0 text-[10px]">{archived.length}</span>
+                <span className="ml-auto text-ink-3">{archiveOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}</span>
+              </button>
+              <p className="mt-1 text-xs text-ink-3">Lembretes de uma vez que já apitaram. Edite para reagendar.</p>
+              {archiveOpen && (
+                <ul className="mt-3 space-y-1.5">
+                  {archived.map((r) => (
+                    <li key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line bg-well px-3 py-2 text-sm opacity-70">
+                      {editing === r.id ? (
+                        <ReminderEditor
+                          reminder={r}
+                          onDone={() => {
+                            setEditing(null);
+                            load();
+                          }}
+                          onCancel={() => setEditing(null)}
+                        />
+                      ) : (
+                      <>
+                      <Check size={14} className="text-green" />
+                      <span>{r.title}</span>
+                      {r.note && <span className="truncate text-xs text-ink-3">{r.note}</span>}
+                      <span className="ml-auto text-xs text-ink-3 tabular-nums">enviado {fmt(r.lastSentAt!)}</span>
+                      <button type="button" onClick={() => setEditing(r.id)} className="btn btn-ghost h-8 px-2 text-xs" title="Reagendar">
+                        <Pencil size={13} /> Reagendar
+                      </button>
+                      <button type="button" onClick={() => remove(r)} className="btn btn-ghost h-8 w-8 p-0 text-ink-3 hover:text-red" aria-label="Apagar">
+                        <Trash2 size={14} />
+                      </button>
+                      </>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
           )}
         </div>
