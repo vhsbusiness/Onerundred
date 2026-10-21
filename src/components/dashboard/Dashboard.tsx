@@ -13,8 +13,9 @@ import { TodayTasks } from "./TodayTasks";
 import { WorkTimer } from "./WorkTimer";
 import { DayPicker } from "./DayPicker";
 
-function ScoreTile({ label, score, hint, help }: { label: string; score: PeriodScore; hint: string; help: string }) {
+function ScoreTile({ label, score, help }: { label: string; score: PeriodScore; help: string }) {
   const tone = scoreTone(score.score);
+  const open = score.openCount - score.postponedCount;
   return (
     <div className="min-w-0">
       <Tip text={help} className="cursor-help">
@@ -23,8 +24,16 @@ function ScoreTile({ label, score, hint, help }: { label: string; score: PeriodS
         </div>
         <div className="mt-1.5 text-sm text-ink-2 underline decoration-dotted decoration-ink-3/60 underline-offset-4">{label}</div>
       </Tip>
-      <div className="mt-2">
-        <span className={TONE_PILL[tone]}>{hint}</span>
+      {/* Selos curtos que podem quebrar linha: um para feitas/abertas e outro, só se houver, para realocadas. */}
+      <div className="mt-2 flex flex-wrap gap-1">
+        <span className={TONE_PILL[tone]}>
+          {score.doneCount} feitas · {open} abertas
+        </span>
+        {score.postponedCount > 0 && (
+          <span className="pill pill-orange" title="Saíram da lista Hoje sem ser feitas">
+            {score.postponedCount} {score.postponedCount === 1 ? "realocada" : "realocadas"}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -157,11 +166,10 @@ export function Dashboard({ initialData, initialAi }: { initialData?: DashboardD
   const onWork = (w: WorkState) => setData((d) => (d ? { ...d, work: w } : d));
   const hintOf = (s: PeriodScore) =>
     `${s.doneCount} feitas · ${s.openCount - s.postponedCount} abertas${s.postponedCount > 0 ? ` · ${s.postponedCount} ${s.postponedCount === 1 ? "realocada" : "realocadas"}` : ""}`;
-  const todayHint = hintOf(data.today);
+
   // No tooltip, a mesma nota contando as tarefas abertas de todas as listas.
   const allOf = (s: PeriodScore) => `Contando todas as listas: ${formatPercent(s.score)} (${hintOf(s)}). Realocada = saiu da lista Hoje sem ser feita; conta como não feita no dia.`;
-  const weekHint = hintOf(data.week);
-  const monthHint = hintOf(data.month);
+
 
   return (
     <div className="space-y-4">
@@ -191,19 +199,16 @@ export function Dashboard({ initialData, initialAi }: { initialData?: DashboardD
             <ScoreTile
               label="Hoje"
               score={data.today}
-              hint={todayHint}
               help={`Quanto do que você planejou para hoje já foi concluído. Só as tarefas abertas da lista "Hoje" puxam a nota para baixo; prioridade alta vale mais. ${allOf(data.allLists.today)}`}
             />
             <ScoreTile
               label="Esta semana"
               score={data.week}
-              hint={weekHint}
               help={`A mesma nota, olhando a semana inteira (segunda a domingo): o que você concluiu contra o que ficou em aberto na lista "Hoje". ${allOf(data.allLists.week)}`}
             />
             <ScoreTile
               label="Este mês"
               score={data.month}
-              hint={monthHint}
               help={`A mesma nota, olhando o mês inteiro: o que você concluiu contra o que ficou em aberto na lista "Hoje". ${allOf(data.allLists.month)}`}
             />
             <PlainTile
