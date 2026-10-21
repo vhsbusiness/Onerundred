@@ -94,7 +94,7 @@ function WorkIndicator() {
   return (
     <span className="pill pill-green">
       <span className="live-dot h-1.5 w-1.5 rounded-full bg-green" />
-      <span className="hidden lg:inline">Trabalhando</span>
+      <span className="hidden 2xl:inline">Trabalhando</span>
     </span>
   );
 }
@@ -144,7 +144,7 @@ function UserMenu({ me }: { me: MeDTO }) {
         aria-label="Menu do usuário"
       >
         <Avatar me={me} size={28} />
-        <span className="hidden max-w-[140px] truncate 3xl:inline">{me.name}</span>
+        {/* O nome fica no menu: no cabeçalho só a foto, para sobrar espaço para as abas. */}
       </button>
       {open && (
         <div className="absolute right-0 top-10 z-40 w-56 rounded-xl border border-line-2 bg-surface-3 p-1 text-sm shadow-2xl">
@@ -283,9 +283,8 @@ export function Nav() {
                 }`}
               >
                 <t.icon size={15} className={active ? "text-orange" : "text-ink-3"} strokeWidth={active ? 2.2 : 1.9} />
-                {/* Tablet: só o ícone; notebook: nome curto; monitor largo: nome completo. */}
-                <span className="hidden lg:inline 2xl:hidden">{t.short}</span>
-                <span className="hidden 2xl:inline">{t.label}</span>
+                {/* Tablet: só o ícone (nome no tooltip); a partir de lg: ícone + nome curto. */}
+                <span className="hidden lg:inline">{t.short}</span>
               </Link>
             );
           })}
