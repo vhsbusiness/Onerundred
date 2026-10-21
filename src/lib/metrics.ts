@@ -82,15 +82,16 @@ export function periodScore(
   start: Date,
   end: Date,
   endKey: string,
-  opts: { allLists?: boolean } = {},
+  opts: { allLists?: boolean; hasTodayList?: boolean } = {},
 ): PeriodScore {
   let doneWeight = 0;
   let openWeight = 0;
   let doneCount = 0;
   let openCount = 0;
-  // Havendo lista do tipo "Hoje", só as tarefas abertas dela pesam contra a nota;
+  // Havendo lista do tipo "Hoje" (mesmo vazia), só as tarefas abertas dela pesam contra a nota;
   // as de outras listas (Esta semana, Amanhã…) ficam de fora até irem para a Hoje.
-  const hasTodayList = !opts.allLists && cards.some((c) => c.listKind === "today");
+  // `hasTodayList` vem de quem conhece as listas; sem ele, deduz pelas tarefas.
+  const hasTodayList = !opts.allLists && (opts.hasTodayList ?? cards.some((c) => c.listKind === "today"));
 
   for (const c of cards) {
     const w = cardWeight(c);

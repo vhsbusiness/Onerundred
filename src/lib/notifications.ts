@@ -261,8 +261,9 @@ export async function evaluateUser(userId: string, now = new Date()): Promise<st
       const metric: MetricCard[] = cards.map((c) => ({ ...c, listPriority: c.list.priority, listKind: c.list.kind }));
       const last = weekRange(subDays(now, 7));
       const prev = weekRange(subDays(now, 14));
-      const a = periodScore(metric, last.start, last.end, last.endKey).score;
-      const b = periodScore(metric, prev.start, prev.end, prev.endKey).score;
+      const hasTodayList = (await prisma.list.count({ where: { kind: "today", board: boardAccess(userId) } })) > 0;
+      const a = periodScore(metric, last.start, last.end, last.endKey, { hasTodayList }).score;
+      const b = periodScore(metric, prev.start, prev.end, prev.endKey, { hasTodayList }).score;
       if (a !== null) {
         let body: string;
         if (b === null) body = `Semana passada você fechou com ${a}%. Bora manter.`;

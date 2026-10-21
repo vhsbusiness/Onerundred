@@ -344,7 +344,7 @@ export async function listBoards(userId: string): Promise<BoardSummary[]> {
       listCount: b.lists.length,
       openCount,
       doneTodayCount,
-      todayScore: periodScore(metricCards, start, end, today).score,
+      todayScore: periodScore(metricCards, start, end, today, { hasTodayList: b.lists.some((l) => l.kind === "today") }).score,
       sharedBy: b.userId === userId ? null : b.user.username,
       memberCount: b._count.members,
     };
@@ -1098,12 +1098,15 @@ export async function getDashboard(userId: string): Promise<DashboardDTO> {
   });
 
   const metricCards: MetricCard[] = cards.map((c) => ({ ...c, listPriority: c.list.priority, listKind: c.list.kind }));
+  // A lista "Hoje" vale como referência mesmo vazia (tudo feito ou realocado = 100%, não "sem tarefas").
+  const hasTodayList = (await prisma.list.count({ where: { kind: "today", board: boardAccess(userId) } })) > 0;
+  const scoreOpts = { hasTodayList };
 
   const history = [];
   for (let i = 13; i >= 0; i--) {
     const key = dayKey(subDays(now, i));
     const r = dayRange(key);
-    const s = periodScore(metricCards, r.start, r.end, key);
+    const s = periodScore(metricCards, r.start, r.end, key, scoreOpts);
     history.push({ key, score: s.score, doneCount: s.doneCount, openCount: s.openCount });
   }
 
@@ -1111,16 +1114,15 @@ export async function getDashboard(userId: string): Promise<DashboardDTO> {
   for (let i = 1; i <= 60; i++) {
     const key = dayKey(subDays(now, i));
     const r = dayRange(key);
-    const s = periodScore(metricCards, r.start, r.end, key);
+    const s = periodScore(metricCards, r.start, r.end, key, scoreOpts);
     if (s.score === null) continue;
     if (s.score >= 70) streak += 1;
     else break;
   }
-  const todayScore = periodScore(metricCards, todayR.start, todayR.end, today);
+  const todayScore = periodScore(metricCards, todayR.start, todayR.end, today, scoreOpts);
   if (todayScore.score !== null && todayScore.score >= 70) streak += 1;
 
   // Com lista "Hoje" no quadro, as abertas do dia são só as dela; as feitas de hoje entram de qualquer lista.
-  const hasTodayList = cards.some((c) => c.list.kind === "today");
   const todayCards: TodayCard[] = cards
     .filter(
       (c) =>
@@ -1182,8 +1184,8 @@ export async function getDashboard(userId: string): Promise<DashboardDTO> {
   return {
     todayKey: today,
     today: todayScore,
-    week: periodScore(metricCards, weekR.start, weekR.end, weekR.endKey),
-    month: periodScore(metricCards, monthR.start, monthR.end, monthR.endKey),
+    week: periodScore(metricCards, weekR.start, weekR.end, weekR.endKey, scoreOpts),
+    month: periodScore(metricCards, monthR.start, monthR.end, monthR.endKey, scoreOpts),
     history,
     allLists: {
       today: periodScore(metricCards, todayR.start, todayR.end, today, { allLists: true }),
@@ -1244,7 +1246,7 @@ export async function getDayReview(userId: string, key: string): Promise<DayRevi
   }));
   return {
     dayKey: key,
-    score: periodScore(metricCards, start, end, key),
+    score: periodScore(metricCards, start, end, key, { hasTodayList: (await prisma.list.count({ where: { kind: "today", board: boardAccess(userId) } })) > 0 }),
     done,
     workSessions: sessions,
     workMs: sessions.reduce((acc, s) => acc + s.ms, 0),
