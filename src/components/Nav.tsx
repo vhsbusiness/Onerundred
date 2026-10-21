@@ -277,13 +277,15 @@ export function Nav() {
               <Link
                 key={t.href}
                 href={t.href}
-                className={`whitespace-nowrap rounded-full px-1.5 py-1.5 text-[13px] transition lg:px-2 xl:px-2.5 ${
+                title={t.label}
+                className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-1.5 text-[13px] transition lg:px-2 xl:px-2.5 ${
                   active ? "bg-fill-3 text-ink" : "text-ink-2 hover:text-ink"
                 }`}
               >
-                {/* Tablet: nomes curtos; a partir de lg, nomes completos. */}
-                <span className="xl:hidden">{t.short}</span>
-                <span className="hidden xl:inline">{t.label}</span>
+                <t.icon size={15} className={active ? "text-orange" : "text-ink-3"} strokeWidth={active ? 2.2 : 1.9} />
+                {/* Tablet: só o ícone; notebook: nome curto; monitor largo: nome completo. */}
+                <span className="hidden lg:inline 2xl:hidden">{t.short}</span>
+                <span className="hidden 2xl:inline">{t.label}</span>
               </Link>
             );
           })}
