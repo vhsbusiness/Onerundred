@@ -57,6 +57,7 @@ interface CardRow {
   archivedAt: Date | null;
   sessions: SessionRow[];
   checklist?: { id: string; text: string; done: boolean; position: number }[];
+  postponements?: { dayKey: string }[];
   images?: { id: string }[];
 }
 
@@ -87,6 +88,7 @@ export function serializeCard(c: CardRow): CardDTO {
     runningSince: running ? running.startedAt.toISOString() : null,
     imageIds: (c.images ?? []).map((i) => i.id),
     checklist: (c.checklist ?? []).map((i) => ({ id: i.id, text: i.text, done: i.done, position: i.position })),
+    postponedDays: (c.postponements ?? []).map((p) => p.dayKey).sort(),
     sessions: c.sessions
       .slice()
       .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime())
@@ -98,6 +100,7 @@ const cardInclude = {
   sessions: true,
   images: { select: { id: true }, orderBy: { createdAt: "asc" } },
   checklist: { orderBy: { position: "asc" } },
+  postponements: { select: { dayKey: true } },
 } as const;
 
 /* ───────────────────────── Propriedade / acesso ───────────────────────── */
@@ -247,8 +250,9 @@ export async function undoLast(userId: string): Promise<{ label: string } | null
     const ops = [];
     for (const c of payload.cards) {
       const exists = await prisma.card.findFirst({ where: { id: c.id, list: { board: boardAccess(userId) } }, select: { id: true } });
-      const listOk = await prisma.list.findFirst({ where: { id: c.listId, board: boardAccess(userId) }, select: { id: true } });
+      const listOk = await prisma.list.findFirst({ where: { id: c.listId, board: boardAccess(userId) }, select: { id: true, kind: true } });
       if (!exists || !listOk) continue;
+      if (listOk.kind === "today") ops.push(prisma.cardPostponement.deleteMany({ where: { cardId: c.id, dayKey: todayKey() } }));
       ops.push(
         prisma.card.update({
           where: { id: c.id },
@@ -320,7 +324,7 @@ export async function listBoards(userId: string): Promise<BoardSummary[]> {
       user: { select: { username: true, name: true } },
       _count: { select: { members: true } },
       lists: {
-        include: { cards: { where: { archivedAt: null } } },
+        include: { cards: { where: { archivedAt: null }, include: { postponements: { select: { dayKey: true } } } } },
       },
     },
   });
@@ -331,7 +335,7 @@ export async function listBoards(userId: string): Promise<BoardSummary[]> {
     let doneTodayCount = 0;
     for (const l of b.lists) {
       for (const c of l.cards) {
-        metricCards.push({ ...c, listPriority: l.priority, listKind: l.kind });
+        metricCards.push({ ...c, listPriority: l.priority, listKind: l.kind, postponedDays: c.postponements.map((p) => p.dayKey) });
         if (!c.completedAt) openCount += 1;
         else if (c.completedAt >= start && c.completedAt < end) doneTodayCount += 1;
       }
@@ -535,6 +539,7 @@ export async function moveAllCards(fromListId: string, toListId: string, userId:
   const cards = await prisma.card.findMany({
     where: { listId: fromListId, archivedAt: null },
     orderBy: { position: "asc" },
+    include: { _count: { select: { postponements: true } } },
   });
   const max = await prisma.card.aggregate({ where: { listId: toListId }, _max: { position: true } });
   let pos = (max._max.position ?? -1) + 1;
@@ -545,10 +550,11 @@ export async function moveAllCards(fromListId: string, toListId: string, userId:
     cards.map((c) =>
       prisma.card.update({
         where: { id: c.id },
-        data: { listId: toListId, position: pos++, ...kindEffects(to, c) },
+        data: { listId: toListId, position: pos++, ...kindEffects(to, c, true, c._count.postponements > 0) },
       }),
     ),
   );
+  await registerPostponement(cards, from.kind, to.kind);
   if (cards.length) {
     await recordUndo(userId, `mover ${cards.length} tarefa(s) para "${to.name}"`, {
       kind: "restoreCards",
@@ -570,6 +576,7 @@ export async function pullByPriority(listId: string, priority: number, userId: s
       list: { boardId: target.boardId, kind: { not: "done" } },
     },
     orderBy: [{ listId: "asc" }, { position: "asc" }],
+    include: { list: { select: { kind: true } }, _count: { select: { postponements: true } } },
   });
   if (cards.length === 0) return 0;
   const max = await prisma.card.aggregate({ where: { listId }, _max: { position: true } });
@@ -578,10 +585,11 @@ export async function pullByPriority(listId: string, priority: number, userId: s
     cards.map((c) =>
       prisma.card.update({
         where: { id: c.id },
-        data: { listId, position: pos++, ...kindEffects(target, c) },
+        data: { listId, position: pos++, ...kindEffects(target, c, true, c._count.postponements > 0) },
       }),
     ),
   );
+  for (const c of cards) await registerPostponement([c], c.list.kind, target.kind);
   const label = { 1: "alta", 2: "média", 3: "baixa" }[priority as 1 | 2 | 3] ?? "";
   await recordUndo(userId, `puxar ${cards.length} tarefa(s) de prioridade ${label} para "${target.name}"`, {
     kind: "restoreCards",
@@ -748,6 +756,28 @@ export async function archiveCard(userId: string, cardId: string): Promise<void>
 
 /** Ajustes de estado ao entrar numa lista de determinado tipo. */
 /**
+ * Realocação: tarefa que sai da lista "Hoje" sem ser feita ganha a marca do dia (conta contra a
+ * nota de hoje). Ao cair em "Feitas", a marca de hoje some (foi feita no mesmo dia).
+ */
+async function registerPostponement(cards: { id: string; completedAt: Date | null }[], fromKind: string, toKind: string) {
+  const today = todayKey();
+  // Feita hoje, ou de volta à Hoje no mesmo dia: a realocação de hoje deixa de valer.
+  if (toKind === "done" || toKind === "today") {
+    await prisma.cardPostponement.deleteMany({ where: { cardId: { in: cards.map((c) => c.id) }, dayKey: today } });
+    return;
+  }
+  if (fromKind !== "today") return;
+  for (const c of cards) {
+    if (c.completedAt) continue;
+    await prisma.cardPostponement.upsert({
+      where: { cardId_dayKey: { cardId: c.id, dayKey: today } },
+      create: { cardId: c.id, dayKey: today },
+      update: {},
+    });
+  }
+}
+
+/**
  * O que muda numa tarefa ao cair numa lista. `entering` = veio de outra lista: ao entrar numa
  * lista "Hoje" (ou normal de prioridade Alta), a data vira hoje, para o atraso contar a partir
  * de agora e não da data antiga.
@@ -756,18 +786,22 @@ function kindEffects(
   list: { kind: string; priority: number },
   card: { completedAt: Date | null; scheduledFor: string },
   entering = true,
+  postponedBefore = false,
 ) {
   const today = todayKey();
   const data: { completedAt?: Date | null; scheduledFor?: string } = {};
   if (list.kind === "done") {
     if (!card.completedAt) data.completedAt = new Date();
+    // Concluída hoje conta em hoje, mesmo se estava marcada para amanhã (ex.: tinha sido realocada).
+    if (card.scheduledFor > today) data.scheduledFor = today;
   } else {
     if (card.completedAt) data.completedAt = null;
     if (list.kind === "tomorrow") {
       if (card.scheduledFor <= today) data.scheduledFor = tomorrowKey();
     } else if (card.scheduledFor > today) {
       data.scheduledFor = today;
-    } else if (entering && card.scheduledFor < today && (list.kind === "today" || (list.kind === "normal" && list.priority === 1))) {
+    } else if (entering && !postponedBefore && card.scheduledFor < today && (list.kind === "today" || (list.kind === "normal" && list.priority === 1))) {
+      // Tarefa nova na Hoje começa a contar de hoje; uma já realocada mantém a data (o atraso continua).
       data.scheduledFor = today;
     }
   }
@@ -783,6 +817,7 @@ export async function moveCard(userId: string, cardId: string, toListId: string,
   }
 
   const fromListId = card.listId;
+  const postponedBefore = (await prisma.cardPostponement.count({ where: { cardId } })) > 0;
   const targetCards = await prisma.card.findMany({
     where: { listId: toListId, archivedAt: null, NOT: { id: cardId } },
     orderBy: { position: "asc" },
@@ -795,7 +830,7 @@ export async function moveCard(userId: string, cardId: string, toListId: string,
       where: { id: c.id },
       data:
         c.id === cardId
-          ? { listId: toListId, position: i, ...kindEffects(target, card, fromListId !== toListId) }
+          ? { listId: toListId, position: i, ...kindEffects(target, card, fromListId !== toListId, postponedBefore) }
           : { position: i },
     }),
   );
@@ -816,6 +851,7 @@ export async function moveCard(userId: string, cardId: string, toListId: string,
   }
 
   await prisma.$transaction(ops);
+  if (fromListId !== toListId) await registerPostponement([card], card.list.kind, target.kind);
 }
 
 /** Marca como concluída: move para a lista "Feitas" do quadro, se existir. */
@@ -1094,10 +1130,10 @@ export async function getDashboard(userId: string): Promise<DashboardDTO> {
 
   const cards = await prisma.card.findMany({
     where: { list: { board: boardAccess(userId) } },
-    include: { list: { include: { board: true } }, sessions: true, images: { select: { id: true } } },
+    include: { list: { include: { board: true } }, sessions: true, images: { select: { id: true } }, postponements: { select: { dayKey: true } } },
   });
 
-  const metricCards: MetricCard[] = cards.map((c) => ({ ...c, listPriority: c.list.priority, listKind: c.list.kind }));
+  const metricCards: MetricCard[] = cards.map((c) => ({ ...c, listPriority: c.list.priority, listKind: c.list.kind, postponedDays: c.postponements.map((p) => p.dayKey) }));
   // A lista "Hoje" vale como referência mesmo vazia (tudo feito ou realocado = 100%, não "sem tarefas").
   const hasTodayList = (await prisma.list.count({ where: { kind: "today", board: boardAccess(userId) } })) > 0;
   const scoreOpts = { hasTodayList };
@@ -1131,6 +1167,16 @@ export async function getDashboard(userId: string): Promise<DashboardDTO> {
         (!c.completedAt || c.completedAt >= todayR.start) &&
         (c.completedAt || !hasTodayList || c.list.kind === "today"),
     )
+    // Realocadas hoje (foram para Amanhã etc.) continuam na lista do dia, marcadas.
+    .concat(
+      cards.filter(
+        (c) =>
+          !c.archivedAt &&
+          !c.completedAt &&
+          c.postponements.some((p) => p.dayKey === today) &&
+          !(c.scheduledFor <= today && (!hasTodayList || c.list.kind === "today")),
+      ),
+    )
     .sort((a, b) => {
       if (Boolean(a.completedAt) !== Boolean(b.completedAt)) return a.completedAt ? 1 : -1;
       if (a.priority !== b.priority) return a.priority - b.priority;
@@ -1145,9 +1191,10 @@ export async function getDashboard(userId: string): Promise<DashboardDTO> {
       boardName: c.list.board.name,
     }));
 
-  const counts = { done: 0, inProgress: 0, pending: 0, overdue: 0 };
+  const counts = { done: 0, inProgress: 0, pending: 0, overdue: 0, postponed: 0 };
   for (const c of todayCards) {
     if (c.completedAt) counts.done += 1;
+    else if (c.postponedDays.includes(today)) counts.postponed += 1;
     else if (c.runningSince || c.spentMs > 0) counts.inProgress += 1;
     else counts.pending += 1;
     if (isOverdue(c, today)) counts.overdue += 1;
@@ -1217,12 +1264,15 @@ export async function getDayReview(userId: string, key: string): Promise<DayRevi
   const [cards, workSessions, leisure] = await Promise.all([
     prisma.card.findMany({
       where: { list: { board: boardAccess(userId) } },
-      include: { list: { include: { board: true } }, sessions: true },
+      include: { list: { include: { board: true } }, sessions: true, postponements: { select: { dayKey: true } } },
     }),
     prisma.workSession.findMany({ where: { userId, startedAt: { gte: start, lt: end }, endedAt: { not: null } }, orderBy: { startedAt: "asc" } }),
     prisma.leisureLog.findMany({ where: { userId, dayKey: key, endAt: { not: null } } }),
   ]);
-  const metricCards: MetricCard[] = cards.map((c) => ({ ...c, listPriority: c.list.priority, listKind: c.list.kind }));
+  const metricCards: MetricCard[] = cards.map((c) => ({ ...c, listPriority: c.list.priority, listKind: c.list.kind, postponedDays: c.postponements.map((p) => p.dayKey) }));
+  const postponed = cards
+    .filter((c) => c.postponements.some((p) => p.dayKey === key) && !(c.completedAt && c.completedAt >= start && c.completedAt < end))
+    .map((c) => ({ id: c.id, title: c.title, priority: c.priority, boardId: c.list.boardId, boardName: c.list.board.name, listName: c.list.name }));
   const done = cards
     .filter((c) => c.completedAt && c.completedAt >= start && c.completedAt < end)
     .sort((a, b) => a.completedAt!.getTime() - b.completedAt!.getTime())
@@ -1250,6 +1300,7 @@ export async function getDayReview(userId: string, key: string): Promise<DayRevi
     done,
     workSessions: sessions,
     workMs: sessions.reduce((acc, s) => acc + s.ms, 0),
+    postponed,
     leisureMin: leisure.reduce((acc, l) => acc + Math.round((l.endAt!.getTime() - l.startAt.getTime()) / 60000), 0),
   };
 }

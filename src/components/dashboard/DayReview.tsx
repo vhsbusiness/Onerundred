@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Clock, Gamepad2 } from "lucide-react";
+import { CalendarClock, CheckCircle2, Clock, Gamepad2 } from "lucide-react";
 import Link from "next/link";
 import { formatPercent, priorityUi, TONE_PILL, TONE_TEXT } from "@/lib/client";
 import { scoreTone } from "@/lib/metrics";
@@ -41,7 +41,8 @@ export function DayReview({ data, initialAi }: { data: DayReviewDTO; initialAi?:
             <div className="mt-1.5 text-sm text-ink-2">Nota do dia</div>
             <div className="mt-2">
               <span className={TONE_PILL[tone]}>
-                {data.score.doneCount} feitas · {data.score.openCount} abertas
+                {data.score.doneCount} feitas · {data.score.openCount - data.score.postponedCount} abertas
+                {data.score.postponedCount > 0 ? ` · ${data.score.postponedCount} ${data.score.postponedCount === 1 ? "realocada" : "realocadas"}` : ""}
               </span>
             </div>
           </div>
@@ -110,6 +111,33 @@ export function DayReview({ data, initialAi }: { data: DayReviewDTO; initialAi?:
         </section>
 
         <section className="card p-5 lg:col-span-5">
+          {data.postponed.length > 0 && (
+            <div className="mb-5">
+              <h2 className="flex items-center gap-2 text-sm font-medium text-ink-2">
+                <CalendarClock size={15} className="text-orange" /> Realocadas
+              </h2>
+              <p className="mt-1 text-xs text-ink-3">Saíram da lista Hoje sem ser feitas; contam como não feitas no dia.</p>
+              <ul className="mt-3 space-y-1.5">
+                {data.postponed.map((c) => {
+                  const p = priorityUi(c.priority);
+                  return (
+                    <li key={c.id} className="flex items-center gap-3 rounded-xl border border-line bg-well px-3 py-2 text-sm">
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${p.dot}`} />
+                      <div className="min-w-0 flex-1">
+                        <Link href={`/quadros/${c.boardId}?card=${c.id}`} className="block truncate hover:underline">
+                          {c.title}
+                        </Link>
+                        <div className="truncate text-[11px] text-ink-3">
+                          {c.boardName} · agora em {c.listName}
+                        </div>
+                      </div>
+                      <span className="pill pill-orange px-1.5 py-0 text-[10px]">realocada</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
           <h2 className="flex items-center gap-2 text-sm font-medium text-ink-2">
             <Clock size={15} className="text-blue" /> Sessões de trabalho
           </h2>

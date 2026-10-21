@@ -112,6 +112,28 @@ export function ListColumn({
     if (adding) addRef.current?.focus();
   }, [adding]);
 
+  // Rascunho da nova tarefa fica guardado por lista: fechar o formulário (ou a página
+  // recarregar) não apaga o que foi digitado; só o "Adicionar" limpa.
+  const draftKey = `draft-card-${list.id}`;
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(draftKey);
+      // Restaura o rascunho uma vez ao montar (fonte externa ao React).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (saved) setTitle(saved);
+    } catch {
+      /* sem sessionStorage */
+    }
+  }, [draftKey]);
+  useEffect(() => {
+    try {
+      if (title) sessionStorage.setItem(draftKey, title);
+      else sessionStorage.removeItem(draftKey);
+    } catch {
+      /* sem sessionStorage */
+    }
+  }, [title, draftKey]);
+
   const p = priorityUi(list.priority);
 
   async function patch(data: Record<string, unknown>) {
@@ -385,7 +407,8 @@ export function ListColumn({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Escape") setAdding(false);
+                // Esc só fecha o formulário vazio; com texto digitado, nada se perde.
+                if (e.key === "Escape" && !title.trim() && pendingImages.length === 0) setAdding(false);
               }}
               placeholder="Título da tarefa (cole uma imagem com Ctrl+V)"
               className="input"

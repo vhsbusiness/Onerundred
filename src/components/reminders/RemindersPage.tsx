@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { http } from "@/lib/client";
 import { askConfirm } from "@/components/ui/ConfirmProvider";
 import { TimeField } from "@/components/ui/TimeField";
+import { DateField } from "@/components/ui/DateField";
 import { todayKey } from "@/lib/time";
 import type { NotificationPrefsDTO, ReminderDTO } from "@/lib/types";
 
@@ -56,7 +57,7 @@ function ReminderEditor({ reminder, onDone, onCancel }: { reminder: ReminderDTO;
       <input value={title} onChange={(e) => setTitle(e.target.value)} className="input" maxLength={120} placeholder="Título" autoFocus />
       <input value={note} onChange={(e) => setNote(e.target.value)} className="input" maxLength={300} placeholder="Detalhe (opcional)" />
       <div className="grid grid-cols-2 gap-2">
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input" aria-label="Dia" />
+        <DateField value={date} onChange={setDate} ariaLabel="Dia" />
         <TimeField value={time} onChange={setTime} ariaLabel="Hora" />
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
@@ -172,7 +173,7 @@ export function RemindersPage() {
           <div className="grid grid-cols-2 gap-2">
             <label className="block text-sm">
               <span className="mb-1 block text-xs uppercase tracking-wide text-ink-3">Dia</span>
-              <input type="date" value={date} min={todayKey()} onChange={(e) => setDate(e.target.value)} className="input" />
+              <DateField value={date} min={todayKey()} onChange={setDate} />
             </label>
             <label className="block text-sm">
               <span className="mb-1 block text-xs uppercase tracking-wide text-ink-3">Hora</span>

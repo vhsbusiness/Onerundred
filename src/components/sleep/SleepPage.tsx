@@ -1,5 +1,7 @@
 "use client";
 
+import { DateField } from "@/components/ui/DateField";
+
 import { askConfirm } from "@/components/ui/ConfirmProvider";
 import { Moon, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -173,7 +175,7 @@ export function SleepPage() {
           <h2 className="text-sm font-medium text-ink-2">{existing ? "Editar noite" : "Registrar noite"}</h2>
           <label className="block text-sm">
             <span className="mb-1 block text-xs uppercase tracking-wide text-ink-3">Dia em que acordei</span>
-            <input type="date" value={dayKey} max={todayKey()} onChange={(e) => setDayKey(e.target.value)} className="input" />
+            <DateField value={dayKey} max={todayKey()} onChange={setDayKey} ariaLabel="Dia em que acordei" />
           </label>
           <div className="grid grid-cols-3 gap-2">
             <label className="block text-sm">

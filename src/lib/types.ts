@@ -30,6 +30,8 @@ export interface CardDTO {
   imageIds: string[];
   /** Itens da checklist, em ordem. */
   checklist: ChecklistItemDTO[];
+  /** Dias em que a tarefa saiu da lista "Hoje" sem ser feita (realocada). */
+  postponedDays: string[];
 }
 
 export interface ChecklistItemDTO {
@@ -121,7 +123,7 @@ export interface DashboardDTO {
   work: WorkState;
   todayCards: TodayCard[];
   runningTask: { cardId: string; boardId: string; title: string; startedAt: string } | null;
-  counts: { done: number; inProgress: number; pending: number; overdue: number };
+  counts: { done: number; inProgress: number; pending: number; overdue: number; postponed: number };
   streak: number;
   /** Quanto falta para fechar as tarefas abertas de hoje. */
   remaining: {
@@ -154,6 +156,8 @@ export interface DayReviewDTO {
   workSessions: { id: string; startedAt: string; endedAt: string; ms: number }[];
   workMs: number;
   leisureMin: number;
+  /** Tarefas realocadas nesse dia (saíram da "Hoje" sem ser feitas) e não concluídas nele. */
+  postponed: { id: string; title: string; priority: number; boardId: string; boardName: string; listName: string }[];
 }
 
 export interface ArchivedCard extends CardDTO {

@@ -162,6 +162,7 @@ async function buildContext(userId: string, observation: AiObservation, day: str
         gastoMin: Math.round(c.spentMs / 60000),
         feita: Boolean(c.completedAt),
         atrasada: isOverdue(c, today),
+        realocada: c.postponedDays.includes(today),
         emAndamento: Boolean(c.runningSince),
       }));
 

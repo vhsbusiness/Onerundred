@@ -1,5 +1,7 @@
 "use client";
 
+import { DateField } from "@/components/ui/DateField";
+
 import { askConfirm } from "@/components/ui/ConfirmProvider";
 import { Gamepad2, Pause, Play, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -210,7 +212,7 @@ export function LeisurePage() {
             </label>
             <label className="block text-sm">
               <span className="mb-1 block text-xs uppercase tracking-wide text-ink-3">Dia</span>
-              <input type="date" value={dayKey} max={todayKey()} onChange={(e) => setDayKey(e.target.value)} className="input" />
+              <DateField value={dayKey} max={todayKey()} onChange={setDayKey} />
             </label>
             <div className="grid grid-cols-2 gap-2">
               <label className="block text-sm">

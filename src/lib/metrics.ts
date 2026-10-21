@@ -33,6 +33,8 @@ export interface MetricCard {
   listPriority: number;
   /** Tipo da lista; com alguma lista "Hoje" no conjunto, só as abertas dela contam na nota. */
   listKind?: string;
+  /** Dias (yyyy-MM-dd) em que a tarefa saiu da "Hoje" sem ser feita (realocada). */
+  postponedDays?: string[];
   scheduledFor: string; // yyyy-MM-dd
   createdAt: Date | string;
   completedAt: Date | string | null;
@@ -66,6 +68,8 @@ export interface PeriodScore {
   openWeight: number;
   doneCount: number;
   openCount: number;
+  /** Tarefas realocadas no período (saíram da "Hoje" sem ser feitas); já incluídas em openWeight. */
+  postponedCount: number;
 }
 
 function toDate(v: Date | string | null): Date | null {
@@ -88,6 +92,8 @@ export function periodScore(
   let openWeight = 0;
   let doneCount = 0;
   let openCount = 0;
+  let postponedCount = 0;
+  const startKey = dayKeyOf(start);
   // Havendo lista do tipo "Hoje" (mesmo vazia), só as tarefas abertas dela pesam contra a nota;
   // as de outras listas (Esta semana, Amanhã…) ficam de fora até irem para a Hoje.
   // `hasTodayList` vem de quem conhece as listas; sem ele, deduz pelas tarefas.
@@ -102,6 +108,14 @@ export function periodScore(
     if (completedAt && completedAt >= start && completedAt < end) {
       doneWeight += w;
       doneCount += 1;
+      continue;
+    }
+
+    // Realocada dentro do período e não concluída nele: pesa como aberta.
+    if ((c.postponedDays ?? []).some((d) => d >= startKey && d <= endKey)) {
+      openWeight += w;
+      openCount += 1;
+      postponedCount += 1;
       continue;
     }
 
@@ -124,7 +138,12 @@ export function periodScore(
     openWeight,
     doneCount,
     openCount,
+    postponedCount,
   };
+}
+
+function dayKeyOf(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export type Tone = "green" | "blue" | "orange" | "neutral";

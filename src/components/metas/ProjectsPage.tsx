@@ -1,5 +1,7 @@
 "use client";
 
+import { DateField } from "@/components/ui/DateField";
+
 import { askConfirm } from "@/components/ui/ConfirmProvider";
 import { Archive, ArrowUpRight, Check, Flame, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
 import Link from "next/link";
@@ -78,7 +80,7 @@ export function ProjectForm({
         </label>
         <label className="block text-sm">
           <span className="mb-1 block text-xs uppercase tracking-wide text-ink-3">Começa em</span>
-          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="input" />
+          <DateField value={startDate} onChange={setStartDate} ariaLabel="Começa em" />
         </label>
       </div>
       {error && <p className="text-sm text-red">{error}</p>}

@@ -34,6 +34,8 @@ export function CardBody({
   const spent = card.spentMs + (running ? elapsedSince(card.runningSince, now) : 0);
   const overdue = isOverdue({ ...card, listPriority, listKind }, todayKey);
   const future = !done && card.scheduledFor > todayKey;
+  // Saiu da lista Hoje sem ser feita (ex.: jogada para Amanhã): marcada como realocada.
+  const postponed = !done && !overdue && card.postponedDays.length > 0;
 
   return (
     <div
@@ -75,7 +77,8 @@ export function CardBody({
               <span className={running ? "font-medium text-green" : ""}>{formatDuration(spent)}</span>
             ) : null}
             {overdue ? <span className="pill pill-red px-1.5 py-0 text-[10px]">atrasada</span> : null}
-            {future ? <span className="pill px-1.5 py-0 text-[10px]">amanhã</span> : null}
+            {postponed ? <span className="pill pill-orange px-1.5 py-0 text-[10px]">realocada</span> : null}
+            {future && !postponed ? <span className="pill px-1.5 py-0 text-[10px]">amanhã</span> : null}
           </div>
         </div>
         {!done && onTimer && (

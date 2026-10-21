@@ -60,11 +60,12 @@ function PlainTile({
 }
 
 function SegmentedBar({ counts }: { counts: DashboardDTO["counts"] }) {
-  const total = counts.done + counts.inProgress + counts.pending;
+  const total = counts.done + counts.inProgress + counts.pending + counts.postponed;
   const segs = [
     { key: "done", label: "Feitas", n: counts.done, cls: "bg-green-deep" },
     { key: "prog", label: "Em andamento", n: counts.inProgress, cls: "bg-orange-deep" },
     { key: "pend", label: "Pendentes", n: counts.pending, cls: "bg-blue-deep" },
+    { key: "post", label: "Realocadas", n: counts.postponed, cls: "bg-line-3" },
   ];
   return (
     <div>
@@ -154,11 +155,13 @@ export function Dashboard({ initialData, initialAi }: { initialData?: DashboardD
   }
 
   const onWork = (w: WorkState) => setData((d) => (d ? { ...d, work: w } : d));
-  const todayHint = `${data.today.doneCount} feitas · ${data.today.openCount} abertas`;
+  const hintOf = (s: PeriodScore) =>
+    `${s.doneCount} feitas · ${s.openCount - s.postponedCount} abertas${s.postponedCount > 0 ? ` · ${s.postponedCount} ${s.postponedCount === 1 ? "realocada" : "realocadas"}` : ""}`;
+  const todayHint = hintOf(data.today);
   // No tooltip, a mesma nota contando as tarefas abertas de todas as listas.
-  const allOf = (s: PeriodScore) => `Contando todas as listas: ${formatPercent(s.score)} (${s.doneCount} feitas · ${s.openCount} abertas).`;
-  const weekHint = `${data.week.doneCount} feitas · ${data.week.openCount} abertas`;
-  const monthHint = `${data.month.doneCount} feitas · ${data.month.openCount} abertas`;
+  const allOf = (s: PeriodScore) => `Contando todas as listas: ${formatPercent(s.score)} (${hintOf(s)}). Realocada = saiu da lista Hoje sem ser feita; conta como não feita no dia.`;
+  const weekHint = hintOf(data.week);
+  const monthHint = hintOf(data.month);
 
   return (
     <div className="space-y-4">

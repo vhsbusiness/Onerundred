@@ -131,6 +131,7 @@ model Card {
   sessions         TaskSession[]
   images           CardImage[]
   checklist        ChecklistItem[]
+  postponements    CardPostponement[]
 
   @@index([listId])
   @@index([scheduledFor])
@@ -283,6 +284,18 @@ model CardImage {
   card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
 
   @@index([cardId])
+}
+
+/// Dia em que uma tarefa saiu da lista "Hoje" sem ser feita (realocada): conta contra a nota daquele dia
+model CardPostponement {
+  id        String   @id @default(cuid())
+  cardId    String
+  /// yyyy-MM-dd
+  dayKey    String
+  createdAt DateTime @default(now())
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@unique([cardId, dayKey])
 }
 
 /// Item de checklist de uma tarefa

@@ -7,6 +7,7 @@ import { elapsedSince, http, priorityUi, useNow } from "@/lib/client";
 import { imageUrl, imagesFromClipboard, toImageDataUrl } from "@/lib/images";
 import { formatClock, formatDuration } from "@/lib/time";
 import { Modal } from "@/components/ui/Modal";
+import { DateField } from "@/components/ui/DateField";
 import type { CardDTO, ListDTO } from "@/lib/types";
 
 function fmtTime(iso: string) {
@@ -115,6 +116,18 @@ export function CardModal({
     onChanged();
   }
 
+  /** Fechar (Esc, fundo, X) salva o que ainda não foi gravado: título, descrição e estimativa. */
+  function close() {
+    const pending: Record<string, unknown> = {};
+    const t = title.trim();
+    if (t && t !== card!.title) pending.title = t;
+    if (description !== card!.description) pending.description = description;
+    const est = estimate ? Number(estimate) : null;
+    if (est !== card!.estimatedMinutes) pending.estimatedMinutes = est;
+    if (Object.keys(pending).length > 0) void patch(pending);
+    onClose();
+  }
+
   async function timer() {
     await http.post(`/api/cards/${card!.id}/timer`, { action: running ? "stop" : "start" });
     onChanged();
@@ -155,7 +168,7 @@ export function CardModal({
   );
 
   return (
-    <Modal open onClose={onClose} title={titleNode} wide>
+    <Modal open onClose={close} title={titleNode} wide>
       <div className="grid gap-6 md:grid-cols-[1fr_240px]">
         <div className="space-y-5">
           <div>
@@ -322,15 +335,11 @@ export function CardModal({
               <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-3">
                 Dia
               </label>
-              <input
-                type="date"
+              <DateField
                 value={card.scheduledFor}
-                onChange={(e) => {
-                  if (e.target.value && e.target.value !== card.scheduledFor) {
-                    patch({ scheduledFor: e.target.value });
-                  }
+                onChange={(k) => {
+                  if (k && k !== card.scheduledFor) patch({ scheduledFor: k });
                 }}
-                className="input"
               />
             </div>
           </div>

@@ -256,9 +256,9 @@ export async function evaluateUser(userId: string, now = new Date()): Promise<st
     if (!(await alreadySent(userId, "weekly", period))) {
       const cards = await prisma.card.findMany({
         where: { list: { board: boardAccess(userId) } },
-        include: { list: { select: { priority: true, kind: true } } },
+        include: { list: { select: { priority: true, kind: true } }, postponements: { select: { dayKey: true } } },
       });
-      const metric: MetricCard[] = cards.map((c) => ({ ...c, listPriority: c.list.priority, listKind: c.list.kind }));
+      const metric: MetricCard[] = cards.map((c) => ({ ...c, listPriority: c.list.priority, listKind: c.list.kind, postponedDays: c.postponements.map((p) => p.dayKey) }));
       const last = weekRange(subDays(now, 7));
       const prev = weekRange(subDays(now, 14));
       const hasTodayList = (await prisma.list.count({ where: { kind: "today", board: boardAccess(userId) } })) > 0;

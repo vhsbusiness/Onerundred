@@ -49,6 +49,7 @@ export function TodayTasks({
         const running = Boolean(c.runningSince);
         const spent = c.spentMs + (running ? elapsedSince(c.runningSince, now) : 0);
         const overdue = isOverdue(c, todayKey);
+        const postponed = !done && c.postponedDays.includes(todayKey);
         return (
           <li
             key={c.id}
@@ -84,6 +85,7 @@ export function TodayTasks({
                   <span className={running ? "text-green" : ""}>· {formatDuration(spent)}</span>
                 ) : null}
                 {overdue ? <span className="text-red">· atrasada</span> : null}
+                {postponed ? <span className="text-orange">· realocada</span> : null}
               </div>
             </div>
 
