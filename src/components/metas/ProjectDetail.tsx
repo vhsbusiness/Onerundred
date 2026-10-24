@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { http } from "@/lib/client";
 import { Modal } from "@/components/ui/Modal";
-import { keyToDate, todayKey, weekdayShort } from "@/lib/time";
+import { keyToDate, weekdayShort } from "@/lib/time";
 import type { ProjectDTO, ProjectDayDTO } from "@/lib/types";
 import { MetasHeader } from "./MetasTabs";
 import { ProjectForm } from "./ProjectsPage";
@@ -17,6 +17,7 @@ const STATUS_STYLE: Record<ProjectDayDTO["status"], string> = {
   done: "bg-green-deep text-bg border-transparent",
   missed: "bg-red/20 text-red border-red/40",
   pending: "bg-transparent text-ink border-ink-2 border-dashed",
+  today: "bg-fill text-ink-2 border-line-2 border-dotted",
   future: "bg-fill text-ink-3 border-line",
 };
 
@@ -30,7 +31,6 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [selected, setSelected] = useState<ProjectDayDTO | null>(null);
-  const today = todayKey();
 
   const load = useCallback(async () => {
     try {
@@ -81,7 +81,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   }
   if (!p) return <div className="card h-64 animate-pulse" />;
 
-  const todayDay = p.dayList.find((d) => d.dayKey === today);
+  const markDay = p.dayList.find((d) => d.dayKey === p.markDayKey);
 
   return (
     <div className="space-y-5">
@@ -132,30 +132,32 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
             </ul>
           )}
 
-          {todayDay && (
+          {markDay && (
             <div className="mt-5 rounded-xl border border-line bg-well p-3">
               <div className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-3">
-                Hoje · dia {todayDay.index}{p.endless ? "" : ` de ${p.days}`}
+                Ontem · dia {markDay.index}{p.endless ? "" : ` de ${p.days}`}
               </div>
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => mark(todayDay, true)}
-                  className={`btn h-9 flex-1 ${todayDay.status === "done" ? "pill-green border-green/40" : ""}`}
+                  onClick={() => mark(markDay, true)}
+                  className={`btn h-9 flex-1 ${markDay.status === "done" ? "pill-green border-green/40" : ""}`}
                 >
-                  <Check size={14} /> {todayDay.status === "done" ? "Feito" : "Fiz"}
+                  <Check size={14} /> {markDay.status === "done" ? "Feito ontem" : "Fiz ontem"}
                 </button>
                 <button
                   type="button"
-                  onClick={() => mark(todayDay, false)}
-                  className={`btn h-9 flex-1 ${todayDay.status === "missed" ? "pill-red border-red/40" : ""}`}
+                  onClick={() => mark(markDay, false)}
+                  className={`btn h-9 flex-1 ${markDay.status === "missed" ? "pill-red border-red/40" : ""}`}
                 >
                   <X size={14} /> Não fiz
                 </button>
               </div>
-              {todayDay.status === "pending" && (
-                <p className="mt-2 text-xs text-ink-3">Sem marcação até o fim do dia, conta como não feito.</p>
-              )}
+              <p className="mt-2 text-xs text-ink-3">
+                {markDay.status === "pending"
+                  ? "A meta de um dia é marcada no dia seguinte. Sem marcação até o fim de hoje, ontem conta como não feito."
+                  : "O dia de hoje você marca amanhã."}
+              </p>
             </div>
           )}
         </section>
@@ -166,7 +168,8 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
             <div className="flex flex-wrap gap-3 text-xs text-ink-3">
               <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-green-deep" /> feito</span>
               <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm border border-red/40 bg-red/20" /> não feito</span>
-              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm border border-dashed border-ink-2" /> hoje</span>
+              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm border border-dashed border-ink-2" /> ontem (a marcar)</span>
+              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm border border-dotted border-line-2 bg-fill" /> hoje (marca amanhã)</span>
               <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm border border-line bg-fill" /> futuro</span>
             </div>
           </div>
@@ -175,11 +178,11 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
               <button
                 key={d.dayKey}
                 type="button"
-                disabled={d.status === "future"}
+                disabled={d.status === "future" || d.status === "today"}
                 onClick={() => setSelected(d)}
-                title={`${fmtDay(d.dayKey)} · ${d.status === "done" ? "feito" : d.status === "missed" ? (d.auto ? "não feito (automático)" : "não feito") : d.status === "pending" ? "hoje" : "futuro"}`}
+                title={`${fmtDay(d.dayKey)} · ${d.status === "done" ? "feito" : d.status === "missed" ? (d.auto ? "não feito (automático)" : "não feito") : d.status === "pending" ? "ontem, a marcar" : d.status === "today" ? "hoje (marca amanhã)" : "futuro"}`}
                 className={`flex aspect-square flex-col items-center justify-center rounded-lg border text-[11px] leading-tight transition disabled:cursor-default ${STATUS_STYLE[d.status]} ${
-                  d.status !== "future" ? "hover:brightness-125" : ""
+                  d.status !== "future" && d.status !== "today" ? "hover:brightness-125" : ""
                 }`}
               >
                 <span className="font-semibold">{d.index}</span>
@@ -187,7 +190,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
               </button>
             ))}
           </div>
-          <p className="mt-3 text-xs text-ink-3">Clique em um dia para marcar ou corrigir. Dias futuros ficam travados.</p>
+          <p className="mt-3 text-xs text-ink-3">Clique em um dia para marcar ou corrigir. Hoje e os dias futuros ficam travados: cada dia é marcado no dia seguinte.</p>
         </section>
       </div>
 
@@ -197,7 +200,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
             <p className="text-sm text-ink-2">
               {selected.status === "done" && "Marcado como feito."}
               {selected.status === "missed" && (selected.auto ? "Marcado automaticamente como não feito, porque não houve marcação até o fim do dia." : "Marcado como não feito.")}
-              {selected.status === "pending" && "Ainda sem marcação. Até o fim do dia, conta como não feito."}
+              {selected.status === "pending" && "Ainda sem marcação. Até o fim de hoje, conta como não feito."}
             </p>
             {selected.status === "missed" && (
               <p className="rounded-lg border border-orange/30 bg-orange/10 px-3 py-2 text-sm text-orange">

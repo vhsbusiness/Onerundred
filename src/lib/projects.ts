@@ -34,16 +34,24 @@ export function parseObligations(text: string): string[] {
     .filter(Boolean);
 }
 
-/** Marca como "não feito" todo dia passado sem marcação, em todos os projetos ativos. */
+/** Dia a marcar: a meta de um dia é marcada no dia seguinte, então o dia "em aberto" é sempre ontem. */
+export function markDayKey(): string {
+  return dayKey(addDays(keyToDate(todayKey()), -1));
+}
+
+/**
+ * Marca como "não feito" todo dia sem marcação anterior a ontem, em todos os projetos ativos.
+ * Ontem fica em aberto até o fim de hoje (a meta pode envolver dormir, só se sabe no dia seguinte).
+ */
 export async function autoMarkMissedDays(): Promise<void> {
-  const today = todayKey();
+  const yesterday = markDayKey();
   const projects = await prisma.project.findMany({
-    where: { archivedAt: null, startDate: { lt: today } },
+    where: { archivedAt: null, startDate: { lt: yesterday } },
     include: { checks: { select: { dayKey: true } } },
   });
   for (const p of projects) {
     const marked = new Set(p.checks.map((c) => c.dayKey));
-    const missing = dayKeysOf(p.startDate, p.days).filter((k) => k < today && !marked.has(k));
+    const missing = dayKeysOf(p.startDate, p.days).filter((k) => k < yesterday && !marked.has(k));
     if (missing.length === 0) continue;
     await prisma.projectDay.createMany({
       data: missing.map((k) => ({ projectId: p.id, dayKey: k, done: false, auto: true })),
@@ -65,6 +73,7 @@ interface ProjectRow {
 
 function serialize(p: ProjectRow): ProjectDTO {
   const today = todayKey();
+  const yesterday = markDayKey();
   const byKey = new Map(p.checks.map((c) => [c.dayKey, c]));
   const keys = dayKeysOf(p.startDate, p.days);
 
@@ -73,7 +82,8 @@ function serialize(p: ProjectRow): ProjectDTO {
     let status: ProjectDayStatus;
     if (c) status = c.done ? "done" : "missed";
     else if (k > today) status = "future";
-    else if (k === today) status = "pending";
+    else if (k === today) status = "today"; // só se marca amanhã
+    else if (k === yesterday) status = "pending";
     else status = "missed"; // ainda não passou pela manutenção
     return { index: i + 1, dayKey: k, status, auto: c?.auto ?? false, note: c?.note ?? "" };
   });
@@ -84,22 +94,22 @@ function serialize(p: ProjectRow): ProjectDTO {
   const futureCount = dayList.filter((d) => d.status === "future").length;
   const judged = doneCount + missedCount;
 
-  // Sequência atual de dias feitos, contando de trás para frente a partir de hoje
-  // (hoje pendente não quebra a sequência).
+  // Sequência atual de dias feitos, contando de trás para frente
+  // (hoje e ontem pendente não quebram a sequência).
   let streak = 0;
   for (let i = dayList.length - 1; i >= 0; i--) {
     const d = dayList[i];
-    if (d.status === "future" || d.status === "pending") continue;
+    if (d.status === "future" || d.status === "today" || d.status === "pending") continue;
     if (d.status === "done") streak += 1;
     else break;
   }
 
   const endless = p.days === 0;
   const endDate = endless ? null : keys[keys.length - 1];
-  const todayEntry = dayList.find((d) => d.dayKey === today);
-  const todayStatus: ProjectDTO["todayStatus"] = todayEntry
-    ? todayEntry.status
-    : today < p.startDate
+  const markEntry = dayList.find((d) => d.dayKey === yesterday);
+  const markStatus: ProjectDTO["markStatus"] = markEntry
+    ? markEntry.status
+    : yesterday < p.startDate
       ? "not-started"
       : "ended";
 
@@ -120,7 +130,8 @@ function serialize(p: ProjectRow): ProjectDTO {
     futureCount,
     completion: judged > 0 ? Math.round((doneCount / judged) * 100) : null,
     streak,
-    todayStatus,
+    markStatus,
+    markDayKey: yesterday,
     daysElapsed: dayList.filter((d) => d.dayKey <= today).length,
     dayList,
   };
@@ -223,7 +234,7 @@ export async function setProjectDay(
   if (!existing) throw new ApiError(404, "Projeto não encontrado");
   const keys = dayKeysOf(existing.startDate, existing.days);
   if (!keys.includes(input.dayKey)) throw new ApiError(400, "Esse dia não faz parte do projeto");
-  if (input.dayKey > todayKey()) throw new ApiError(400, "Não dá para marcar um dia que ainda não chegou");
+  if (input.dayKey > markDayKey()) throw new ApiError(400, "O dia de hoje só se marca amanhã: marque \"fiz ontem\" ou \"não fiz\" no dia seguinte");
 
   await prisma.projectDay.upsert({
     where: { projectId_dayKey: { projectId: id, dayKey: input.dayKey } },

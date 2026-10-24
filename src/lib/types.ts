@@ -338,7 +338,8 @@ export interface SleepPageDTO {
 
 /* ───────────── Metas: projetos ───────────── */
 
-export type ProjectDayStatus = "done" | "missed" | "pending" | "future";
+/** today = o dia de hoje, que só se marca amanhã; pending = ontem, ainda sem marcação. */
+export type ProjectDayStatus = "done" | "missed" | "pending" | "today" | "future";
 
 export interface ProjectDayDTO {
   index: number;
@@ -368,7 +369,10 @@ export interface ProjectDTO {
   /** % de dias feitos entre os dias já passados (inclui hoje se marcado). */
   completion: number | null;
   streak: number;
-  todayStatus: ProjectDayStatus | "ended" | "not-started";
+  /** Status do dia a marcar (sempre o dia anterior): a meta de um dia é marcada no dia seguinte. */
+  markStatus: ProjectDayStatus | "ended" | "not-started";
+  /** yyyy-MM-dd do dia a marcar (ontem). */
+  markDayKey: string;
   daysElapsed: number;
   dayList: ProjectDayDTO[];
 }

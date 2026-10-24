@@ -7,7 +7,7 @@ import { notify } from "@/components/ui/ConfirmProvider";
 import type { NotificationPrefsDTO, NotificationType } from "@/lib/types";
 
 const TYPES: { key: NotificationType; title: string; desc: string }[] = [
-  { key: "goalReminder", title: "Lembrete de meta antes de dormir", desc: "Se alguma meta ainda estiver sem marcação, avisa às 23h ou, quando o app já conhece seu horário de dormir, 1 hora antes dele." },
+  { key: "goalReminder", title: "Lembrete de meta pela manhã", desc: "Às 10h, se a meta de ontem ainda estiver sem marcação. A meta de um dia é marcada no dia seguinte." },
   { key: "reminders", title: "Meus lembretes", desc: "Os lembretes que você cria na aba Lembretes chegam como notificação na hora marcada." },
   { key: "overdue", title: "Tarefas atrasadas", desc: "Às 9h, quantas tarefas passaram do dia e continuam abertas." },
   { key: "sleepLog", title: "Registrar o sono", desc: "Às 10h, se você usa a aba Sono e ainda não registrou a noite." },
@@ -209,7 +209,7 @@ export function NotificationsSection() {
                 </div>
                 <div className="text-xs text-ink-3">
                   {t.desc}
-                  {t.key === "goalReminder" && ` Hoje: ${prefs.goalReminderTime}.`}
+                  {t.key === "goalReminder" && ` Horário: ${prefs.goalReminderTime}.`}
                   {locked && " Libera quando a IA terminar o período de observação."}
                 </div>
               </div>

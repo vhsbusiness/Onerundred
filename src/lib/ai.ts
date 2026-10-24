@@ -200,7 +200,7 @@ async function buildContext(userId: string, observation: AiObservation, day: str
       horasComSessaoDeTrabalho: hourHistogram,
       horasComFocoEmTarefa: focusHours,
       metasProjetos: projects
-        .filter((p) => !p.archivedAt && p.todayStatus !== "ended")
+        .filter((p) => !p.archivedAt && p.markStatus !== "ended")
         .map((p) => ({
           nome: p.name,
           obrigacoes: p.obligations,
@@ -209,7 +209,7 @@ async function buildContext(userId: string, observation: AiObservation, day: str
           feitos: p.doneCount,
           naoFeitos: p.missedCount,
           sequencia: p.streak,
-          hojeMarcado: p.todayStatus,
+          ontemMarcado: p.markStatus,
         })),
       lazer: {
         hojeMin: leisure.todayMin,
@@ -293,7 +293,7 @@ Regras:
 - Em nextTasks use somente ids de tarefas abertas de hoje (feita=false), no máximo 3, da mais importante para a menos.
 - Os horários (schedule) devem partir dos padrões reais do usuário (histogramas de horas, minutos por dia, registros de sono, memória) e ser realistas: jornada compatível com a meta diária, pausas a cada 90–120 min de trabalho, 7–8h de sono. Se houver registros de sono, use a hora real em que a pessoa acorda e dorme e comente se está dormindo pouco; sem registros, sugira e convide a registrar na aba Sono. Horários no formato HH:MM, 24h.
 - Lazer (jogos, séries etc.) não é inimigo: comente o equilíbrio entre trabalho, lazer e sono com base nos números, sem julgar; aponte só quando o lazer está comendo o trabalho planejado ou o sono.
-- Se houver metas/projetos (metasProjetos) com o dia de hoje ainda "pending", lembre o usuário de cumprir e marcar; reconheça sequências longas; sem moralizar.
+- Metas/projetos (metasProjetos) são marcadas no dia seguinte: se "ontemMarcado" estiver "pending", lembre o usuário de marcar se fez ontem; reconheça sequências longas; sem moralizar.
 - memorySummary é a memória de longo prazo deste usuário. Reescreva-a por completo a partir da memória anterior mais o que você aprendeu agora. Guarde padrões (horário em que rende mais, se subestima tempo, se acumula atrasos, dias fracos da semana), não detalhes do dia. Até 1200 caracteres.`;
 
 /* ───────────── Geração ───────────── */

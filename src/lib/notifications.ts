@@ -4,7 +4,6 @@ import { prisma } from "./db";
 import { ApiError } from "./errors";
 import { getObservation } from "./ai";
 import { periodScore, type MetricCard } from "./metrics";
-import { computeStats as sleepStats, listSleep } from "./sleep";
 import { computeLeisureStats, listLeisure } from "./leisure";
 import { listProjects } from "./projects";
 import { boardAccess } from "./repo";
@@ -26,7 +25,7 @@ export const AI_REQUIRED: NotificationType[] = ["longWork", "weekly", "balance"]
 export const ALL_TYPES: NotificationType[] = ["goalReminder", "longWork", "weekly", "balance", "overdue", "sleepLog", "reminders"];
 
 const LONG_WORK_MINUTES = 5 * 60;
-const DEFAULT_GOAL_REMINDER = "23:00";
+const GOAL_REMINDER_TIME = "10:00";
 
 function vapidReady(): boolean {
   return Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
@@ -54,7 +53,7 @@ export async function getPrefs(userId: string): Promise<NotificationPrefsDTO> {
     prefRow(userId),
     prisma.pushSubscription.findMany({ where: { userId }, orderBy: { createdAt: "desc" } }),
     getObservation(userId),
-    goalReminderTime(userId),
+    goalReminderTime(),
   ]);
   return {
     enabled: pref.enabled && devices.length > 0,
@@ -177,15 +176,9 @@ function inWindow(now: Date, targetMin: number, width = 15): boolean {
 }
 
 /** Horário do lembrete de meta: 1h antes do horário médio de dormir (últimas 7 noites), senão 23:00. */
-export async function goalReminderTime(userId: string): Promise<string> {
-  const logs = await listSleep(userId, 14);
-  const stats = sleepStats(logs);
-  if (!stats.avgSleepTime7 || logs.length < 3) return DEFAULT_GOAL_REMINDER;
-  let min = clockToMinutes(stats.avgSleepTime7) - 60;
-  if (min < 0) min += 1440;
-  // Nunca antes das 18h nem depois das 23:30 (dormir de madrugada vira lembrete à noite).
-  if (min < 18 * 60 || min > 23 * 60 + 30) min = min < 18 * 60 ? 23 * 60 + 30 : min;
-  return `${Math.floor(min / 60).toString().padStart(2, "0")}:${(min % 60).toString().padStart(2, "0")}`;
+/** Horário do lembrete de meta: às 10h, perguntando pela meta de ontem. */
+export async function goalReminderTime(): Promise<string> {
+  return GOAL_REMINDER_TIME;
 }
 
 function weekKey(d: Date): string {
@@ -216,16 +209,16 @@ export async function evaluateUser(userId: string, now = new Date()): Promise<st
   const sent: string[] = [];
   const aiOk = AI_REQUIRED.some((t) => pref[t]) ? (await getObservation(userId)).coreReady : false;
 
-  // 1. Lembrete de meta antes de dormir
+  // 1. Lembrete de meta pela manhã: a meta de ontem ainda sem marcação
   if (pref.goalReminder && !(await alreadySent(userId, "goalReminder", today))) {
-    const target = clockToMinutes(await goalReminderTime(userId));
-    if (inWindow(now, target)) {
-      const projects = (await listProjects(userId)).filter((p) => !p.archivedAt && p.todayStatus === "pending");
+    const target = clockToMinutes(await goalReminderTime());
+    if (inWindow(now, target, 60)) {
+      const projects = (await listProjects(userId)).filter((p) => !p.archivedAt && p.markStatus === "pending");
       if (projects.length > 0) {
         const names = projects.map((p) => p.name).slice(0, 3).join(", ");
         await sendToUser(userId, {
-          title: projects.length === 1 ? "Marcou sua meta de hoje?" : `Marque suas ${projects.length} metas de hoje`,
-          body: `${names}${projects.length > 3 ? "…" : ""} — sem marcação até a virada do dia, conta como não feito.`,
+          title: projects.length === 1 ? "Marcou sua meta de ontem?" : `Marque suas ${projects.length} metas de ontem`,
+          body: `${names}${projects.length > 3 ? "…" : ""} — sem marcação até o fim de hoje, ontem conta como não feito.`,
           url: "/metas",
           tag: "goal-reminder",
         });

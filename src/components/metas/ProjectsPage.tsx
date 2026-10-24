@@ -206,9 +206,10 @@ export function ProjectsPage() {
     load();
   }, [load]);
 
-  async function markToday(p: ProjectDTO, done: boolean) {
-    if (done && p.todayStatus === "missed" && !(await confirmMarkDone())) return;
-    await http.post(`/api/projetos/${p.id}/dias`, { dayKey: todayKey(), done });
+  /** Marca o dia a marcar (ontem): a meta de um dia é confirmada no dia seguinte. */
+  async function markYesterday(p: ProjectDTO, done: boolean) {
+    if (done && p.markStatus === "missed" && !(await confirmMarkDone())) return;
+    await http.post(`/api/projetos/${p.id}/dias`, { dayKey: p.markDayKey, done });
     load();
   }
 
@@ -278,25 +279,27 @@ export function ProjectsPage() {
                 </div>
 
                 <div className="mt-4 flex items-center gap-2">
-                  {p.todayStatus === "pending" || p.todayStatus === "missed" || p.todayStatus === "done" ? (
+                  {p.markStatus === "pending" || p.markStatus === "missed" || p.markStatus === "done" ? (
                     <>
                       <button
                         type="button"
-                        onClick={() => markToday(p, true)}
-                        className={`btn h-9 flex-1 ${p.todayStatus === "done" ? "pill-green border-green/40" : ""}`}
+                        onClick={() => markYesterday(p, true)}
+                        className={`btn h-9 flex-1 ${p.markStatus === "done" ? "pill-green border-green/40" : ""}`}
                       >
-                        <Check size={14} /> {p.todayStatus === "done" ? "Feito hoje" : "Fiz hoje"}
+                        <Check size={14} /> {p.markStatus === "done" ? "Feito ontem" : "Fiz ontem"}
                       </button>
                       <button
                         type="button"
-                        onClick={() => markToday(p, false)}
-                        className={`btn h-9 flex-1 ${p.todayStatus === "missed" ? "pill-red border-red/40" : ""}`}
+                        onClick={() => markYesterday(p, false)}
+                        className={`btn h-9 flex-1 ${p.markStatus === "missed" ? "pill-red border-red/40" : ""}`}
                       >
-                        <X size={14} /> {p.todayStatus === "missed" ? "Não fiz" : "Não fiz"}
+                        <X size={14} /> Não fiz
                       </button>
                     </>
                   ) : (
-                    <span className="pill">{p.todayStatus === "ended" ? "Projeto encerrado" : `Começa em ${p.startDate.split("-").reverse().join("/")}`}</span>
+                    <span className="pill">
+                      {p.markStatus === "ended" ? "Projeto encerrado" : p.startDate === todayKey() ? "Começou hoje · marque amanhã" : `Começa em ${p.startDate.split("-").reverse().join("/")}`}
+                    </span>
                   )}
                 </div>
               </div>
