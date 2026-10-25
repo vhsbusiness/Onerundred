@@ -24,6 +24,7 @@ import type {
   ListKind,
   SessionDTO,
   SettingsDTO,
+  TargetsDTO,
   DayReviewDTO,
   TodayCard,
   WorkState,
@@ -1004,21 +1005,47 @@ export async function deleteTaskSession(userId: string, sessionId: string) {
 
 const DEFAULT_DAILY_GOAL = 8 * 60;
 
+const SETTING_KEYS = ["dailyGoalMinutes", "theme", "sleepTargetMinutes", "bedtimeTarget", "wakeTarget", "leisureTargetMinutes"];
+
 export async function getSettings(userId: string): Promise<SettingsDTO> {
-  const rows = await prisma.setting.findMany({ where: { userId, key: { in: ["dailyGoalMinutes", "theme"] } } });
+  const rows = await prisma.setting.findMany({ where: { userId, key: { in: SETTING_KEYS } } });
   const get = (k: string) => rows.find((r) => r.key === k)?.value;
-  const n = Number(get("dailyGoalMinutes") ?? NaN);
+  const num = (k: string) => {
+    const v = Number(get(k) ?? NaN);
+    return Number.isFinite(v) && v > 0 ? v : null;
+  };
+  const clock = (k: string) => {
+    const v = get(k);
+    return v && /^\d{2}:\d{2}$/.test(v) ? v : null;
+  };
   const theme = get("theme");
   return {
-    dailyGoalMinutes: Number.isFinite(n) && n > 0 ? n : DEFAULT_DAILY_GOAL,
+    dailyGoalMinutes: num("dailyGoalMinutes") ?? DEFAULT_DAILY_GOAL,
     theme: isTheme(theme) ? theme : DEFAULT_THEME,
+    targets: {
+      sleepMinutes: num("sleepTargetMinutes"),
+      bedtime: clock("bedtimeTarget"),
+      wake: clock("wakeTarget"),
+      leisureMinutes: num("leisureTargetMinutes"),
+    },
   };
 }
 
-export async function updateSettings(userId: string, data: Partial<SettingsDTO>): Promise<SettingsDTO> {
+export async function updateSettings(
+  userId: string,
+  data: Partial<Omit<SettingsDTO, "targets">> & { targets?: Partial<TargetsDTO> },
+): Promise<SettingsDTO> {
   const entries: [string, string][] = [];
   if (data.dailyGoalMinutes !== undefined) entries.push(["dailyGoalMinutes", String(data.dailyGoalMinutes)]);
   if (data.theme !== undefined) entries.push(["theme", data.theme]);
+  if (data.targets) {
+    const t = data.targets;
+    // null apaga a meta (valor vazio = não definida)
+    if (t.sleepMinutes !== undefined) entries.push(["sleepTargetMinutes", t.sleepMinutes === null ? "" : String(t.sleepMinutes)]);
+    if (t.bedtime !== undefined) entries.push(["bedtimeTarget", t.bedtime ?? ""]);
+    if (t.wake !== undefined) entries.push(["wakeTarget", t.wake ?? ""]);
+    if (t.leisureMinutes !== undefined) entries.push(["leisureTargetMinutes", t.leisureMinutes === null ? "" : String(t.leisureMinutes)]);
+  }
   for (const [key, value] of entries) {
     await prisma.setting.upsert({
       where: { userId_key: { userId, key } },

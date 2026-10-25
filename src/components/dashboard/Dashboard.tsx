@@ -5,7 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import { formatPercent, http, TONE_PILL, TONE_TEXT, useNow } from "@/lib/client";
 import { scoreTone, type PeriodScore } from "@/lib/metrics";
 import { formatDayLong, formatDuration } from "@/lib/time";
-import type { AiStatusDTO, DashboardDTO, WorkState } from "@/lib/types";
+import type { AiStatusDTO, DashboardDTO, PerformanceDTO, WorkState } from "@/lib/types";
+import { PerformanceCard } from "./PerformanceCard";
 import { AiInsightCard } from "./AiInsightCard";
 import { HistoryChart } from "./HistoryChart";
 import { Tip } from "@/components/ui/Tip";
@@ -112,14 +113,16 @@ function SegmentedBar({ counts }: { counts: DashboardDTO["counts"] }) {
   );
 }
 
-export function Dashboard({ initialData, initialAi }: { initialData?: DashboardDTO; initialAi?: AiStatusDTO }) {
+export function Dashboard({ initialData, initialAi, initialPerf }: { initialData?: DashboardDTO; initialAi?: AiStatusDTO; initialPerf?: PerformanceDTO }) {
   const [data, setData] = useState<DashboardDTO | null>(initialData ?? null);
+  const [perf, setPerf] = useState<PerformanceDTO | null>(initialPerf ?? null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
       setData(await http.get<DashboardDTO>("/api/dashboard"));
       setError(null);
+      http.get<PerformanceDTO>("/api/performance").then(setPerf).catch(() => {});
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao carregar");
     }
@@ -257,6 +260,12 @@ export function Dashboard({ initialData, initialAi }: { initialData?: DashboardD
         <div className="lg:col-span-4">
           <WorkTimer work={data.work} onChange={onWork} />
         </div>
+
+        {perf && (
+          <div className="lg:col-span-12">
+            <PerformanceCard perf={perf} />
+          </div>
+        )}
 
         <section className="card p-5 lg:col-span-5">
           <div className="mb-3 flex items-center justify-between">

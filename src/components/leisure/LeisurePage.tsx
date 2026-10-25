@@ -9,6 +9,7 @@ import { TimeField } from "@/components/ui/TimeField";
 import { elapsedSince, http, useNow } from "@/lib/client";
 import { formatClock, formatDuration, keyToDate, todayKey, weekdayShort } from "@/lib/time";
 import type { LeisureLogDTO, LeisurePageDTO } from "@/lib/types";
+import { LeisureTargetCard } from "@/components/settings/TargetCards";
 
 function Tile({ value, label, hint }: { value: string; label: string; hint?: string }) {
   return (
@@ -248,6 +249,8 @@ export function LeisurePage() {
               <Tile value={topActivity ? minutesLabel(topActivity.minutes) : "—"} label="Mais frequente (7d)" hint={topActivity?.activity} />
             </div>
           </section>
+
+          <LeisureTargetCard />
 
           <section className="card p-5">
             <div className="mb-3 flex items-center justify-between">

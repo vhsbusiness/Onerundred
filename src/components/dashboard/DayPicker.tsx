@@ -11,7 +11,15 @@ import { CalendarPopover } from "@/components/ui/CalendarPopover";
  * Escolha do dia no dashboard: setas para o dia anterior/seguinte e o calendário
  * do app. Hoje é a rota "/"; outros dias, "/?dia=yyyy-MM-dd".
  */
-export function DayPicker({ value }: { value: string }) {
+const PERIODS = [
+  { n: 1, label: "Dia" },
+  { n: 3, label: "3 dias" },
+  { n: 7, label: "7 dias" },
+  { n: 14, label: "14 dias" },
+  { n: 30, label: "30 dias" },
+];
+
+export function DayPicker({ value, days = 1 }: { value: string; days?: number }) {
   const router = useRouter();
   const today = todayKey();
   const [open, setOpen] = useState(false);
@@ -33,15 +41,33 @@ export function DayPicker({ value }: { value: string }) {
     };
   }, [open]);
 
-  function go(key: string) {
+  function go(key: string, n: number = days) {
     setOpen(false);
-    router.push(key === today ? "/" : `/?dia=${key}`);
+    const params = new URLSearchParams();
+    if (key !== today) params.set("dia", key);
+    if (n > 1) params.set("dias", String(n));
+    const q = params.toString();
+    router.push(q ? `/?${q}` : "/");
   }
   const prev = dayKey(addDays(keyToDate(value), -1));
   const next = dayKey(addDays(keyToDate(value), 1));
 
   return (
-    <div className="relative flex items-center gap-1" ref={ref}>
+    <div className="relative flex flex-wrap items-center gap-1" ref={ref}>
+      {/* Período: um dia ou vários dias terminando no dia escolhido. */}
+      <div className="mr-1 flex items-center rounded-full border border-line bg-fill p-0.5">
+        {PERIODS.map((p) => (
+          <button
+            key={p.n}
+            type="button"
+            onClick={() => go(value, p.n)}
+            className={`rounded-full px-2 py-1 text-[11px] transition ${days === p.n ? "bg-fill-3 text-ink" : "text-ink-3 hover:text-ink"}`}
+            title={p.n === 1 ? "Só o dia escolhido" : `Os ${p.n} dias até o dia escolhido`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
       <button type="button" onClick={() => go(prev)} className="btn btn-ghost h-9 w-9 p-0" aria-label="Dia anterior" title="Dia anterior">
         <ChevronLeft size={16} />
       </button>

@@ -9,6 +9,7 @@ import { TimeField } from "@/components/ui/TimeField";
 import { http } from "@/lib/client";
 import { formatDuration, keyToDate, todayKey, weekdayShort } from "@/lib/time";
 import type { SleepLogDTO, SleepPageDTO } from "@/lib/types";
+import { SleepTargetCard } from "@/components/settings/TargetCards";
 
 const QUALITY = ["Péssimo", "Ruim", "Ok", "Bom", "Ótimo"];
 
@@ -228,6 +229,8 @@ export function SleepPage() {
               <Tile value={stats?.avgLatency7 === null || stats?.avgLatency7 === undefined ? "—" : `${stats.avgLatency7}m`} label="Para pegar no sono" />
             </div>
           </section>
+
+          <SleepTargetCard />
 
           <section className="card p-5">
             <div className="mb-3 flex items-center justify-between">

@@ -170,6 +170,73 @@ export interface SettingsDTO {
   dailyGoalMinutes: number;
   /** Tema da interface escolhido pelo usuário. */
   theme: Theme;
+  /** Metas pessoais usadas na performance (null = não definida). */
+  targets: TargetsDTO;
+}
+
+export interface TargetsDTO {
+  /** Minutos de sono por noite. */
+  sleepMinutes: number | null;
+  /** Hora de deitar (HH:MM). */
+  bedtime: string | null;
+  /** Hora de acordar (HH:MM). */
+  wake: string | null;
+  /** Minutos de lazer por dia. */
+  leisureMinutes: number | null;
+}
+
+/* ───────────── Performance ───────────── */
+
+export type PerfKey = "tasks" | "sleep" | "leisure" | "goals";
+
+export interface PerfComponent {
+  key: PerfKey;
+  label: string;
+  /** 0–100, ou null quando não há dado para o dia. */
+  score: number | null;
+  /** Peso relativo na nota geral. */
+  weight: number;
+  /** Texto curto com o que foi medido (ex.: "7h 20m de 8h"). */
+  detail: string;
+  /** Dica quando falta meta ou registro. */
+  hint?: string;
+}
+
+export interface PerformanceDayDTO {
+  dayKey: string;
+  score: number | null;
+  components: PerfComponent[];
+  /** Nota das tarefas (periodScore) do dia. */
+  taskScore: PeriodScore;
+  doneCount: number;
+  postponedCount: number;
+  workMs: number;
+  leisureMin: number;
+  sleepMin: number | null;
+}
+
+export interface PerformanceDTO {
+  today: PerformanceDayDTO;
+  /** Dias seguidos (até hoje) com performance ≥ 70. */
+  streak: number;
+  /** Últimos 14 dias, do mais antigo ao mais recente. */
+  history: { dayKey: string; score: number | null }[];
+  targets: TargetsDTO;
+}
+
+export interface PeriodReviewDTO {
+  startKey: string;
+  endKey: string;
+  days: PerformanceDayDTO[];
+  avgScore: number | null;
+  avgTaskScore: number | null;
+  doneTotal: number;
+  postponedTotal: number;
+  workMsTotal: number;
+  leisureMinTotal: number;
+  avgSleepMin: number | null;
+  streak: number;
+  targets: TargetsDTO;
 }
 
 export type { Tone };
