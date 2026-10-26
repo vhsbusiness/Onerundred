@@ -28,8 +28,9 @@ export function PerformanceCard({ perf, compact = false }: { perf: PerformanceDT
 
   return (
     <section className="card p-5">
-      <div className="flex flex-wrap items-start gap-6">
-        <div className="min-w-[160px]">
+      {/* Celular: nota em cima e frentes embaixo; a partir de sm: lado a lado. */}
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-6">
+        <div className="w-full sm:w-[200px] sm:shrink-0">
           <Tip
             text="Média ponderada do dia: tarefas (40%), sono (25%), lazer (15%) e metas (20%). Só entram as frentes com dado no dia; os pesos são redistribuídos entre elas."
             className="cursor-help"
@@ -70,7 +71,7 @@ export function PerformanceCard({ perf, compact = false }: { perf: PerformanceDT
           )}
         </div>
 
-        <div className="min-w-0 flex-1 space-y-2.5">
+        <div className="w-full min-w-0 flex-1 space-y-2.5">
           {perf.today.components.map((c) => {
             const Icon = ICON[c.key];
             const t = scoreTone(c.score);
@@ -78,16 +79,17 @@ export function PerformanceCard({ perf, compact = false }: { perf: PerformanceDT
             const share = c.score === null || weightTotal === 0 ? 0 : Math.round((c.weight / weightTotal) * 100);
             return (
               <div key={c.key} className="rounded-xl border border-line bg-well px-3 py-2">
-                <div className="flex items-center gap-2 text-sm">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
                   <Icon size={14} className="shrink-0 text-ink-3" />
                   <Link href={LINK[c.key]} className="font-medium hover:underline">
                     {c.label}
                   </Link>
-                  <span className="truncate text-xs text-ink-3">{c.detail}</span>
                   <span className={`ml-auto shrink-0 text-sm font-semibold tabular-nums ${c.score === null ? "text-ink-3" : TONE_TEXT[t]}`}>
                     {c.score === null ? "—" : c.score}
                   </span>
                   {c.score !== null && <span className="shrink-0 text-[10px] text-ink-3 tabular-nums">peso {share}%</span>}
+                  {/* No celular o detalhe desce para a linha de baixo. */}
+                  <span className="basis-full truncate text-xs text-ink-3 sm:order-none sm:basis-auto sm:flex-1">{c.detail}</span>
                 </div>
                 <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-fill-2">
                   <div className={`h-full rounded-full ${bar}`} style={{ width: `${c.score ?? 0}%` }} />
