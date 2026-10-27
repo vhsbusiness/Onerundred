@@ -503,7 +503,7 @@ export interface ImportPlan {
 
 /* ───────────── Notificações e lembretes ───────────── */
 
-export type NotificationType = "goalReminder" | "longWork" | "weekly" | "balance" | "overdue" | "sleepLog" | "reminders";
+export type NotificationType = "goalReminder" | "longWork" | "weekly" | "balance" | "overdue" | "sleepLog" | "reminders" | "workEnded";
 
 export interface NotificationPrefsDTO {
   enabled: boolean;

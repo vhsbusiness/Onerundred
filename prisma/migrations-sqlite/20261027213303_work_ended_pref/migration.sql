@@ -1,0 +1,1 @@
+ALTER TABLE "NotificationPref" ADD COLUMN "workEnded" BOOLEAN NOT NULL DEFAULT true;

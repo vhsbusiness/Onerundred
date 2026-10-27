@@ -3,7 +3,7 @@
 import { askConfirm } from "@/components/ui/ConfirmProvider";
 import { Archive, Check, Copy, ImagePlus, ListChecks, Pause, Play, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { elapsedSince, http, priorityUi, useNow } from "@/lib/client";
+import { elapsedSince, http, notifyWorkChanged, priorityUi, useNow } from "@/lib/client";
 import { imageUrl, imagesFromClipboard, toImageDataUrl } from "@/lib/images";
 import { formatClock, formatDuration } from "@/lib/time";
 import { Modal } from "@/components/ui/Modal";
@@ -100,6 +100,7 @@ export function CardModal({
   async function toggleItem(itemId: string, done: boolean) {
     await http.patch(`/api/cards/${card!.id}/checklist`, { itemId, done });
     onChanged();
+    notifyWorkChanged();
   }
 
   async function removeItem(itemId: string) {
@@ -114,6 +115,7 @@ export function CardModal({
   async function patch(data: Record<string, unknown>) {
     await http.patch(`/api/cards/${card!.id}`, data);
     onChanged();
+    if ("completed" in data) notifyWorkChanged();
   }
 
   /** Fechar (Esc, fundo, X) salva o que ainda não foi gravado: título, descrição e estimativa. */
@@ -131,6 +133,7 @@ export function CardModal({
   async function timer() {
     await http.post(`/api/cards/${card!.id}/timer`, { action: running ? "stop" : "start" });
     onChanged();
+    notifyWorkChanged();
   }
 
   async function move(listId: string) {

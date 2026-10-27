@@ -9,6 +9,7 @@ import type { NotificationPrefsDTO, NotificationType } from "@/lib/types";
 const TYPES: { key: NotificationType; title: string; desc: string }[] = [
   { key: "goalReminder", title: "Lembrete de meta pela manhã", desc: "Às 10h, se a meta de ontem ainda estiver sem marcação. A meta de um dia é marcada no dia seguinte." },
   { key: "reminders", title: "Meus lembretes", desc: "Os lembretes que você cria na aba Lembretes chegam como notificação na hora marcada." },
+  { key: "workEnded", title: "Sessão encerrada sozinha", desc: "Quando todas as tarefas de hoje são concluídas, a sessão de trabalho encerra; 10 minutos depois chega um aviso." },
   { key: "overdue", title: "Tarefas atrasadas", desc: "Às 9h, quantas tarefas passaram do dia e continuam abertas." },
   { key: "sleepLog", title: "Registrar o sono", desc: "Às 10h, se você usa a aba Sono e ainda não registrou a noite." },
   { key: "longWork", title: "Trabalhando há muitas horas", desc: "Quando passar de 5 horas trabalhadas no dia." },

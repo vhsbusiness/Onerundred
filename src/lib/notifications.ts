@@ -6,7 +6,7 @@ import { getObservation } from "./ai";
 import { periodScore, type MetricCard } from "./metrics";
 import { computeLeisureStats, listLeisure } from "./leisure";
 import { listProjects } from "./projects";
-import { boardAccess } from "./repo";
+import { boardAccess, getWorkState } from "./repo";
 import { dayKey, dayRange, formatDuration, sumSessions, todayKey, weekRange } from "./time";
 import type { NotificationPrefsDTO, NotificationType } from "./types";
 
@@ -22,7 +22,7 @@ import type { NotificationPrefsDTO, NotificationType } from "./types";
  */
 
 export const AI_REQUIRED: NotificationType[] = ["longWork", "weekly", "balance"];
-export const ALL_TYPES: NotificationType[] = ["goalReminder", "longWork", "weekly", "balance", "overdue", "sleepLog", "reminders"];
+export const ALL_TYPES: NotificationType[] = ["goalReminder", "longWork", "weekly", "balance", "overdue", "sleepLog", "reminders", "workEnded"];
 
 const LONG_WORK_MINUTES = 5 * 60;
 const GOAL_REMINDER_TIME = "10:00";
@@ -65,6 +65,7 @@ export async function getPrefs(userId: string): Promise<NotificationPrefsDTO> {
       overdue: pref.overdue,
       sleepLog: pref.sleepLog,
       reminders: pref.reminders,
+      workEnded: pref.workEnded,
     },
     aiRequired: AI_REQUIRED,
     aiReady: obs.coreReady,
@@ -329,6 +330,28 @@ export async function evaluateUser(userId: string, now = new Date()): Promise<st
       });
       await markSent(userId, "sleepLog", today);
       sent.push("sleepLog");
+    }
+  }
+
+  // 8. Sessão de trabalho encerrada sozinha (todas as tarefas de hoje feitas): aviso 10 min depois
+  if (pref.workEnded) {
+    const row = await prisma.setting.findUnique({ where: { userId_key: { userId, key: "workAutoEndedAt" } } });
+    const endedAt = row?.value ? new Date(row.value) : null;
+    if (endedAt && !Number.isNaN(endedAt.getTime()) && dayKey(endedAt) === today && now.getTime() - endedAt.getTime() >= 10 * 60000) {
+      const period = endedAt.toISOString();
+      if (!(await alreadySent(userId, "workEnded", period))) {
+        const work = await getWorkState(userId);
+        if (work.ended) {
+          await sendToUser(userId, {
+            title: "Sessão de trabalho encerrada",
+            body: `Todas as tarefas de hoje foram concluídas. Hoje: ${formatDuration(work.todayMs)} trabalhadas. Se for continuar, é só iniciar uma tarefa.`,
+            url: "/",
+            tag: "work-ended",
+          });
+          await markSent(userId, "workEnded", period);
+          sent.push("workEnded");
+        }
+      }
     }
   }
 

@@ -21,7 +21,7 @@ import { ArrowLeft, LogOut, MoreHorizontal, Pencil, Plus, Sparkles, Trash2, User
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { http, useNow } from "@/lib/client";
+import { http, notifyWorkChanged, useNow } from "@/lib/client";
 import { todayKey } from "@/lib/time";
 import type { BoardDTO, CardDTO } from "@/lib/types";
 import { CardBody } from "./CardItem";
@@ -285,6 +285,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
   async function timer(card: CardDTO) {
     await http.post(`/api/cards/${card.id}/timer`, { action: card.runningSince ? "stop" : "start" });
     load();
+    notifyWorkChanged();
   }
 
   async function addList(e: React.FormEvent) {

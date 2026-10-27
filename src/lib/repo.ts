@@ -853,6 +853,7 @@ export async function moveCard(userId: string, cardId: string, toListId: string,
 
   await prisma.$transaction(ops);
   if (fromListId !== toListId) await registerPostponement([card], card.list.kind, target.kind);
+  if (target.kind === "done") await maybeAutoEndWork(userId);
 }
 
 /** Marca como concluída: move para a lista "Feitas" do quadro, se existir. */
@@ -868,6 +869,7 @@ export async function completeCard(userId: string, cardId: string): Promise<Card
     await moveCard(userId, cardId, doneList.id, 0);
   } else {
     await prisma.card.update({ where: { id: cardId }, data: { completedAt: new Date() } });
+    await maybeAutoEndWork(userId);
   }
   return getCard(cardId, userId);
 }
@@ -933,6 +935,12 @@ export async function updateChecklistItem(
   const text = data.text === undefined ? undefined : data.text.trim().slice(0, 200);
   if (text !== undefined && !text) throw new ApiError(400, "O item não pode ficar vazio");
   await prisma.checklistItem.update({ where: { id: itemId }, data: { text, done: data.done } });
+  // Marcar um item como feito inicia a tarefa (e a sessão de trabalho) se ainda não estiver rodando.
+  if (data.done === true) {
+    const card = await prisma.card.findUnique({ where: { id: cardId }, select: { completedAt: true, archivedAt: true } });
+    const running = await prisma.taskSession.findFirst({ where: { cardId, endedAt: null } });
+    if (card && !card.completedAt && !card.archivedAt && !running) return startTaskTimer(userId, cardId);
+  }
   return getCard(cardId, userId);
 }
 
@@ -981,7 +989,36 @@ export async function startTaskTimer(userId: string, cardId: string): Promise<Ca
     }),
     prisma.taskSession.create({ data: { cardId, startedAt: now } }),
   ]);
+  // Iniciar uma tarefa com a sessão de trabalho pausada (ou encerrada) retoma a sessão.
+  const running = await prisma.workSession.findFirst({ where: { userId, endedAt: null } });
+  if (!running) await startWork(userId);
   return getCard(cardId, userId);
+}
+
+/**
+ * Todas as tarefas de hoje feitas: encerra a sessão de trabalho sozinha e guarda o momento,
+ * para o aviso chegar 10 minutos depois (ver notifications.ts).
+ */
+async function maybeAutoEndWork(userId: string) {
+  const today = todayKey();
+  const hasTodayList = (await prisma.list.count({ where: { kind: "today", board: boardAccess(userId) } })) > 0;
+  const open = await prisma.card.count({
+    where: {
+      archivedAt: null,
+      completedAt: null,
+      scheduledFor: { lte: today },
+      list: hasTodayList ? { kind: "today", board: boardAccess(userId) } : { kind: { not: "done" }, board: boardAccess(userId) },
+    },
+  });
+  if (open > 0) return;
+  const state = await getWorkState(userId);
+  if (state.ended || (!state.running && state.sessions.length === 0)) return;
+  await endWork(userId);
+  await prisma.setting.upsert({
+    where: { userId_key: { userId, key: "workAutoEndedAt" } },
+    create: { userId, key: "workAutoEndedAt", value: new Date().toISOString() },
+    update: { value: new Date().toISOString() },
+  });
 }
 
 export async function stopTaskTimer(userId: string, cardId: string): Promise<CardDTO> {
