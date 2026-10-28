@@ -402,6 +402,15 @@ body {
   }
 }
 
+/* Quadro: sem a sangria de largura de tela no PC (o trilho desloca o conteúdo,
+   então a sangria simétrica jogaria a borda direita para fora da tela). */
+@media (min-width: 768px) {
+  :root[data-design="v2"] .board-scroller {
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+}
+
 /* Tipografia editorial */
 :root[data-design="v2"] h1,
 :root[data-design="v2"] h2,

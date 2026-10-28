@@ -480,7 +480,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
           onMouseMove={onPanMove}
           onMouseUp={onPanEnd}
           onMouseLeave={onPanEnd}
-          className={`mx-[calc(50%_-_50vw)] flex min-h-0 flex-1 snap-x snap-mandatory items-start gap-3 overflow-x-auto px-[calc(50vw_-_50%_+_1rem)] pb-4 sm:px-[calc(50vw_-_50%_+_1.5rem)] md:snap-none md:gap-4 ${
+          className={`board-scroller mx-[calc(50%_-_50vw)] flex min-h-0 flex-1 snap-x snap-mandatory items-start gap-3 overflow-x-auto px-[calc(50vw_-_50%_+_1rem)] pb-4 sm:px-[calc(50vw_-_50%_+_1.5rem)] md:snap-none md:gap-4 ${
             panning ? "cursor-grabbing select-none" : "cursor-grab"
           }`}
         >
