@@ -4,7 +4,7 @@ import { askConfirm, notify } from "@/components/ui/ConfirmProvider";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Archive, ArrowLeft, ArrowRight, Check, Clock, Copy, FolderInput, Magnet, MoreHorizontal, Plus, Sparkles, Trash2, Undo2 } from "lucide-react";
+import { Archive, ArrowLeft, ArrowRight, Check, Clock, Copy, FolderInput, Magnet, MoreHorizontal, Plus, Repeat, Sparkles, Trash2, Undo2 } from "lucide-react";
 import { Tip } from "@/components/ui/Tip";
 import { formatDuration } from "@/lib/time";
 import { useEffect, useRef, useState } from "react";
@@ -12,6 +12,32 @@ import { http, priorityUi } from "@/lib/client";
 import { imagesFromClipboard, toImageDataUrl } from "@/lib/images";
 import type { CardDTO, ListDTO, ListKind } from "@/lib/types";
 import { CardItem } from "./CardItem";
+
+const WEEKDAY_LABELS = ["D", "S", "T", "Q", "Q", "S", "S"];
+const WEEKDAY_NAMES = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+
+/** Chips dos dias da semana (0=dom … 6=sáb). */
+function WeekdayChips({ value, onChange, size = "sm" }: { value: number[]; onChange: (days: number[]) => void; size?: "sm" | "md" }) {
+  const toggle = (d: number) => onChange(value.includes(d) ? value.filter((x) => x !== d) : [...value, d].sort((a, b) => a - b));
+  return (
+    <div className="flex flex-wrap gap-1">
+      {WEEKDAY_LABELS.map((l, d) => (
+        <button
+          key={d}
+          type="button"
+          onClick={() => toggle(d)}
+          title={WEEKDAY_NAMES[d]}
+          aria-pressed={value.includes(d)}
+          className={`flex items-center justify-center rounded-full border text-[11px] font-medium transition ${size === "md" ? "h-8 w-8" : "h-7 w-7"} ${
+            value.includes(d) ? "border-blue/60 bg-blue/20 text-ink" : "border-line text-ink-3 hover:text-ink"
+          }`}
+        >
+          {l}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /** Prefixo dos ids de ordenação das listas (distinto do id da lista, que é a área de soltar tarefas). */
 export const LIST_SORT_PREFIX = "list:";
@@ -73,6 +99,9 @@ export function ListColumn({
   const [priority, setPriority] = useState(2);
   const [estimate, setEstimate] = useState("");
   const [pendingImages, setPendingImages] = useState<string[]>([]);
+  // Tarefa contínua: reaparece nesta lista nos dias escolhidos.
+  const [recurring, setRecurring] = useState(false);
+  const [weekdays, setWeekdays] = useState<number[]>([1, 2, 3, 4, 5]);
   const [aiSorting, setAiSorting] = useState(false);
 
   /** Pede à IA para ordenar as tarefas abertas da lista por importância (dá para desfazer). */
@@ -185,14 +214,31 @@ export function ListColumn({
     e.preventDefault();
     const t = title.trim();
     if (!t) return;
-    const created = await http.post<{ id: string }>("/api/cards", {
-      listId: list.id,
-      title: t,
-      priority,
-      estimatedMinutes: estimate ? Number(estimate) : null,
-    });
-    for (const image of pendingImages) {
-      await http.post(`/api/cards/${created.id}/imagens`, { image });
+    if (recurring) {
+      if (weekdays.length === 0) {
+        notify("Escolha pelo menos um dia da semana", "error");
+        return;
+      }
+      const r = await http.post<{ card: { id: string } | null }>("/api/recorrentes", {
+        listId: list.id,
+        title: t,
+        priority,
+        estimatedMinutes: estimate ? Number(estimate) : null,
+        weekdays,
+      });
+      if (r.card) for (const image of pendingImages) await http.post(`/api/cards/${r.card.id}/imagens`, { image });
+      notify(r.card ? "Tarefa contínua criada; o card de hoje já está na lista." : "Tarefa contínua criada; o card aparece no próximo dia escolhido.");
+      setRecurring(false);
+    } else {
+      const created = await http.post<{ id: string }>("/api/cards", {
+        listId: list.id,
+        title: t,
+        priority,
+        estimatedMinutes: estimate ? Number(estimate) : null,
+      });
+      for (const image of pendingImages) {
+        await http.post(`/api/cards/${created.id}/imagens`, { image });
+      }
     }
     setPendingImages([]);
     setTitle("");
@@ -484,9 +530,21 @@ export function ListColumn({
                 title="Estimativa em minutos"
               />
             </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setRecurring((r) => !r)}
+                aria-pressed={recurring}
+                className={`pill cursor-pointer ${recurring ? "pill-blue" : ""}`}
+                title="Tarefa contínua: reaparece nesta lista nos dias escolhidos"
+              >
+                <Repeat size={10} /> Contínua
+              </button>
+              {recurring && <WeekdayChips value={weekdays} onChange={setWeekdays} />}
+            </div>
             <div className="flex gap-2">
               <button type="submit" className="btn btn-primary h-8 flex-1">
-                Adicionar
+                {recurring ? "Criar contínua" : "Adicionar"}
               </button>
               <button type="button" onClick={() => setAdding(false)} className="btn btn-ghost h-8">
                 Cancelar

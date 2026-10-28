@@ -34,6 +34,7 @@ model User {
   notifPref    NotificationPref?
   notifLogs    NotificationLog[]
   reminders    Reminder[]
+  recurring    RecurringTask[]
   aiUsage      AiUsage[]
   memberships  BoardMember[]
   invitesSent  BoardInvite[] @relation("InvitesSent")
@@ -109,6 +110,7 @@ model List {
   kind     String @default("normal")
   board    Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
   cards    Card[]
+  recurring RecurringTask[]
 
   @@index([boardId])
 }
@@ -133,6 +135,9 @@ model Card {
   checklist        ChecklistItem[]
   postponements    CardPostponement[]
   reminders        Reminder[]
+  /// Tarefa contínua que gerou este card (opcional)
+  recurringId      String?
+  recurring        RecurringTask?     @relation(fields: [recurringId], references: [id], onDelete: SetNull)
 
   @@index([listId])
   @@index([scheduledFor])
@@ -285,6 +290,29 @@ model CardImage {
   card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
 
   @@index([cardId])
+}
+
+/// Tarefa contínua: reaparece numa lista nos dias da semana escolhidos
+model RecurringTask {
+  id               String   @id @default(cuid())
+  userId           String
+  listId           String
+  title            String
+  description      String   @default("")
+  priority         Int      @default(2)
+  estimatedMinutes Int?
+  /// dias da semana em que aparece (0=dom … 6=sáb), separados por vírgula
+  weekdays         String   @default("1,2,3,4,5")
+  active           Boolean  @default(true)
+  /// yyyy-MM-dd do último dia em que o card foi gerado
+  lastSpawnedKey   String?
+  createdAt        DateTime @default(now())
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  list             List     @relation(fields: [listId], references: [id], onDelete: Cascade)
+  cards            Card[]
+
+  @@index([userId])
+  @@index([active])
 }
 
 /// Dia em que uma tarefa saiu da lista "Hoje" sem ser feita (realocada): conta contra a nota daquele dia

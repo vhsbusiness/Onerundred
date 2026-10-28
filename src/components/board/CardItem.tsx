@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { AlignLeft, ListChecks, Pause, Play } from "lucide-react";
+import { AlignLeft, ListChecks, Pause, Play, Repeat } from "lucide-react";
 import { elapsedSince, priorityUi } from "@/lib/client";
 import { isOverdue } from "@/lib/metrics";
 import { imageUrl } from "@/lib/images";
@@ -78,6 +78,11 @@ export function CardBody({
             ) : null}
             {overdue ? <span className="pill pill-red px-1.5 py-0 text-[10px]">atrasada</span> : null}
             {postponed ? <span className="pill pill-orange px-1.5 py-0 text-[10px]">realocada</span> : null}
+            {card.recurring ? (
+              <span className="pill pill-blue px-1.5 py-0 text-[10px]" title="Tarefa contínua">
+                <Repeat size={9} /> contínua
+              </span>
+            ) : null}
             {future && !postponed ? <span className="pill px-1.5 py-0 text-[10px]">amanhã</span> : null}
           </div>
         </div>

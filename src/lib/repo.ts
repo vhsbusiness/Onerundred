@@ -13,6 +13,7 @@ import {
   todayKey,
   tomorrowKey,
   weekRange,
+  keyToDate,
 } from "./time";
 import type {
   ArchivedCard,
@@ -25,6 +26,7 @@ import type {
   SessionDTO,
   SettingsDTO,
   TargetsDTO,
+  RecurringDTO,
   DayReviewDTO,
   TodayCard,
   WorkState,
@@ -59,6 +61,7 @@ interface CardRow {
   sessions: SessionRow[];
   checklist?: { id: string; text: string; done: boolean; position: number }[];
   postponements?: { dayKey: string }[];
+  recurring?: { id: string; listId: string; title: string; weekdays: string; active: boolean } | null;
   images?: { id: string }[];
 }
 
@@ -68,6 +71,18 @@ export function serializeSession(s: SessionRow): SessionDTO {
     startedAt: s.startedAt.toISOString(),
     endedAt: s.endedAt ? s.endedAt.toISOString() : null,
   };
+}
+
+export function parseWeekdays(v: string): number[] {
+  return v
+    .split(",")
+    .map((x) => Number(x))
+    .filter((n) => Number.isInteger(n) && n >= 0 && n <= 6)
+    .sort((a, b) => a - b);
+}
+
+export function serializeRecurring(r: { id: string; listId: string; title: string; weekdays: string; active: boolean }): RecurringDTO {
+  return { id: r.id, listId: r.listId, title: r.title, weekdays: parseWeekdays(r.weekdays), active: r.active };
 }
 
 export function serializeCard(c: CardRow): CardDTO {
@@ -90,6 +105,7 @@ export function serializeCard(c: CardRow): CardDTO {
     imageIds: (c.images ?? []).map((i) => i.id),
     checklist: (c.checklist ?? []).map((i) => ({ id: i.id, text: i.text, done: i.done, position: i.position })),
     postponedDays: (c.postponements ?? []).map((p) => p.dayKey).sort(),
+    recurring: c.recurring ? serializeRecurring(c.recurring) : null,
     sessions: c.sessions
       .slice()
       .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime())
@@ -102,6 +118,7 @@ const cardInclude = {
   images: { select: { id: true }, orderBy: { createdAt: "asc" } },
   checklist: { orderBy: { position: "asc" } },
   postponements: { select: { dayKey: true } },
+  recurring: { select: { id: true, listId: true, title: true, weekdays: true, active: true } },
 } as const;
 
 /* ───────────────────────── Propriedade / acesso ───────────────────────── */
@@ -199,9 +216,113 @@ export async function runMaintenance(): Promise<void> {
     }
   }
 
+  await spawnRecurringCards(today);
   await prisma.authSession.deleteMany({ where: { expiresAt: { lt: new Date() } } });
   await autoMarkMissedDays();
   await autoStopForgottenLeisure();
+}
+
+/* ───────────────────────── Tarefas contínuas ───────────────────────── */
+
+/** Gera o card do dia para cada tarefa contínua ativa cujo dia da semana é hoje (uma vez por dia). */
+async function spawnRecurringCards(today: string): Promise<void> {
+  const weekday = keyToDate(today).getDay();
+  const due = await prisma.recurringTask.findMany({
+    where: { active: true, OR: [{ lastSpawnedKey: null }, { lastSpawnedKey: { not: today } }] },
+    include: { list: { select: { id: true, kind: true } } },
+  });
+  for (const r of due) {
+    if (!parseWeekdays(r.weekdays).includes(weekday)) continue;
+    await spawnRecurringCard(r, today);
+  }
+}
+
+async function spawnRecurringCard(
+  r: { id: string; listId: string; title: string; description: string; priority: number; estimatedMinutes: number | null; list: { kind: string } },
+  today: string,
+) {
+  // Idempotente: se o card de hoje já existe (ex.: manutenção rodou duas vezes), só registra o dia.
+  const existing = await prisma.card.findFirst({ where: { recurringId: r.id, scheduledFor: r.list.kind === "tomorrow" ? tomorrowKey() : today } });
+  if (existing) {
+    await prisma.recurringTask.update({ where: { id: r.id }, data: { lastSpawnedKey: today } });
+    return;
+  }
+  const max = await prisma.card.aggregate({ where: { listId: r.listId }, _max: { position: true } });
+  await prisma.$transaction([
+    prisma.card.create({
+      data: {
+        listId: r.listId,
+        title: r.title,
+        description: r.description,
+        priority: r.priority,
+        estimatedMinutes: r.estimatedMinutes,
+        scheduledFor: r.list.kind === "tomorrow" ? tomorrowKey() : today,
+        position: (max._max.position ?? -1) + 1,
+        recurringId: r.id,
+      },
+    }),
+    prisma.recurringTask.update({ where: { id: r.id }, data: { lastSpawnedKey: today } }),
+  ]);
+}
+
+/** Cria uma tarefa contínua e, se hoje for um dos dias, já gera o card de hoje. */
+export async function createRecurring(
+  userId: string,
+  input: { listId: string; title: string; description?: string; priority?: number; estimatedMinutes?: number | null; weekdays: number[] },
+): Promise<{ recurring: RecurringDTO; card: CardDTO | null }> {
+  const list = await ownedList(input.listId, userId);
+  if (list.kind === "done") throw new ApiError(400, "Escolha uma lista que não seja a de feitas");
+  const days = [...new Set(input.weekdays.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort((a, b) => a - b);
+  if (days.length === 0) throw new ApiError(400, "Escolha pelo menos um dia da semana");
+  const r = await prisma.recurringTask.create({
+    data: {
+      userId,
+      listId: list.id,
+      title: input.title.trim(),
+      description: input.description ?? "",
+      priority: input.priority ?? 2,
+      estimatedMinutes: input.estimatedMinutes ?? null,
+      weekdays: days.join(","),
+    },
+    include: { list: { select: { id: true, kind: true } } },
+  });
+  const today = todayKey();
+  let card: CardDTO | null = null;
+  if (days.includes(keyToDate(today).getDay())) {
+    await spawnRecurringCard(r, today);
+    const row = await prisma.card.findFirst({ where: { recurringId: r.id }, orderBy: { createdAt: "desc" }, include: cardInclude });
+    card = row ? serializeCard(row) : null;
+  }
+  return { recurring: serializeRecurring(r), card };
+}
+
+export async function updateRecurring(
+  userId: string,
+  id: string,
+  data: { weekdays?: number[]; active?: boolean; listId?: string },
+): Promise<RecurringDTO> {
+  const existing = await prisma.recurringTask.findFirst({ where: { id, userId } });
+  if (!existing) throw new ApiError(404, "Tarefa contínua não encontrada");
+  const patch: { weekdays?: string; active?: boolean; listId?: string } = {};
+  if (data.weekdays) {
+    const days = [...new Set(data.weekdays.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort((a, b) => a - b);
+    if (days.length === 0) throw new ApiError(400, "Escolha pelo menos um dia da semana");
+    patch.weekdays = days.join(",");
+  }
+  if (data.active !== undefined) patch.active = data.active;
+  if (data.listId) {
+    const list = await ownedList(data.listId, userId);
+    if (list.kind === "done") throw new ApiError(400, "Escolha uma lista que não seja a de feitas");
+    patch.listId = list.id;
+  }
+  const r = await prisma.recurringTask.update({ where: { id }, data: patch });
+  return serializeRecurring(r);
+}
+
+export async function deleteRecurring(userId: string, id: string) {
+  const existing = await prisma.recurringTask.findFirst({ where: { id, userId } });
+  if (!existing) throw new ApiError(404, "Tarefa contínua não encontrada");
+  await prisma.recurringTask.delete({ where: { id } });
 }
 
 /* ───────────────────────── Desfazer ───────────────────────── */

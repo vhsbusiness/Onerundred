@@ -1,7 +1,7 @@
 "use client";
 
 import { askConfirm } from "@/components/ui/ConfirmProvider";
-import { Archive, Bell, Check, Copy, ImagePlus, ListChecks, Pause, Play, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { Archive, Bell, Check, Copy, ImagePlus, ListChecks, Pause, Play, Plus, Repeat, RotateCcw, Trash2, X } from "lucide-react";
 import { TimeField } from "@/components/ui/TimeField";
 import { todayKey } from "@/lib/time";
 import { useEffect, useRef, useState } from "react";
@@ -11,6 +11,32 @@ import { formatClock, formatDuration } from "@/lib/time";
 import { Modal } from "@/components/ui/Modal";
 import { DateField } from "@/components/ui/DateField";
 import type { CardDTO, ListDTO, ReminderDTO } from "@/lib/types";
+
+const WEEKDAY_LABELS = ["D", "S", "T", "Q", "Q", "S", "S"];
+const WEEKDAY_NAMES = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+
+/** Chips dos dias da semana (0=dom … 6=sáb). */
+function WeekdayChips({ value, onChange }: { value: number[]; onChange: (days: number[]) => void }) {
+  const toggle = (d: number) => onChange(value.includes(d) ? value.filter((x) => x !== d) : [...value, d].sort((a, b) => a - b));
+  return (
+    <div className="flex flex-wrap gap-1">
+      {WEEKDAY_LABELS.map((l, d) => (
+        <button
+          key={d}
+          type="button"
+          onClick={() => toggle(d)}
+          title={WEEKDAY_NAMES[d]}
+          aria-pressed={value.includes(d)}
+          className={`flex h-8 w-8 items-center justify-center rounded-full border text-[11px] font-medium transition ${
+            value.includes(d) ? "border-blue/60 bg-blue/20 text-ink" : "border-line text-ink-3 hover:text-ink"
+          }`}
+        >
+          {l}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -109,6 +135,19 @@ export function CardModal({
     } finally {
       setRemBusy(false);
     }
+  }
+
+  async function patchRecurring(data: { weekdays?: number[]; active?: boolean }) {
+    if (!card!.recurring) return;
+    await http.patch(`/api/recorrentes/${card!.recurring.id}`, data);
+    onChanged();
+  }
+
+  async function stopRecurring() {
+    if (!card!.recurring) return;
+    if (!(await askConfirm({ title: "Parar de repetir", message: "Esta tarefa deixa de aparecer nos próximos dias. O card de hoje continua.", confirmLabel: "Parar", danger: true }))) return;
+    await http.del(`/api/recorrentes/${card!.recurring.id}`);
+    onChanged();
   }
 
   async function removeReminder(id: string) {
@@ -369,6 +408,30 @@ export function CardModal({
               (!reminders || reminders.length === 0) && <p className="text-xs text-ink-3">Nenhum lembrete para esta tarefa.</p>
             )}
           </div>
+
+          {card.recurring && (
+            <div className="rounded-xl border border-blue/30 bg-blue/5 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-blue">
+                  <Repeat size={13} /> Tarefa contínua
+                </span>
+                <div className="flex gap-1.5">
+                  <button type="button" onClick={() => patchRecurring({ active: !card.recurring!.active })} className="btn btn-ghost h-7 px-2 text-xs">
+                    {card.recurring.active ? "Pausar repetição" : "Retomar"}
+                  </button>
+                  <button type="button" onClick={stopRecurring} className="btn btn-ghost h-7 px-2 text-xs text-red hover:text-red">
+                    Parar
+                  </button>
+                </div>
+              </div>
+              <p className="mt-1 text-xs text-ink-3">
+                {card.recurring.active ? "Aparece nesta lista nos dias marcados:" : "Repetição pausada. Dias configurados:"}
+              </p>
+              <div className="mt-2">
+                <WeekdayChips value={card.recurring.weekdays} onChange={(days) => patchRecurring({ weekdays: days })} />
+              </div>
+            </div>
+          )}
 
           <div>
             <div className="mb-1.5 flex items-center justify-between">

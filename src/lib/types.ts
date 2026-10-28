@@ -32,6 +32,17 @@ export interface CardDTO {
   checklist: ChecklistItemDTO[];
   /** Dias em que a tarefa saiu da lista "Hoje" sem ser feita (realocada). */
   postponedDays: string[];
+  /** Tarefa contínua que gera este card, se houver. */
+  recurring: RecurringDTO | null;
+}
+
+export interface RecurringDTO {
+  id: string;
+  listId: string;
+  title: string;
+  /** 0=dom … 6=sáb */
+  weekdays: number[];
+  active: boolean;
 }
 
 export interface ChecklistItemDTO {
