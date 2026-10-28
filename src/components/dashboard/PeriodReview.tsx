@@ -13,7 +13,7 @@ function fmt(key: string) {
 }
 
 /** Revisão de um período: performance, nota, feitas, trabalho, lazer e sono por dia. */
-export function PeriodReview({ data, days }: { data: PeriodReviewDTO; days: number }) {
+export function PeriodReview({ data, days, range }: { data: PeriodReviewDTO; days: number; range?: { from: string; to: string } }) {
   const tone = scoreTone(data.avgScore);
   return (
     <div className="space-y-4">
@@ -24,7 +24,7 @@ export function PeriodReview({ data, days }: { data: PeriodReviewDTO; days: numb
             {fmt(data.startKey)} a {fmt(data.endKey)} · {data.days.length} {data.days.length === 1 ? "dia" : "dias"}
           </p>
         </div>
-        <DayPicker value={data.endKey} days={days} />
+        <DayPicker value={data.endKey} days={days} range={range} />
       </div>
 
       <section className="card p-5">

@@ -1,14 +1,16 @@
 "use client";
 
 import { askConfirm } from "@/components/ui/ConfirmProvider";
-import { Archive, Check, Copy, ImagePlus, ListChecks, Pause, Play, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { Archive, Bell, Check, Copy, ImagePlus, ListChecks, Pause, Play, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { TimeField } from "@/components/ui/TimeField";
+import { todayKey } from "@/lib/time";
 import { useEffect, useRef, useState } from "react";
 import { elapsedSince, http, notifyWorkChanged, priorityUi, useNow } from "@/lib/client";
 import { imageUrl, imagesFromClipboard, toImageDataUrl } from "@/lib/images";
 import { formatClock, formatDuration } from "@/lib/time";
 import { Modal } from "@/components/ui/Modal";
 import { DateField } from "@/components/ui/DateField";
-import type { CardDTO, ListDTO } from "@/lib/types";
+import type { CardDTO, ListDTO, ReminderDTO } from "@/lib/types";
 
 function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -42,6 +44,16 @@ export function CardModal({
   const [uploading, setUploading] = useState(false);
   const [newItem, setNewItem] = useState("");
   const [addingItem, setAddingItem] = useState(false);
+  // Lembretes desta tarefa
+  const [reminders, setReminders] = useState<ReminderDTO[] | null>(null);
+  const [remOpen, setRemOpen] = useState(false);
+  const [remDate, setRemDate] = useState(todayKey());
+  const [remTime, setRemTime] = useState(() => {
+    const d = new Date(Date.now() + 60 * 60000);
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  });
+  const [remBusy, setRemBusy] = useState(false);
+  const [remError, setRemError] = useState<string | null>(null);
   const cardId = card?.id;
 
   // Colar imagem (Ctrl+V) com o modal aberto anexa à tarefa.
@@ -65,7 +77,44 @@ export function CardModal({
     return () => window.removeEventListener("paste", onPaste);
   }, [cardId, onChanged]);
 
+  useEffect(() => {
+    if (!cardId) return;
+    let alive = true;
+    http
+      .get<ReminderDTO[]>(`/api/lembretes?cardId=${cardId}`)
+      .then((r) => {
+        if (alive) setReminders(r);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [cardId]);
+
   if (!card) return null;
+
+  async function addReminder(e: React.FormEvent) {
+    e.preventDefault();
+    setRemBusy(true);
+    setRemError(null);
+    try {
+      const [y, m, d] = remDate.split("-").map(Number);
+      const [h, min] = remTime.split(":").map(Number);
+      const at = new Date(y, m - 1, d, h, min, 0, 0);
+      const r = await http.post<ReminderDTO>("/api/lembretes", { title: card!.title, note: "", at: at.toISOString(), repeat: "none", cardId: card!.id });
+      setReminders((list) => [...(list ?? []), r]);
+      setRemOpen(false);
+    } catch (err) {
+      setRemError(err instanceof Error ? err.message : "Não foi possível criar o lembrete");
+    } finally {
+      setRemBusy(false);
+    }
+  }
+
+  async function removeReminder(id: string) {
+    await http.del(`/api/lembretes/${id}`);
+    setReminders((list) => (list ?? []).filter((r) => r.id !== id));
+  }
 
   async function addImages(files: File[]) {
     setUploading(true);
@@ -272,6 +321,53 @@ export function CardModal({
                 <Plus size={13} /> Adicionar
               </button>
             </form>
+          </div>
+
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-ink-3">
+                <Bell size={13} /> Lembretes
+              </label>
+              <button type="button" onClick={() => setRemOpen((o) => !o)} className="btn btn-ghost h-7 px-2 text-xs">
+                <Plus size={13} /> {remOpen ? "Fechar" : "Adicionar lembrete"}
+              </button>
+            </div>
+            {reminders && reminders.length > 0 && (
+              <ul className="mb-2 space-y-1">
+                {reminders.map((r) => (
+                  <li key={r.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded-lg border border-line bg-well px-2 py-1.5 text-sm">
+                    <Bell size={12} className={r.active ? "text-orange" : "text-ink-3"} />
+                    <span className="text-ink-2 tabular-nums">
+                      {new Date(r.at).toLocaleString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                    {!r.active && <span className="pill px-1.5 py-0 text-[10px]">{r.lastSentAt ? "enviado" : "pausado"}</span>}
+                    <button type="button" onClick={() => removeReminder(r.id)} className="ml-auto text-ink-3 hover:text-red" aria-label="Apagar lembrete">
+                      <X size={14} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {remOpen ? (
+              <form onSubmit={addReminder} className="space-y-2 rounded-xl border border-line-2 bg-well p-3">
+                <p className="text-xs text-ink-3">Na hora marcada chega uma notificação com o título da tarefa, que abre direto nela.</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <DateField value={remDate} min={todayKey()} onChange={setRemDate} />
+                  <TimeField value={remTime} onChange={setRemTime} ariaLabel="Hora" />
+                </div>
+                {remError && <p className="text-xs text-red">{remError}</p>}
+                <div className="flex justify-end gap-2">
+                  <button type="button" onClick={() => setRemOpen(false)} className="btn btn-ghost h-8 px-2 text-xs">
+                    Cancelar
+                  </button>
+                  <button type="submit" disabled={remBusy} className="btn btn-primary h-8 px-3 text-xs">
+                    <Bell size={13} /> {remBusy ? "Salvando…" : "Criar lembrete"}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              (!reminders || reminders.length === 0) && <p className="text-xs text-ink-3">Nenhum lembrete para esta tarefa.</p>
+            )}
           </div>
 
           <div>

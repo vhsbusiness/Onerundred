@@ -70,6 +70,8 @@ export interface BoardDTO {
   lists: ListDTO[];
   /** Última ação em lote que pode ser desfeita (do usuário, em qualquer quadro). */
   lastUndo: { id: string; label: string } | null;
+  /** Média histórica de minutos por tarefa (para estimar as sem estimativa). */
+  avgTaskMinutes: number;
 }
 
 export interface BoardSummary {
@@ -525,6 +527,17 @@ export interface ReminderDTO {
   repeat: "none" | "daily" | "weekly";
   active: boolean;
   lastSentAt: string | null;
+  /** Tarefa associada, se houver. */
+  card: { id: string; title: string; boardId: string; done: boolean } | null;
+}
+
+/** Tarefa aberta resumida, para associar a um lembrete. */
+export interface OpenCardBrief {
+  id: string;
+  title: string;
+  boardId: string;
+  boardName: string;
+  listName: string;
 }
 
 /* ───────────── Convites de quadro ───────────── */

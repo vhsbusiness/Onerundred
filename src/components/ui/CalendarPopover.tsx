@@ -19,6 +19,8 @@ export function CalendarPopover({
   onPick,
   footer,
   className = "",
+  rangeStart,
+  rangeEnd,
 }: {
   value: string;
   min?: string;
@@ -26,6 +28,9 @@ export function CalendarPopover({
   onPick: (key: string) => void;
   footer?: React.ReactNode;
   className?: string;
+  /** Intervalo em seleção/selecionado: dias entre início e fim ficam tingidos. */
+  rangeStart?: string;
+  rangeEnd?: string;
 }) {
   const today = todayKey();
   const [month, setMonth] = useState(() => startOfMonth(keyToDate(value || today)));
@@ -61,8 +66,10 @@ export function CalendarPopover({
           const key = dayKey(d);
           const inMonth = key.slice(0, 7) === monthPrefix;
           const disabled = (min !== undefined && key < min) || (max !== undefined && key > max);
-          const selected = key === value;
+          const selected = key === value || key === rangeStart || key === rangeEnd;
           const isToday = key === today;
+          const inRange =
+            !!rangeStart && !!rangeEnd && key > (rangeStart < rangeEnd ? rangeStart : rangeEnd) && key < (rangeStart < rangeEnd ? rangeEnd : rangeStart);
           return (
             <button
               key={key}
@@ -72,7 +79,9 @@ export function CalendarPopover({
               className={`relative flex h-9 items-center justify-center rounded-lg text-sm tabular-nums transition ${
                 selected
                   ? "bg-ink font-semibold text-on-ink"
-                  : disabled
+                  : inRange
+                    ? "bg-blue/20 text-ink"
+                    : disabled
                     ? "cursor-not-allowed text-ink-3/40"
                     : inMonth
                       ? "text-ink hover:bg-fill-3"

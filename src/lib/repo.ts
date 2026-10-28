@@ -417,6 +417,14 @@ export async function getBoard(id: string, userId: string): Promise<BoardDTO> {
     position: board.position,
     createdAt: board.createdAt.toISOString(),
     lastUndo: await getLastUndo(userId),
+    // Para o reloginho das listas: média usada nas tarefas sem estimativa.
+    avgTaskMinutes: averageTaskMinutes(
+      await prisma.card.findMany({
+        where: { list: { board: boardAccess(userId) }, completedAt: { not: null } },
+        select: { completedAt: true, estimatedMinutes: true, sessions: true },
+      }),
+      new Date(),
+    ),
     owner: board.user,
     isOwner: board.userId === userId,
     members: board.members.map((m) => m.user),
@@ -1182,6 +1190,28 @@ export async function deleteWorkSession(userId: string, id: string) {
 
 /* ───────────────────────── Dashboard ───────────────────────── */
 
+/**
+ * Média histórica de minutos por tarefa: o que as concluídas nos últimos 30 dias levaram
+ * (cronômetro), senão a média das estimativas, senão 30 min. Usada para tarefas sem estimativa.
+ */
+function averageTaskMinutes(
+  cards: { completedAt: Date | null; estimatedMinutes: number | null; sessions: SessionRow[] }[],
+  now: Date,
+): number {
+  const since30 = subDays(now, 30);
+  const recentDone = cards.filter((c) => c.completedAt && c.completedAt >= since30);
+  const spentOf = (c: (typeof cards)[number]) =>
+    sumSessions(c.sessions.filter((s) => s.endedAt)) +
+    (c.sessions.some((s) => !s.endedAt) ? now.getTime() - c.sessions.find((s) => !s.endedAt)!.startedAt.getTime() : 0);
+  const measured = recentDone.map(spentOf).filter((ms) => ms >= 60000);
+  const estimates = recentDone.map((c) => c.estimatedMinutes ?? 0).filter((m) => m > 0);
+  return measured.length >= 3
+    ? Math.round(measured.reduce((a, b) => a + b, 0) / measured.length / 60000)
+    : estimates.length > 0
+      ? Math.round(estimates.reduce((a, b) => a + b, 0) / estimates.length)
+      : 30;
+}
+
 export async function getDashboard(userId: string): Promise<DashboardDTO> {
   await ensureDefaultBoard(userId);
   await runMaintenance();
@@ -1271,16 +1301,7 @@ export async function getDashboard(userId: string): Promise<DashboardDTO> {
 
   // Tempo que falta para fechar o dia: estimativa menos o já gasto; sem estimativa, a média
   // do que as tarefas concluídas nos últimos 30 dias levaram (ou a média das estimativas; ou 30 min).
-  const since30 = subDays(now, 30);
-  const recentDone = cards.filter((c) => c.completedAt && c.completedAt >= since30);
-  const spentOf = (c: (typeof cards)[number]) => sumSessions(c.sessions.filter((s) => s.endedAt)) + (c.sessions.some((s) => !s.endedAt) ? now.getTime() - c.sessions.find((s) => !s.endedAt)!.startedAt.getTime() : 0);
-  const measured = recentDone.map(spentOf).filter((ms) => ms >= 60000);
-  const estimates = recentDone.map((c) => c.estimatedMinutes ?? 0).filter((m) => m > 0);
-  const avgMinutes = measured.length >= 3
-    ? Math.round(measured.reduce((a, b) => a + b, 0) / measured.length / 60000)
-    : estimates.length > 0
-      ? Math.round(estimates.reduce((a, b) => a + b, 0) / estimates.length)
-      : 30;
+  const avgMinutes = averageTaskMinutes(cards, now);
   const openToday = todayCards.filter((c) => !c.completedAt);
   let remainingMin = 0;
   let estimatedCount = 0;

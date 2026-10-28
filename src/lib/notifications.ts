@@ -357,9 +357,18 @@ export async function evaluateUser(userId: string, now = new Date()): Promise<st
 
   // 7. Lembretes do usuário
   if (pref.reminders) {
-    const due = await prisma.reminder.findMany({ where: { userId, active: true, at: { lte: now } }, orderBy: { at: "asc" } });
+    const due = await prisma.reminder.findMany({
+      where: { userId, active: true, at: { lte: now } },
+      orderBy: { at: "asc" },
+      include: { card: { select: { id: true, title: true, list: { select: { boardId: true } } } } },
+    });
     for (const r of due) {
-      await sendToUser(userId, { title: r.title, body: r.note || "Lembrete", url: "/lembretes", tag: `reminder-${r.id}` });
+      await sendToUser(userId, {
+        title: r.title,
+        body: r.note || (r.card ? `Tarefa: ${r.card.title}` : "Lembrete"),
+        url: r.card ? `/quadros/${r.card.list.boardId}?card=${r.card.id}` : "/lembretes",
+        tag: `reminder-${r.id}`,
+      });
       const next = r.repeat === "daily" ? addDays(r.at, 1) : r.repeat === "weekly" ? addDays(r.at, 7) : null;
       // Se ficou muito para trás (app parado), avança até o futuro.
       let nextAt = next;

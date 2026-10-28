@@ -132,6 +132,7 @@ model Card {
   images           CardImage[]
   checklist        ChecklistItem[]
   postponements    CardPostponement[]
+  reminders        Reminder[]
 
   @@index([listId])
   @@index([scheduledFor])
@@ -382,10 +383,14 @@ model Reminder {
   active     Boolean   @default(true)
   lastSentAt DateTime?
   createdAt  DateTime  @default(now())
+  /// Tarefa associada (opcional): a notificação abre a tarefa
+  cardId     String?
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  card       Card?     @relation(fields: [cardId], references: [id], onDelete: SetNull)
 
   @@index([userId, at])
   @@index([active, at])
+  @@index([cardId])
 }
 
 /// Cada chamada à IA (análise do dia, importação de print), para medir gasto por usuário

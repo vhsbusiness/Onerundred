@@ -500,6 +500,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
               onCardContextMenu={(e, c) => setCtxMenu({ cardId: c.id, x: e.clientX, y: e.clientY })}
               lastUndo={board.lastUndo}
               onUndo={undo}
+              avgTaskMinutes={board.avgTaskMinutes}
             />
           ))}
           </SortableContext>

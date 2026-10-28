@@ -4,7 +4,9 @@ import { askConfirm, notify } from "@/components/ui/ConfirmProvider";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Archive, ArrowLeft, ArrowRight, Check, Copy, FolderInput, Magnet, MoreHorizontal, Plus, Sparkles, Trash2, Undo2 } from "lucide-react";
+import { Archive, ArrowLeft, ArrowRight, Check, Clock, Copy, FolderInput, Magnet, MoreHorizontal, Plus, Sparkles, Trash2, Undo2 } from "lucide-react";
+import { Tip } from "@/components/ui/Tip";
+import { formatDuration } from "@/lib/time";
 import { useEffect, useRef, useState } from "react";
 import { http, priorityUi } from "@/lib/client";
 import { imagesFromClipboard, toImageDataUrl } from "@/lib/images";
@@ -34,6 +36,7 @@ export function ListColumn({
   onCardContextMenu,
   lastUndo,
   onUndo,
+  avgTaskMinutes,
 }: {
   list: ListDTO;
   lists: ListDTO[];
@@ -47,6 +50,8 @@ export function ListColumn({
   onCardContextMenu?: (e: React.MouseEvent, card: CardDTO) => void;
   lastUndo?: { id: string; label: string } | null;
   onUndo?: () => void;
+  /** Média de minutos por tarefa, para as sem estimativa (vem do quadro). */
+  avgTaskMinutes?: number;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: list.id, data: { type: "list" } });
   // A coluna inteira é arrastável pelo cabeçalho (como no Trello) para reordenar as listas.
@@ -198,6 +203,24 @@ export function ListColumn({
 
   const openCount = list.cards.filter((c) => !c.completedAt).length;
 
+  // Tempo para fechar a lista: estimativa menos o já gasto em cada tarefa aberta; sem estimativa, a média.
+  const avg = avgTaskMinutes ?? 30;
+  let remainingMin = 0;
+  let noEstimate = 0;
+  for (const c of list.cards) {
+    if (c.completedAt) continue;
+    const est = c.estimatedMinutes ?? avg;
+    if (!c.estimatedMinutes) noEstimate += 1;
+    const spentMin = (c.spentMs + (c.runningSince ? Math.max(0, now - new Date(c.runningSince).getTime()) : 0)) / 60000;
+    remainingMin += Math.max(est - spentMin, 5);
+  }
+  const etaText =
+    openCount === 0
+      ? ""
+      : `~${formatDuration(Math.round(remainingMin) * 60000)} para fechar esta lista (${openCount} ${openCount === 1 ? "tarefa aberta" : "tarefas abertas"}` +
+        (noEstimate > 0 ? `; ${noEstimate} sem estimativa, contada${noEstimate === 1 ? "" : "s"} com sua média de ${avg} min)` : ")") +
+        ". Estimativa de cada tarefa menos o tempo já gasto.";
+
   return (
     <section
       data-no-pan
@@ -255,6 +278,13 @@ export function ListColumn({
           </button>
         )}
         {list.kind !== "normal" && <span className="pill">{KIND_LABEL[list.kind]}</span>}
+        {list.kind !== "done" && openCount > 0 && (
+          <Tip text={etaText} className="shrink-0">
+            <span className="flex h-5 w-5 cursor-help items-center justify-center rounded-full text-ink-3/50 transition hover:text-ink-2" aria-label={etaText}>
+              <Clock size={11} />
+            </span>
+          </Tip>
+        )}
 
         <div className="relative" ref={menuRef}>
           <button

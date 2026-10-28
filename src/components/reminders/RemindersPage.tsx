@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, Bell, BellOff, Check, ChevronDown, ChevronUp, Pencil, Plus, Repeat, Trash2, X } from "lucide-react";
+import { Archive, Bell, BellOff, Check, ChevronDown, ChevronUp, Pencil, Plus, Repeat, SquareKanban, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { http } from "@/lib/client";
@@ -8,7 +8,7 @@ import { askConfirm } from "@/components/ui/ConfirmProvider";
 import { TimeField } from "@/components/ui/TimeField";
 import { DateField } from "@/components/ui/DateField";
 import { todayKey } from "@/lib/time";
-import type { NotificationPrefsDTO, ReminderDTO } from "@/lib/types";
+import type { NotificationPrefsDTO, OpenCardBrief, ReminderDTO } from "@/lib/types";
 
 const REPEAT_LABEL = { none: "Uma vez", daily: "Todo dia", weekly: "Toda semana" } as const;
 
@@ -24,9 +24,36 @@ function localTime(iso: string) {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
+/** Seleção opcional de uma tarefa aberta para associar ao lembrete. */
+function TaskSelect({ value, onChange, cards }: { value: string; onChange: (id: string) => void; cards: OpenCardBrief[] | null }) {
+  return (
+    <label className="block text-sm">
+      <span className="mb-1 block text-xs uppercase tracking-wide text-ink-3">Tarefa (opcional)</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="input" disabled={!cards}>
+        <option value="">Nenhuma</option>
+        {(cards ?? []).map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.title} · {c.boardName}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function TaskPill({ card }: { card: ReminderDTO["card"] }) {
+  if (!card) return null;
+  return (
+    <Link href={`/quadros/${card.boardId}?card=${card.id}`} className={`pill max-w-[200px] ${card.done ? "pill-green" : "pill-blue"}`} title={card.title}>
+      <SquareKanban size={10} /> <span className="truncate">{card.title}</span>
+    </Link>
+  );
+}
+
 /** Formulário de edição de um lembrete (título, detalhe, dia, hora e repetição). */
-function ReminderEditor({ reminder, onDone, onCancel }: { reminder: ReminderDTO; onDone: () => void; onCancel: () => void }) {
+function ReminderEditor({ reminder, onDone, onCancel, cards }: { reminder: ReminderDTO; onDone: () => void; onCancel: () => void; cards: OpenCardBrief[] | null }) {
   const [title, setTitle] = useState(reminder.title);
+  const [cardId, setCardId] = useState(reminder.card?.id ?? "");
   const [note, setNote] = useState(reminder.note);
   const [date, setDate] = useState(localDateKey(reminder.at));
   const [time, setTime] = useState(localTime(reminder.at));
@@ -43,7 +70,7 @@ function ReminderEditor({ reminder, onDone, onCancel }: { reminder: ReminderDTO;
       const [h, min] = time.split(":").map(Number);
       const at = new Date(y, m - 1, d, h, min, 0, 0);
       // Mudar o horário reativa o lembrete (serve para reagendar um já disparado).
-      await http.patch(`/api/lembretes/${reminder.id}`, { title, note, at: at.toISOString(), repeat, active: true });
+      await http.patch(`/api/lembretes/${reminder.id}`, { title, note, at: at.toISOString(), repeat, active: true, cardId: cardId || null });
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível salvar");
@@ -60,6 +87,7 @@ function ReminderEditor({ reminder, onDone, onCancel }: { reminder: ReminderDTO;
         <DateField value={date} onChange={setDate} ariaLabel="Dia" />
         <TimeField value={time} onChange={setTime} ariaLabel="Hora" />
       </div>
+      <TaskSelect value={cardId} onChange={setCardId} cards={cards} />
       <div className="flex flex-wrap items-center gap-1.5">
         {(Object.keys(REPEAT_LABEL) as (keyof typeof REPEAT_LABEL)[]).map((k) => (
           <button key={k} type="button" onClick={() => setRepeat(k)} className={`pill cursor-pointer ${repeat === k ? "pill-blue" : ""}`}>
@@ -95,9 +123,16 @@ export function RemindersPage() {
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [cards, setCards] = useState<OpenCardBrief[] | null>(null);
+  const [cardId, setCardId] = useState("");
 
   const load = useCallback(async () => {
-    const [list, p] = await Promise.all([http.get<ReminderDTO[]>("/api/lembretes"), http.get<NotificationPrefsDTO>("/api/notificacoes")]);
+    const [list, p, open] = await Promise.all([
+      http.get<ReminderDTO[]>("/api/lembretes"),
+      http.get<NotificationPrefsDTO>("/api/notificacoes"),
+      http.get<OpenCardBrief[]>("/api/lembretes?tarefas=1").catch(() => [] as OpenCardBrief[]),
+    ]);
+    setCards(open);
     setItems(list);
     setPrefs(p);
   }, []);
@@ -116,9 +151,10 @@ export function RemindersPage() {
       const [y, m, d] = date.split("-").map(Number);
       const [h, min] = time.split(":").map(Number);
       const at = new Date(y, m - 1, d, h, min, 0, 0);
-      await http.post("/api/lembretes", { title, note, at: at.toISOString(), repeat });
+      await http.post("/api/lembretes", { title, note, at: at.toISOString(), repeat, cardId: cardId || null });
       setTitle("");
       setNote("");
+      setCardId("");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível criar");
@@ -180,6 +216,7 @@ export function RemindersPage() {
               <TimeField value={time} onChange={setTime} />
             </label>
           </div>
+          <TaskSelect value={cardId} onChange={setCardId} cards={cards} />
           <div>
             <span className="mb-1 block text-xs uppercase tracking-wide text-ink-3">Repetir</span>
             <div className="flex gap-1.5">
@@ -215,6 +252,7 @@ export function RemindersPage() {
                           load();
                         }}
                         onCancel={() => setEditing(null)}
+                        cards={cards}
                       />
                     ) : (
                     <>
@@ -227,6 +265,7 @@ export function RemindersPage() {
                         <Repeat size={10} /> {REPEAT_LABEL[r.repeat]}
                       </span>
                     )}
+                    <TaskPill card={r.card} />
                     <button type="button" onClick={() => setEditing(r.id)} className="btn btn-ghost h-8 w-8 p-0 text-ink-3 hover:text-ink" aria-label="Editar" title="Editar lembrete">
                       <Pencil size={14} />
                     </button>
@@ -258,6 +297,7 @@ export function RemindersPage() {
                           load();
                         }}
                         onCancel={() => setEditing(null)}
+                        cards={cards}
                       />
                     ) : (
                     <>
@@ -269,6 +309,7 @@ export function RemindersPage() {
                         <Repeat size={10} /> {REPEAT_LABEL[r.repeat]}
                       </span>
                     )}
+                    <TaskPill card={r.card} />
                     <button type="button" onClick={() => setEditing(r.id)} className="btn btn-ghost h-8 w-8 p-0 text-ink-3 hover:text-ink" aria-label="Editar" title="Editar lembrete">
                       <Pencil size={14} />
                     </button>
@@ -306,6 +347,7 @@ export function RemindersPage() {
                             load();
                           }}
                           onCancel={() => setEditing(null)}
+                          cards={cards}
                         />
                       ) : (
                       <>
@@ -313,6 +355,7 @@ export function RemindersPage() {
                       <span>{r.title}</span>
                       {r.note && <span className="truncate text-xs text-ink-3">{r.note}</span>}
                       <span className="ml-auto text-xs text-ink-3 tabular-nums">enviado {fmt(r.lastSentAt!)}</span>
+                      <TaskPill card={r.card} />
                       <button type="button" onClick={() => setEditing(r.id)} className="btn btn-ghost h-8 px-2 text-xs" title="Reagendar">
                         <Pencil size={13} /> Reagendar
                       </button>
