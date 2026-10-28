@@ -1,6 +1,6 @@
 import { ApiError, json, readBody, withUser } from "@/lib/api";
 import { getSettings, updateSettings } from "@/lib/repo";
-import { isTheme } from "@/lib/theme";
+import { isDesign, isTheme } from "@/lib/theme";
 import type { SettingsDTO, TargetsDTO } from "@/lib/types";
 
 export const GET = withUser(async (user) => json(await getSettings(user.id)));
@@ -30,6 +30,12 @@ export const PATCH = withUser(async (user, req: Request) => {
   if (body.theme !== undefined) {
     if (!isTheme(body.theme)) throw new ApiError(400, "Tema inválido");
     data.theme = body.theme;
+  }
+  if (body.design !== undefined) {
+    // Design 2.0 é experimental: só o admin liga/desliga, e só para a própria conta.
+    if (user.role !== "admin") throw new ApiError(403, "O Design 2.0 está disponível só para o administrador");
+    if (!isDesign(body.design)) throw new ApiError(400, "Design inválido");
+    data.design = body.design;
   }
   if (body.targets && typeof body.targets === "object") {
     const t = body.targets as Record<string, unknown>;

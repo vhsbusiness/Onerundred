@@ -1,4 +1,4 @@
-import type { Theme } from "./theme";
+import type { Theme, Design } from "./theme";
 import type { PeriodScore, Tone, WorkVerdict } from "./metrics";
 
 export type ListKind = "normal" | "today" | "tomorrow" | "done";
@@ -183,6 +183,8 @@ export interface SettingsDTO {
   dailyGoalMinutes: number;
   /** Tema da interface escolhido pelo usuário. */
   theme: Theme;
+  /** Design 2.0 experimental (só o admin pode ligar). */
+  design: Design;
   /** Metas pessoais usadas na performance (null = não definida). */
   targets: TargetsDTO;
 }

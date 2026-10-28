@@ -7,8 +7,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { formatDayLong, todayKey } from "@/lib/time";
-import { isTheme, type Theme } from "@/lib/theme";
-import { applyTheme, currentTheme } from "@/lib/theme-client";
+import { isTheme, type Theme, isDesign } from "@/lib/theme";
+import { applyDesign, applyTheme, currentDesign, currentTheme } from "@/lib/theme-client";
 import type { MeDTO } from "@/lib/types";
 
 const tabs = [
@@ -245,6 +245,7 @@ export function Nav() {
           const next: MeDTO | null = d?.user ?? null;
           // Preferência da conta (vale em qualquer aparelho): aplica se diferir do que está na tela.
           if (next && isTheme(d.theme) && d.theme !== currentTheme()) applyTheme(d.theme);
+          if (next && isDesign(d.design) && d.design !== currentDesign()) applyDesign(d.design);
           // Só guarda no cache quando há usuário; erro ou sessão ausente tentam de novo na próxima página.
           meCache = next ?? undefined;
           setMe(next);

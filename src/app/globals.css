@@ -335,3 +335,158 @@ body {
 .live-dot {
   animation: pulse-dot 1.4s ease-in-out infinite;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Design 2.0 (experimental) — ligado pelo admin em /admin, só para a conta dele.
+   Direção (gerada com a skill ui-ux-pro-max): Flat Design, paleta de
+   produtividade (teal de foco + laranja de ação sobre slate), DM Sans, cantos
+   mais retos, sem granulado, brilhos ou sombras; transições de 150–200 ms e
+   foco visível. Tudo entra por tokens: os componentes não mudam.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root[data-design="v2"] {
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --radius-card: 0.875rem;
+
+  --color-bg: #0f172a;
+  --color-surface: #131c31;
+  --color-surface-2: #182340;
+  --color-surface-3: #1e293b;
+  --color-card: #1e293b;
+  --color-card-hover: #243249;
+  --color-list: #0b1223;
+  --color-list-hover: #101a30;
+  --color-line: rgba(148, 163, 184, 0.14);
+  --color-line-2: rgba(148, 163, 184, 0.22);
+  --color-line-3: rgba(148, 163, 184, 0.38);
+
+  --color-fill: rgba(148, 163, 184, 0.06);
+  --color-fill-2: rgba(148, 163, 184, 0.1);
+  --color-fill-3: rgba(148, 163, 184, 0.16);
+  --color-well: rgba(2, 6, 23, 0.35);
+
+  --color-grid: rgba(148, 163, 184, 0.1);
+  --color-grid-2: rgba(148, 163, 184, 0.24);
+  --color-grid-3: rgba(148, 163, 184, 0.4);
+
+  --color-ink: #f8fafc;
+  --color-ink-2: #b8c4d6;
+  --color-ink-3: #7b8aa3;
+  --color-on-ink: #042f2e;
+
+  /* Teal = foco (entra onde o azul entrava), laranja = ação */
+  --color-blue: #2dd4bf;
+  --color-green: #4ade80;
+  --color-orange: #fb923c;
+  --color-red: #f87171;
+  --color-blue-deep: #0d9488;
+  --color-green-deep: #16a34a;
+  --color-orange-deep: #ea580c;
+
+  --shadow-card: none;
+  --shadow-float: 0 12px 32px -16px rgba(2, 6, 23, 0.8);
+  --grain-opacity: 0;
+  --glow-a: transparent;
+  --glow-b: transparent;
+  --glow-c: transparent;
+  --blob-strength: 0%;
+}
+
+:root[data-design="v2"] body {
+  background-image: none;
+  font-family: var(--font-sans);
+}
+
+/* Formas: botões e campos com cantos retos (flat), pílulas mais contidas */
+:root[data-design="v2"] .btn {
+  border-radius: 0.625rem;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+:root[data-design="v2"] .btn-primary {
+  background-color: var(--color-blue);
+  color: var(--color-on-ink);
+}
+:root[data-design="v2"] .btn-primary:hover {
+  filter: brightness(1.08);
+}
+:root[data-design="v2"] .input {
+  border-radius: 0.625rem;
+  background-color: var(--color-well);
+}
+:root[data-design="v2"] .input:focus {
+  border-color: var(--color-blue);
+  background-color: var(--color-well);
+}
+:root[data-design="v2"] .pill {
+  border-radius: 0.5rem;
+}
+/* Selos coloridos a partir dos tokens (as versões padrão usam os pastéis fixos) */
+:root[data-design="v2"] .pill-orange {
+  border-color: color-mix(in srgb, var(--color-orange) 35%, transparent);
+  background-color: color-mix(in srgb, var(--color-orange) 12%, transparent);
+}
+:root[data-design="v2"] .pill-green {
+  border-color: color-mix(in srgb, var(--color-green) 35%, transparent);
+  background-color: color-mix(in srgb, var(--color-green) 12%, transparent);
+}
+:root[data-design="v2"] .pill-blue {
+  border-color: color-mix(in srgb, var(--color-blue) 35%, transparent);
+  background-color: color-mix(in srgb, var(--color-blue) 12%, transparent);
+}
+:root[data-design="v2"] .pill-red {
+  border-color: color-mix(in srgb, var(--color-red) 35%, transparent);
+  background-color: color-mix(in srgb, var(--color-red) 12%, transparent);
+}
+
+/* Acessibilidade: foco visível no teclado */
+:root[data-design="v2"] :focus-visible {
+  outline: 2px solid var(--color-blue);
+  outline-offset: 2px;
+}
+
+/* Design 2.0 no tema claro: slate claro com teal fechado */
+:root[data-theme="light"][data-design="v2"] {
+  --color-bg: #f1f5f9;
+  --color-surface: #ffffff;
+  --color-surface-2: #f8fafc;
+  --color-surface-3: #ffffff;
+  --color-card: #ffffff;
+  --color-card-hover: #f8fafc;
+  --color-list: #e2e8f0;
+  --color-list-hover: #d9e1ea;
+  --color-line: rgba(15, 23, 42, 0.1);
+  --color-line-2: rgba(15, 23, 42, 0.16);
+  --color-line-3: rgba(15, 23, 42, 0.28);
+
+  --color-fill: rgba(15, 23, 42, 0.04);
+  --color-fill-2: rgba(15, 23, 42, 0.06);
+  --color-fill-3: rgba(15, 23, 42, 0.1);
+  --color-well: rgba(15, 23, 42, 0.04);
+
+  --color-grid: rgba(15, 23, 42, 0.08);
+  --color-grid-2: rgba(15, 23, 42, 0.22);
+  --color-grid-3: rgba(15, 23, 42, 0.4);
+
+  --color-ink: #0f172a;
+  --color-ink-2: #475569;
+  --color-ink-3: #7a889c;
+  --color-on-ink: #ffffff;
+
+  --color-blue: #0d9488;
+  --color-green: #15803d;
+  --color-orange: #ea580c;
+  --color-red: #dc2626;
+  --color-blue-deep: #0f766e;
+  --color-green-deep: #16a34a;
+  --color-orange-deep: #c2410c;
+
+  --shadow-card: none;
+  --shadow-float: 0 12px 32px -18px rgba(15, 23, 42, 0.35);
+  --grain-opacity: 0;
+  --glow-a: transparent;
+  --glow-b: transparent;
+  --glow-c: transparent;
+  --blob-strength: 0%;
+}
+:root[data-theme="light"][data-design="v2"] .btn-primary:hover {
+  filter: brightness(1.08);
+}

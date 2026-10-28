@@ -6,8 +6,11 @@ import { getSettings } from "@/lib/repo";
 /** Quem está logado (ou null) e se o cadastro está aberto. */
 export const GET = handle(async () => {
   const user = await getCurrentUser();
-  const theme = user ? (await getSettings(user.id)).theme : null;
-  return json({ user, theme, allowRegistration: await registrationAllowed() });
+  const settings = user ? await getSettings(user.id) : null;
+  const theme = settings?.theme ?? null;
+  // Design 2.0 só vale para o admin; para os demais o app segue no padrão.
+  const design = settings && user?.role === "admin" ? settings.design : "v1";
+  return json({ user, theme, design, allowRegistration: await registrationAllowed() });
 });
 
 /** Atualiza nome, usuário, e-mail e/ou foto do próprio perfil. */

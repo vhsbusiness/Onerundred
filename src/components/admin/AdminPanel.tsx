@@ -1,11 +1,13 @@
 "use client";
 
 import { askConfirm, notify } from "@/components/ui/ConfirmProvider";
-import { Eye, ShieldCheck, Trash2, UserCheck, UserX } from "lucide-react";
+import { Eye, Palette, ShieldCheck, Trash2, UserCheck, UserX } from "lucide-react";
 import { Avatar } from "@/components/profile/ProfilePage";
 import { useCallback, useEffect, useState } from "react";
 import { http } from "@/lib/client";
 import { formatDuration } from "@/lib/time";
+import { applyDesign, currentDesign } from "@/lib/theme-client";
+import type { Design } from "@/lib/theme";
 import type { AdminOverview, AdminUser, MeDTO } from "@/lib/types";
 
 function fmtDate(iso: string | null) {
@@ -65,6 +67,22 @@ export function AdminPanel() {
     } catch (e) {
       notify(e instanceof Error ? e.message : "Erro", "error");
     }
+  }
+
+  // Design 2.0 (experimental, temporário): só para a conta do admin.
+  const [design, setDesign] = useState<Design>("v1");
+  useEffect(() => {
+    // Lê o design já aplicado no <html> e acompanha trocas feitas em outra parte do app.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDesign(currentDesign());
+    const onChange = (e: Event) => setDesign((e as CustomEvent<Design>).detail);
+    window.addEventListener("design-changed", onChange);
+    return () => window.removeEventListener("design-changed", onChange);
+  }, []);
+  function toggleDesign() {
+    const next: Design = design === "v2" ? "v1" : "v2";
+    applyDesign(next);
+    http.patch("/api/settings", { design: next }).catch((e) => notify(e instanceof Error ? e.message : "Erro", "error"));
   }
 
   const [obs, setObs] = useState<Record<string, string>>({});
@@ -148,6 +166,28 @@ export function AdminPanel() {
           <Tile value={String(overview.openCards)} label="Tarefas abertas" />
           <Tile value={formatDuration(overview.workedTodayMs)} label="Trabalhado hoje (todos)" />
           <Tile value={usd(overview.aiCostUsd30)} label="Gasto com IA (30 dias)" />
+        </div>
+      </section>
+
+      <section className="card p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="flex items-center gap-2 text-sm font-medium text-ink-2">
+              <Palette size={15} className="text-orange" /> Design 2.0 <span className="pill">experimental</span>
+            </h2>
+            <p className="mt-1 text-xs text-ink-3">
+              Prévia do novo visual (flat, DM Sans, teal + laranja, cantos retos). Vale só para a sua conta, em qualquer aparelho; os outros usuários continuam no padrão. Função temporária até você decidir se vira o visual do app.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={design === "v2"}
+            onClick={toggleDesign}
+            className={`btn shrink-0 ${design === "v2" ? "btn-primary" : ""}`}
+          >
+            <Palette size={14} /> {design === "v2" ? "Design 2.0 ligado" : "Ativar Design 2.0"}
+          </button>
         </div>
       </section>
 
