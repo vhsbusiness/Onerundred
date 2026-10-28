@@ -28,6 +28,7 @@ export function isDesign(v: unknown): v is Design {
 
 /** Cor da barra do navegador/PWA para cada combinação de tema e design. */
 export function themeColorFor(theme: Theme, design: Design): string {
-  if (design === "v2") return theme === "dark" ? "#15120e" : "#f4efe6";
+  // O Design 2.0 usa as mesmas cores do app, então a barra do navegador não muda.
+  void design;
   return THEME_COLOR[theme];
 }

@@ -340,9 +340,9 @@ body {
    Design 2.0 "Atelier" (experimental) — ligado pelo admin em /admin, só para a
    conta dele. Papel e tinta: tipografia editorial (Bricolage Grotesque nos
    títulos e números, Instrument Sans no texto, JetBrains Mono nas etiquetas),
-   trilho lateral no PC, fundo com grade de pontos, acento "brasa" (terracota).
-   Tema claro = "Papel", tema escuro = "Noturno". Tudo entra por tokens e por
-   alguns seletores estruturais: os componentes não mudam.
+   trilho lateral no PC, fundo com grade de pontos. As cores são as mesmas do
+   app (tema escuro e claro): o 2.0 muda forma, tipografia e textura. Tudo
+   entra por tokens e por alguns seletores estruturais: os componentes não mudam.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* Só um dos cabeçalhos existe por vez */
@@ -353,110 +353,34 @@ body {
   display: none !important;
 }
 
-/* ── Noturno (escuro) ── */
+/* Cores: as mesmas do app (tema escuro e claro); o 2.0 só muda forma, tipografia e textura. */
 :root[data-design="v2"] {
   --font-sans: var(--font-v2-sans), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-v2-display), var(--font-v2-sans), ui-sans-serif, sans-serif;
   --font-stamp: var(--font-v2-mono), ui-monospace, SFMono-Regular, monospace;
   --radius-card: 1.1rem;
 
-  --color-bg: #15120e;
-  --color-surface: #1d1914;
-  --color-surface-2: #241f19;
-  --color-surface-3: #2b251e;
-  --color-card: #2a241d;
-  --color-card-hover: #322b23;
-  --color-list: #100e0b;
-  --color-list-hover: #15120e;
-  --color-line: rgba(243, 234, 217, 0.1);
-  --color-line-2: rgba(243, 234, 217, 0.16);
-  --color-line-3: rgba(243, 234, 217, 0.3);
-
-  --color-fill: rgba(243, 234, 217, 0.05);
-  --color-fill-2: rgba(243, 234, 217, 0.08);
-  --color-fill-3: rgba(243, 234, 217, 0.14);
-  --color-well: rgba(0, 0, 0, 0.28);
-
-  --color-grid: rgba(243, 234, 217, 0.1);
-  --color-grid-2: rgba(243, 234, 217, 0.24);
-  --color-grid-3: rgba(243, 234, 217, 0.4);
-
-  --color-ink: #f3ead9;
-  --color-ink-2: #b9ae9b;
-  --color-ink-3: #7f7566;
-  --color-on-ink: #15120e;
-
-  /* brasa, sálvia, céu, coral */
-  --color-orange: #ff7a4d;
-  --color-green: #9ad27a;
-  --color-blue: #7cc4e8;
-  --color-red: #ff8577;
-  --color-orange-deep: #e2551f;
-  --color-green-deep: #5f9a3c;
-  --color-blue-deep: #2f86b8;
-
-  --v2-on-accent: #fff6ee;
-  --v2-dots: rgba(243, 234, 217, 0.09);
-  --v2-hard-shadow: 2px 2px 0 rgba(0, 0, 0, 0.55);
+  --v2-dots: rgba(255, 255, 255, 0.07);
+  --v2-hard-shadow: 2px 2px 0 rgba(0, 0, 0, 0.6);
 
   --shadow-card: none;
-  --shadow-float: 0 14px 36px -18px rgba(0, 0, 0, 0.7);
   --grain-opacity: 0;
-  --glow-a: transparent;
-  --glow-b: transparent;
-  --glow-c: transparent;
-  --blob-strength: 0%;
 }
-
-/* ── Papel (claro) ── */
 :root[data-theme="light"][data-design="v2"] {
-  --color-bg: #f4efe6;
-  --color-surface: #fbf8f2;
-  --color-surface-2: #f1ebe1;
-  --color-surface-3: #ffffff;
-  --color-card: #ffffff;
-  --color-card-hover: #fbf8f2;
-  --color-list: #ebe4d8;
-  --color-list-hover: #e4dccd;
-  --color-line: rgba(26, 23, 20, 0.12);
-  --color-line-2: rgba(26, 23, 20, 0.18);
-  --color-line-3: rgba(26, 23, 20, 0.3);
-
-  --color-fill: rgba(26, 23, 20, 0.045);
-  --color-fill-2: rgba(26, 23, 20, 0.07);
-  --color-fill-3: rgba(26, 23, 20, 0.11);
-  --color-well: rgba(26, 23, 20, 0.045);
-
-  --color-grid: rgba(26, 23, 20, 0.09);
-  --color-grid-2: rgba(26, 23, 20, 0.22);
-  --color-grid-3: rgba(26, 23, 20, 0.4);
-
-  --color-ink: #1a1714;
-  --color-ink-2: #5c554c;
-  --color-ink-3: #8c8376;
-  --color-on-ink: #fbf8f2;
-
-  --color-orange: #d9532b;
-  --color-green: #4f7f3a;
-  --color-blue: #2b6f9e;
-  --color-red: #c93a2e;
-  --color-orange-deep: #e0602f;
-  --color-green-deep: #5e9448;
-  --color-blue-deep: #3a84b6;
-
-  --v2-on-accent: #fff6ee;
-  --v2-dots: rgba(26, 23, 20, 0.14);
-  --v2-hard-shadow: 2px 2px 0 #1a1714;
-
-  --shadow-float: 0 14px 36px -20px rgba(26, 23, 20, 0.35);
+  --v2-dots: rgba(28, 25, 18, 0.13);
+  --v2-hard-shadow: 2px 2px 0 #17181c;
 }
 
-/* Fundo: papel com grade de pontos */
+/* Fundo: grade de pontos por cima dos brilhos originais do app */
 :root[data-design="v2"] body {
   font-family: var(--font-sans);
-  background-image: radial-gradient(var(--v2-dots) 1px, transparent 1.2px);
-  background-size: 22px 22px;
-  background-repeat: repeat;
+  background-image:
+    radial-gradient(var(--v2-dots) 1px, transparent 1.2px),
+    radial-gradient(1100px 560px at 8% -12%, var(--glow-a), transparent 62%),
+    radial-gradient(900px 520px at 100% -4%, var(--glow-b), transparent 60%),
+    radial-gradient(800px 520px at 52% 112%, var(--glow-c), transparent 60%);
+  background-size: 22px 22px, auto, auto, auto;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
 }
 
 /* Trilho lateral: o conteúdo abre espaço à esquerda no PC */
@@ -541,18 +465,18 @@ body {
 }
 :root[data-design="v2"] .btn-primary {
   background-color: var(--color-orange);
-  color: var(--v2-on-accent);
+  color: var(--color-on-ink);
   border-color: transparent;
   box-shadow: var(--v2-hard-shadow);
 }
 :root[data-design="v2"] .btn-primary:hover {
   filter: none;
   transform: translate(-1px, -1px);
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.55);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.6);
 }
 :root[data-theme="light"][data-design="v2"] .btn-primary:hover {
   filter: none;
-  box-shadow: 3px 3px 0 #1a1714;
+  box-shadow: 3px 3px 0 #17181c;
 }
 :root[data-design="v2"] .btn-primary:active {
   transform: translate(1px, 1px);
@@ -607,26 +531,8 @@ body {
   border-top-color: var(--color-line-2);
 }
 
-/* Foco visível e entrada suave do conteúdo */
+/* Foco visível no teclado */
 :root[data-design="v2"] :focus-visible {
   outline: 2px solid var(--color-orange);
   outline-offset: 2px;
-}
-@keyframes v2-rise {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-:root[data-design="v2"] main > * {
-  animation: v2-rise 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
-}
-@media (prefers-reduced-motion: reduce) {
-  :root[data-design="v2"] main > * {
-    animation: none;
-  }
 }
