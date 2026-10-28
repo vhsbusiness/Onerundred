@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
-import { DM_Sans, Geist, Geist_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Geist, Geist_Mono, Instrument_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Nav } from "@/components/Nav";
 import { ConfirmProvider } from "@/components/ui/ConfirmProvider";
@@ -16,11 +16,11 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Fonte do Design 2.0 (só entra em uso com <html data-design="v2">).
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
-  subsets: ["latin"],
-});
+// Fontes do Design 2.0 "Atelier" (só entram em uso com <html data-design="v2">):
+// display para títulos e números grandes, sans para o texto e mono para etiquetas.
+const display = Bricolage_Grotesque({ variable: "--font-v2-display", subsets: ["latin"] });
+const bodyV2 = Instrument_Sans({ variable: "--font-v2-sans", subsets: ["latin"] });
+const monoV2 = JetBrains_Mono({ variable: "--font-v2-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Onerundred",
@@ -65,7 +65,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       data-theme={theme}
       data-design={design === "v2" ? "v2" : undefined}
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} ${dmSans.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${display.variable} ${bodyV2.variable} ${monoV2.variable} h-full antialiased`}
     >
       <body className="min-h-full">
         <div id="app" className="mx-auto flex min-h-dvh w-full max-w-[1480px] flex-col px-4 pb-24 sm:px-6 md:pb-10"

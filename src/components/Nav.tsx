@@ -34,7 +34,7 @@ export function Logo({ compact = false }: { compact?: boolean }) {
         </svg>
       </span>
       {/* compact: até o tablet só o ícone, para sobrar espaço no cabeçalho. */}
-      <span className={`text-[1.05rem] font-semibold tracking-tight ${compact ? "hidden xl:inline" : ""}`}>Onerundred</span>
+      <span className={`logo-word text-[1.05rem] font-semibold tracking-tight ${compact ? "hidden xl:inline" : ""}`}>Onerundred</span>
     </span>
   );
 }
@@ -99,7 +99,7 @@ function WorkIndicator() {
   );
 }
 
-function UserMenu({ me }: { me: MeDTO }) {
+function UserMenu({ me, placement = "down" }: { me: MeDTO; placement?: "down" | "up" }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>("dark");
@@ -147,7 +147,7 @@ function UserMenu({ me }: { me: MeDTO }) {
         {/* O nome fica no menu: no cabeçalho só a foto, para sobrar espaço para as abas. */}
       </button>
       {open && (
-        <div className="absolute right-0 top-10 z-40 w-56 rounded-xl border border-line-2 bg-surface-3 p-1 text-sm shadow-2xl">
+        <div className={`absolute z-40 w-56 rounded-xl border border-line-2 bg-surface-3 p-1 text-sm shadow-2xl ${placement === "up" ? "bottom-12 left-0" : "right-0 top-10"}`}>
           <div className="px-2 py-1.5">
             <div className="truncate font-medium">{me.name}</div>
             <div className="truncate text-xs text-ink-3">@{me.username} · {me.email}</div>
@@ -229,6 +229,59 @@ function BottomNav({
   );
 }
 
+/** Relógio do Design 2.0: data por extenso em display e a hora ao lado (hora só após montar). */
+function ClockV2() {
+  const [hhmm, setHhmm] = useState("");
+  useEffect(() => {
+    const tick = () => setHhmm(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
+    // Sincroniza com a hora do navegador ao montar e a cada 30 s.
+    tick();
+    const id = setInterval(tick, 30000);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <div className="min-w-0">
+      <div className="v2-eyebrow">Onerundred · hoje</div>
+      <div className="truncate font-display text-[1.45rem] font-semibold leading-tight tracking-tight sm:text-[1.7rem]">
+        {formatDayLong(todayKey())}
+        {hhmm && <span className="ml-2 text-ink-3 tabular-nums">{hhmm}</span>}
+      </div>
+    </div>
+  );
+}
+
+type Tab = { href: string; label: string; short: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }> };
+
+/** Design 2.0: trilho lateral fixo no PC (ícones até xl, ícone + nome a partir de xl). */
+function Rail({ tabs: items, isActive, me }: { tabs: Tab[]; isActive: (href: string) => boolean; me: MeDTO | null }) {
+  return (
+    <aside className="design-v2-only fixed inset-y-0 left-0 z-30 hidden w-[76px] flex-col border-r border-line bg-surface md:flex xl:w-[208px]" aria-label="Navegação principal">
+      <Link href="/" className="flex h-16 shrink-0 items-center justify-center border-b border-line xl:justify-start xl:px-5">
+        <Logo compact />
+      </Link>
+      <nav className="flex-1 overflow-y-auto px-3 py-3 no-scrollbar">
+        <ul className="space-y-1">
+          {items.map((t) => {
+            const active = isActive(t.href);
+            return (
+              <li key={t.href}>
+                <Link href={t.href} title={t.label} aria-current={active ? "page" : undefined} className={`v2-rail-item ${active ? "is-active" : ""}`}>
+                  <t.icon size={18} strokeWidth={active ? 2.2 : 1.8} />
+                  <span className="hidden xl:inline">{t.label}</span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+      <div className="flex shrink-0 flex-col items-center gap-2 border-t border-line p-3 xl:flex-row xl:justify-between">
+        {me && <UserMenu me={me} placement="up" />}
+        {me && <InviteBell />}
+      </div>
+    </aside>
+  );
+}
+
 /** Cache do usuário logado entre navegações (evita uma chamada por página). */
 let meCache: MeDTO | null | undefined;
 
@@ -264,7 +317,21 @@ export function Nav() {
   return (
     <>
     <BottomNav tabs={allTabs.filter((t) => MOBILE_TABS.includes(t.href))} isActive={isActive} />
-    <header className="sticky z-30 mb-6 pt-3" style={{ top: "env(safe-area-inset-top, 0px)" }}>
+
+    {/* Design 2.0 "Atelier": trilho lateral no PC + faixa superior com a data em destaque. */}
+    <Rail tabs={allTabs} isActive={isActive} me={me} />
+    <header className="design-v2-only mb-6 pt-4">
+      <div className="flex items-end justify-between gap-3">
+        <ClockV2 />
+        <div className="flex shrink-0 items-center gap-2">
+          <WorkIndicator />
+          <span className="md:hidden">{me && <InviteBell />}</span>
+          <span className="md:hidden">{me && <UserMenu me={me} />}</span>
+        </div>
+      </div>
+    </header>
+
+    <header className="design-v1-only sticky z-30 mb-6 pt-3" style={{ top: "env(safe-area-inset-top, 0px)" }}>
       <div className="card w-full bg-surface/90 px-4 py-2.5 shadow-[var(--shadow-float)] backdrop-blur-md sm:px-5">
         <div className="flex min-h-11 items-center gap-3 lg:gap-4 2xl:gap-6">
         <Link href="/" className="shrink-0">

@@ -337,53 +337,70 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Design 2.0 (experimental) — ligado pelo admin em /admin, só para a conta dele.
-   Direção (gerada com a skill ui-ux-pro-max): Flat Design, paleta de
-   produtividade (teal de foco + laranja de ação sobre slate), DM Sans, cantos
-   mais retos, sem granulado, brilhos ou sombras; transições de 150–200 ms e
-   foco visível. Tudo entra por tokens: os componentes não mudam.
+   Design 2.0 "Atelier" (experimental) — ligado pelo admin em /admin, só para a
+   conta dele. Papel e tinta: tipografia editorial (Bricolage Grotesque nos
+   títulos e números, Instrument Sans no texto, JetBrains Mono nas etiquetas),
+   trilho lateral no PC, fundo com grade de pontos, acento "brasa" (terracota).
+   Tema claro = "Papel", tema escuro = "Noturno". Tudo entra por tokens e por
+   alguns seletores estruturais: os componentes não mudam.
    ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Só um dos cabeçalhos existe por vez */
+:root[data-design="v2"] .design-v1-only {
+  display: none !important;
+}
+:root:not([data-design="v2"]) .design-v2-only {
+  display: none !important;
+}
+
+/* ── Noturno (escuro) ── */
 :root[data-design="v2"] {
-  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
-  --radius-card: 0.875rem;
+  --font-sans: var(--font-v2-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-v2-display), var(--font-v2-sans), ui-sans-serif, sans-serif;
+  --font-stamp: var(--font-v2-mono), ui-monospace, SFMono-Regular, monospace;
+  --radius-card: 1.1rem;
 
-  --color-bg: #0f172a;
-  --color-surface: #131c31;
-  --color-surface-2: #182340;
-  --color-surface-3: #1e293b;
-  --color-card: #1e293b;
-  --color-card-hover: #243249;
-  --color-list: #0b1223;
-  --color-list-hover: #101a30;
-  --color-line: rgba(148, 163, 184, 0.14);
-  --color-line-2: rgba(148, 163, 184, 0.22);
-  --color-line-3: rgba(148, 163, 184, 0.38);
+  --color-bg: #15120e;
+  --color-surface: #1d1914;
+  --color-surface-2: #241f19;
+  --color-surface-3: #2b251e;
+  --color-card: #2a241d;
+  --color-card-hover: #322b23;
+  --color-list: #100e0b;
+  --color-list-hover: #15120e;
+  --color-line: rgba(243, 234, 217, 0.1);
+  --color-line-2: rgba(243, 234, 217, 0.16);
+  --color-line-3: rgba(243, 234, 217, 0.3);
 
-  --color-fill: rgba(148, 163, 184, 0.06);
-  --color-fill-2: rgba(148, 163, 184, 0.1);
-  --color-fill-3: rgba(148, 163, 184, 0.16);
-  --color-well: rgba(2, 6, 23, 0.35);
+  --color-fill: rgba(243, 234, 217, 0.05);
+  --color-fill-2: rgba(243, 234, 217, 0.08);
+  --color-fill-3: rgba(243, 234, 217, 0.14);
+  --color-well: rgba(0, 0, 0, 0.28);
 
-  --color-grid: rgba(148, 163, 184, 0.1);
-  --color-grid-2: rgba(148, 163, 184, 0.24);
-  --color-grid-3: rgba(148, 163, 184, 0.4);
+  --color-grid: rgba(243, 234, 217, 0.1);
+  --color-grid-2: rgba(243, 234, 217, 0.24);
+  --color-grid-3: rgba(243, 234, 217, 0.4);
 
-  --color-ink: #f8fafc;
-  --color-ink-2: #b8c4d6;
-  --color-ink-3: #7b8aa3;
-  --color-on-ink: #042f2e;
+  --color-ink: #f3ead9;
+  --color-ink-2: #b9ae9b;
+  --color-ink-3: #7f7566;
+  --color-on-ink: #15120e;
 
-  /* Teal = foco (entra onde o azul entrava), laranja = ação */
-  --color-blue: #2dd4bf;
-  --color-green: #4ade80;
-  --color-orange: #fb923c;
-  --color-red: #f87171;
-  --color-blue-deep: #0d9488;
-  --color-green-deep: #16a34a;
-  --color-orange-deep: #ea580c;
+  /* brasa, sálvia, céu, coral */
+  --color-orange: #ff7a4d;
+  --color-green: #9ad27a;
+  --color-blue: #7cc4e8;
+  --color-red: #ff8577;
+  --color-orange-deep: #e2551f;
+  --color-green-deep: #5f9a3c;
+  --color-blue-deep: #2f86b8;
+
+  --v2-on-accent: #fff6ee;
+  --v2-dots: rgba(243, 234, 217, 0.09);
+  --v2-hard-shadow: 2px 2px 0 rgba(0, 0, 0, 0.55);
 
   --shadow-card: none;
-  --shadow-float: 0 12px 32px -16px rgba(2, 6, 23, 0.8);
+  --shadow-float: 0 14px 36px -18px rgba(0, 0, 0, 0.7);
   --grain-opacity: 0;
   --glow-a: transparent;
   --glow-b: transparent;
@@ -391,102 +408,225 @@ body {
   --blob-strength: 0%;
 }
 
-:root[data-design="v2"] body {
-  background-image: none;
-  font-family: var(--font-sans);
+/* ── Papel (claro) ── */
+:root[data-theme="light"][data-design="v2"] {
+  --color-bg: #f4efe6;
+  --color-surface: #fbf8f2;
+  --color-surface-2: #f1ebe1;
+  --color-surface-3: #ffffff;
+  --color-card: #ffffff;
+  --color-card-hover: #fbf8f2;
+  --color-list: #ebe4d8;
+  --color-list-hover: #e4dccd;
+  --color-line: rgba(26, 23, 20, 0.12);
+  --color-line-2: rgba(26, 23, 20, 0.18);
+  --color-line-3: rgba(26, 23, 20, 0.3);
+
+  --color-fill: rgba(26, 23, 20, 0.045);
+  --color-fill-2: rgba(26, 23, 20, 0.07);
+  --color-fill-3: rgba(26, 23, 20, 0.11);
+  --color-well: rgba(26, 23, 20, 0.045);
+
+  --color-grid: rgba(26, 23, 20, 0.09);
+  --color-grid-2: rgba(26, 23, 20, 0.22);
+  --color-grid-3: rgba(26, 23, 20, 0.4);
+
+  --color-ink: #1a1714;
+  --color-ink-2: #5c554c;
+  --color-ink-3: #8c8376;
+  --color-on-ink: #fbf8f2;
+
+  --color-orange: #d9532b;
+  --color-green: #4f7f3a;
+  --color-blue: #2b6f9e;
+  --color-red: #c93a2e;
+  --color-orange-deep: #e0602f;
+  --color-green-deep: #5e9448;
+  --color-blue-deep: #3a84b6;
+
+  --v2-on-accent: #fff6ee;
+  --v2-dots: rgba(26, 23, 20, 0.14);
+  --v2-hard-shadow: 2px 2px 0 #1a1714;
+
+  --shadow-float: 0 14px 36px -20px rgba(26, 23, 20, 0.35);
 }
 
-/* Formas: botões e campos com cantos retos (flat), pílulas mais contidas */
-:root[data-design="v2"] .btn {
-  border-radius: 0.625rem;
-  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+/* Fundo: papel com grade de pontos */
+:root[data-design="v2"] body {
+  font-family: var(--font-sans);
+  background-image: radial-gradient(var(--v2-dots) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+  background-repeat: repeat;
 }
-:root[data-design="v2"] .btn-primary {
-  background-color: var(--color-blue);
-  color: var(--color-on-ink);
+
+/* Trilho lateral: o conteúdo abre espaço à esquerda no PC */
+@media (min-width: 768px) {
+  :root[data-design="v2"] #app {
+    padding-left: calc(76px + 1.5rem);
+    padding-right: 1.5rem;
+    max-width: 1640px;
+  }
 }
-:root[data-design="v2"] .btn-primary:hover {
-  filter: brightness(1.08);
+@media (min-width: 1280px) {
+  :root[data-design="v2"] #app {
+    padding-left: calc(208px + 2rem);
+    padding-right: 2rem;
+  }
 }
-:root[data-design="v2"] .input {
-  border-radius: 0.625rem;
-  background-color: var(--color-well);
+
+/* Tipografia editorial */
+:root[data-design="v2"] h1,
+:root[data-design="v2"] h2,
+:root[data-design="v2"] h3,
+:root[data-design="v2"] .font-display,
+:root[data-design="v2"] .logo-word {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
 }
-:root[data-design="v2"] .input:focus {
-  border-color: var(--color-blue);
-  background-color: var(--color-well);
+/* Números grandes dos cards (tiles do dashboard, performance, sono, lazer) */
+:root[data-design="v2"] .leading-none.tabular-nums {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.03em;
 }
+:root[data-design="v2"] .v2-eyebrow,
+:root[data-design="v2"] .uppercase.tracking-wide {
+  font-family: var(--font-stamp);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-3);
+}
+
+/* Cards: papel liso, sem sombra, borda de tinta */
+:root[data-design="v2"] .card {
+  border-color: var(--color-line-2);
+}
+
+/* Etiquetas tipo carimbo (podem quebrar linha: o mono é mais largo que o sans) */
 :root[data-design="v2"] .pill {
-  border-radius: 0.5rem;
+  font-family: var(--font-stamp);
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 0.4rem;
+  padding: 0.2rem 0.45rem;
+  background-color: transparent;
+  white-space: normal;
+  text-align: left;
+  max-width: 100%;
 }
-/* Selos coloridos a partir dos tokens (as versões padrão usam os pastéis fixos) */
 :root[data-design="v2"] .pill-orange {
-  border-color: color-mix(in srgb, var(--color-orange) 35%, transparent);
+  border-color: color-mix(in srgb, var(--color-orange) 45%, transparent);
   background-color: color-mix(in srgb, var(--color-orange) 12%, transparent);
 }
 :root[data-design="v2"] .pill-green {
-  border-color: color-mix(in srgb, var(--color-green) 35%, transparent);
+  border-color: color-mix(in srgb, var(--color-green) 45%, transparent);
   background-color: color-mix(in srgb, var(--color-green) 12%, transparent);
 }
 :root[data-design="v2"] .pill-blue {
-  border-color: color-mix(in srgb, var(--color-blue) 35%, transparent);
+  border-color: color-mix(in srgb, var(--color-blue) 45%, transparent);
   background-color: color-mix(in srgb, var(--color-blue) 12%, transparent);
 }
 :root[data-design="v2"] .pill-red {
-  border-color: color-mix(in srgb, var(--color-red) 35%, transparent);
+  border-color: color-mix(in srgb, var(--color-red) 45%, transparent);
   background-color: color-mix(in srgb, var(--color-red) 12%, transparent);
 }
 
-/* Acessibilidade: foco visível no teclado */
-:root[data-design="v2"] :focus-visible {
-  outline: 2px solid var(--color-blue);
-  outline-offset: 2px;
+/* Botões: retos, com sombra dura no principal (impresso) */
+:root[data-design="v2"] .btn {
+  border-radius: 0.7rem;
+  border-color: var(--color-line-2);
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
 }
-
-/* Design 2.0 no tema claro: slate claro com teal fechado */
-:root[data-theme="light"][data-design="v2"] {
-  --color-bg: #f1f5f9;
-  --color-surface: #ffffff;
-  --color-surface-2: #f8fafc;
-  --color-surface-3: #ffffff;
-  --color-card: #ffffff;
-  --color-card-hover: #f8fafc;
-  --color-list: #e2e8f0;
-  --color-list-hover: #d9e1ea;
-  --color-line: rgba(15, 23, 42, 0.1);
-  --color-line-2: rgba(15, 23, 42, 0.16);
-  --color-line-3: rgba(15, 23, 42, 0.28);
-
-  --color-fill: rgba(15, 23, 42, 0.04);
-  --color-fill-2: rgba(15, 23, 42, 0.06);
-  --color-fill-3: rgba(15, 23, 42, 0.1);
-  --color-well: rgba(15, 23, 42, 0.04);
-
-  --color-grid: rgba(15, 23, 42, 0.08);
-  --color-grid-2: rgba(15, 23, 42, 0.22);
-  --color-grid-3: rgba(15, 23, 42, 0.4);
-
-  --color-ink: #0f172a;
-  --color-ink-2: #475569;
-  --color-ink-3: #7a889c;
-  --color-on-ink: #ffffff;
-
-  --color-blue: #0d9488;
-  --color-green: #15803d;
-  --color-orange: #ea580c;
-  --color-red: #dc2626;
-  --color-blue-deep: #0f766e;
-  --color-green-deep: #16a34a;
-  --color-orange-deep: #c2410c;
-
-  --shadow-card: none;
-  --shadow-float: 0 12px 32px -18px rgba(15, 23, 42, 0.35);
-  --grain-opacity: 0;
-  --glow-a: transparent;
-  --glow-b: transparent;
-  --glow-c: transparent;
-  --blob-strength: 0%;
+:root[data-design="v2"] .btn-primary {
+  background-color: var(--color-orange);
+  color: var(--v2-on-accent);
+  border-color: transparent;
+  box-shadow: var(--v2-hard-shadow);
+}
+:root[data-design="v2"] .btn-primary:hover {
+  filter: none;
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.55);
 }
 :root[data-theme="light"][data-design="v2"] .btn-primary:hover {
-  filter: brightness(1.08);
+  filter: none;
+  box-shadow: 3px 3px 0 #1a1714;
+}
+:root[data-design="v2"] .btn-primary:active {
+  transform: translate(1px, 1px);
+  box-shadow: 0 0 0 transparent;
+}
+:root[data-design="v2"] .btn-ghost {
+  border-color: transparent;
+}
+
+/* Campos */
+:root[data-design="v2"] .input {
+  border-radius: 0.7rem;
+  background-color: var(--color-surface-3);
+  border-color: var(--color-line-2);
+}
+:root[data-design="v2"] .input:focus {
+  border-color: var(--color-ink);
+  background-color: var(--color-surface-3);
+}
+
+/* Trilho lateral */
+.v2-rail-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  border-radius: 0.8rem;
+  padding: 0.65rem;
+  font-size: 0.86rem;
+  color: var(--color-ink-2);
+  transition: background-color 140ms ease, color 140ms ease;
+}
+@media (min-width: 1280px) {
+  .v2-rail-item {
+    justify-content: flex-start;
+    padding: 0.55rem 0.8rem;
+  }
+}
+.v2-rail-item:hover {
+  background-color: var(--color-fill-2);
+  color: var(--color-ink);
+}
+.v2-rail-item.is-active {
+  background-color: var(--color-ink);
+  color: var(--color-on-ink);
+  box-shadow: var(--v2-hard-shadow);
+}
+
+/* Barra inferior do celular: papel sólido */
+:root[data-design="v2"] nav.fixed.inset-x-0.bottom-0 {
+  background-color: var(--color-surface);
+  border-top-color: var(--color-line-2);
+}
+
+/* Foco visível e entrada suave do conteúdo */
+:root[data-design="v2"] :focus-visible {
+  outline: 2px solid var(--color-orange);
+  outline-offset: 2px;
+}
+@keyframes v2-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+:root[data-design="v2"] main > * {
+  animation: v2-rise 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-design="v2"] main > * {
+    animation: none;
+  }
 }

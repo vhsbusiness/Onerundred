@@ -176,7 +176,7 @@ export function AdminPanel() {
               <Palette size={15} className="text-orange" /> Design 2.0 <span className="pill">experimental</span>
             </h2>
             <p className="mt-1 text-xs text-ink-3">
-              Prévia do novo visual (flat, DM Sans, teal + laranja, cantos retos). Vale só para a sua conta, em qualquer aparelho; os outros usuários continuam no padrão. Função temporária até você decidir se vira o visual do app.
+              Prévia do visual “Atelier”: papel e tinta, barra lateral no PC, títulos em Bricolage Grotesque, etiquetas tipo carimbo e acento brasa, com versões clara (Papel) e escura (Noturno). Vale só para a sua conta, em qualquer aparelho; os outros usuários continuam no padrão. Função temporária até você decidir se vira o visual do app.
             </p>
           </div>
           <button

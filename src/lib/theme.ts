@@ -28,6 +28,6 @@ export function isDesign(v: unknown): v is Design {
 
 /** Cor da barra do navegador/PWA para cada combinação de tema e design. */
 export function themeColorFor(theme: Theme, design: Design): string {
-  if (design === "v2") return theme === "dark" ? "#0f172a" : "#f1f5f9";
+  if (design === "v2") return theme === "dark" ? "#15120e" : "#f4efe6";
   return THEME_COLOR[theme];
 }
