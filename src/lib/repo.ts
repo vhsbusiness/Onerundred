@@ -30,6 +30,7 @@ import type {
   DayReviewDTO,
   TodayCard,
   WorkState,
+  BoardListsDTO,
 } from "./types";
 
 /*
@@ -431,6 +432,29 @@ export async function lastBoardId(userId: string): Promise<string | null> {
   if (!row) return null;
   const board = await prisma.board.findFirst({ where: { id: row.value, ...boardAccess(userId) }, select: { id: true } });
   return board?.id ?? null;
+}
+
+/** Quadros acessíveis com as listas, para mover tarefas e listas entre quadros. */
+export async function listBoardLists(userId: string): Promise<BoardListsDTO[]> {
+  const boards = await prisma.board.findMany({
+    where: boardAccess(userId),
+    orderBy: { position: "asc" },
+    include: { lists: { orderBy: { position: "asc" }, select: { id: true, name: true, kind: true } } },
+  });
+  return boards.map((b) => ({ id: b.id, name: b.name, lists: b.lists.map((l) => ({ id: l.id, name: l.name, kind: l.kind as ListKind })) }));
+}
+
+/** Transfere a lista (com todas as tarefas) para o fim de outro quadro. */
+export async function moveListToBoard(listId: string, userId: string, toBoardId: string): Promise<void> {
+  const list = await ownedList(listId, userId);
+  const board = await ownedBoard(toBoardId, userId);
+  if (list.boardId === board.id) return;
+  const count = await prisma.list.count({ where: { boardId: board.id } });
+  const siblings = await prisma.list.findMany({ where: { boardId: list.boardId, NOT: { id: listId } }, orderBy: { position: "asc" } });
+  await prisma.$transaction([
+    prisma.list.update({ where: { id: listId }, data: { boardId: board.id, position: count } }),
+    ...siblings.map((l, i) => prisma.list.update({ where: { id: l.id }, data: { position: i } })),
+  ]);
 }
 
 export async function listBoards(userId: string): Promise<BoardSummary[]> {
@@ -941,10 +965,8 @@ function kindEffects(
 /** Move uma tarefa para `toListId` na posição `toIndex`, reescrevendo posições. */
 export async function moveCard(userId: string, cardId: string, toListId: string, toIndex: number) {
   const card = await ownedCard(cardId, userId);
+  // Pode ser uma lista de outro quadro: a tarefa é transferida junto com histórico e checklist.
   const target = await ownedList(toListId, userId);
-  if (target.boardId !== card.list.boardId) {
-    throw new ApiError(400, "Só é possível mover tarefas dentro do mesmo quadro");
-  }
 
   const fromListId = card.listId;
   const postponedBefore = (await prisma.cardPostponement.count({ where: { cardId } })) > 0;

@@ -1,7 +1,12 @@
 import { json, readBody, requireString, withUser } from "@/lib/api";
-import { createBoard, listBoards } from "@/lib/repo";
+import { createBoard, listBoardLists, listBoards } from "@/lib/repo";
 
-export const GET = withUser(async (user) => json(await listBoards(user.id)));
+/** ?listas=1 devolve só id, nome e listas de cada quadro (para mover tarefas e listas entre quadros). */
+export const GET = withUser(async (user, req: Request) => {
+  const url = new URL(req.url);
+  if (url.searchParams.get("listas") === "1") return json(await listBoardLists(user.id));
+  return json(await listBoards(user.id));
+});
 
 export const POST = withUser(async (user, req: Request) => {
   const body = await readBody(req);

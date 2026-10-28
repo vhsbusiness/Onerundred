@@ -85,6 +85,13 @@ export interface BoardDTO {
   avgTaskMinutes: number;
 }
 
+/** Quadros acessíveis com as listas (para mover tarefas e listas entre quadros). */
+export interface BoardListsDTO {
+  id: string;
+  name: string;
+  lists: { id: string; name: string; kind: ListKind }[];
+}
+
 export interface BoardSummary {
   id: string;
   name: string;

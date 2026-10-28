@@ -1,6 +1,6 @@
 "use client";
 
-import { askConfirm } from "@/components/ui/ConfirmProvider";
+import { askConfirm, notify } from "@/components/ui/ConfirmProvider";
 import { Archive, Bell, Check, Copy, ImagePlus, ListChecks, Pause, Play, Plus, Repeat, RotateCcw, Trash2, X } from "lucide-react";
 import { TimeField } from "@/components/ui/TimeField";
 import { todayKey } from "@/lib/time";
@@ -10,7 +10,7 @@ import { imageUrl, imagesFromClipboard, toImageDataUrl } from "@/lib/images";
 import { formatClock, formatDuration } from "@/lib/time";
 import { Modal } from "@/components/ui/Modal";
 import { DateField } from "@/components/ui/DateField";
-import type { CardDTO, ListDTO, ReminderDTO } from "@/lib/types";
+import type { BoardListsDTO, CardDTO, ListDTO, ReminderDTO } from "@/lib/types";
 
 const WEEKDAY_LABELS = ["D", "S", "T", "Q", "Q", "S", "S"];
 const WEEKDAY_NAMES = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
@@ -80,6 +80,22 @@ export function CardModal({
   });
   const [remBusy, setRemBusy] = useState(false);
   const [remError, setRemError] = useState<string | null>(null);
+  // Outros quadros (com as listas) para transferir a tarefa; buscados uma vez ao abrir a tarefa.
+  const [otherBoards, setOtherBoards] = useState<BoardListsDTO[]>([]);
+  const boardId = lists[0]?.boardId;
+  useEffect(() => {
+    let alive = true;
+    http
+      .get<BoardListsDTO[]>("/api/boards?listas=1")
+      .then((bs) => {
+        if (alive) setOtherBoards(bs.filter((b) => b.id !== boardId));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [boardId]);
+
   const cardId = card?.id;
 
   // Colar imagem (Ctrl+V) com o modal aberto anexa à tarefa.
@@ -227,6 +243,14 @@ export function CardModal({
   async function move(listId: string) {
     await http.post("/api/cards/move", { cardId: card!.id, toListId: listId, toIndex: 0 });
     onChanged();
+  }
+
+  async function moveToOtherBoard(listId: string) {
+    const b = otherBoards.find((x) => x.lists.some((l) => l.id === listId));
+    await http.post("/api/cards/move", { cardId: card!.id, toListId: listId, toIndex: 0 });
+    notify(`Tarefa movida para o quadro ${b?.name ?? "escolhido"}`);
+    onChanged();
+    onClose();
   }
 
   async function remove() {
@@ -512,13 +536,36 @@ export function CardModal({
             </label>
             <select
               value={card.listId}
-              onChange={(e) => move(e.target.value)}
+              onChange={(e) => {
+                const id = e.target.value;
+                if (lists.some((l) => l.id === id)) move(id);
+                else moveToOtherBoard(id);
+              }}
               className="input appearance-none"
             >
-              {lists.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name}
-                </option>
+              {otherBoards.length === 0 ? (
+                lists.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
+                ))
+              ) : (
+                <optgroup label="Este quadro">
+                  {lists.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {otherBoards.map((b) => (
+                <optgroup key={b.id} label={`Quadro: ${b.name}`}>
+                  {b.lists.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>

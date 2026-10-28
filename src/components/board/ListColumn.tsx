@@ -4,13 +4,13 @@ import { askConfirm, notify } from "@/components/ui/ConfirmProvider";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Archive, ArrowLeft, ArrowRight, Check, Clock, Copy, FolderInput, Magnet, MoreHorizontal, Plus, Repeat, Sparkles, Trash2, Undo2 } from "lucide-react";
+import { Archive, ArrowLeft, ArrowRight, ArrowRightLeft, Check, Clock, Copy, FolderInput, Magnet, MoreHorizontal, Plus, Repeat, Sparkles, Trash2, Undo2 } from "lucide-react";
 import { Tip } from "@/components/ui/Tip";
 import { formatDuration } from "@/lib/time";
 import { useEffect, useRef, useState } from "react";
 import { http, priorityUi } from "@/lib/client";
 import { imagesFromClipboard, toImageDataUrl } from "@/lib/images";
-import type { CardDTO, ListDTO, ListKind } from "@/lib/types";
+import type { BoardListsDTO, CardDTO, ListDTO, ListKind } from "@/lib/types";
 import { CardItem } from "./CardItem";
 
 const WEEKDAY_LABELS = ["D", "S", "T", "Q", "Q", "S", "S"];
@@ -187,6 +187,20 @@ export function ListColumn({
 
   async function cyclePriority() {
     await patch({ priority: (list.priority % 3) + 1 });
+  }
+
+  // Transferir a lista para outro quadro: os quadros são buscados ao abrir o submenu.
+  const [boardsOpen, setBoardsOpen] = useState(false);
+  const [boards, setBoards] = useState<BoardListsDTO[] | null>(null);
+  async function openBoards() {
+    setBoardsOpen((o) => !o);
+    if (!boards) setBoards(await http.get<BoardListsDTO[]>("/api/boards?listas=1").catch(() => []));
+  }
+  async function moveToBoard(b: BoardListsDTO) {
+    setMenu(false);
+    await http.patch(`/api/lists/${list.id}`, { boardId: b.id });
+    notify(`Lista "${list.name}" movida para o quadro ${b.name}`);
+    onChanged();
   }
 
   async function action(body: Record<string, unknown>) {
@@ -372,6 +386,33 @@ export function ListColumn({
                         {l.name}
                       </button>
                     ))}
+                </div>
+              )}
+              <MenuItem
+                icon={<ArrowRightLeft size={14} />}
+                label={boardsOpen ? "Mover lista para o quadro…" : "Mover lista para outro quadro"}
+                onClick={openBoards}
+              />
+              {boardsOpen && (
+                <div className="mb-1 ml-6 space-y-0.5 border-l border-line pl-2">
+                  {boards === null ? (
+                    <div className="px-2 py-1 text-xs text-ink-3">Carregando…</div>
+                  ) : boards.filter((b) => b.id !== list.boardId).length === 0 ? (
+                    <div className="px-2 py-1 text-xs text-ink-3">Você só tem este quadro.</div>
+                  ) : (
+                    boards
+                      .filter((b) => b.id !== list.boardId)
+                      .map((b) => (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() => moveToBoard(b)}
+                          className="block w-full truncate rounded-md px-2 py-1 text-left text-xs text-ink-2 hover:bg-fill-2 hover:text-ink"
+                        >
+                          {b.name}
+                        </button>
+                      ))
+                  )}
                 </div>
               )}
               <MenuItem

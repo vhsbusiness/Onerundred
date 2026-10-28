@@ -1,5 +1,5 @@
 import { ApiError, json, optionalPriority, readBody, requireString, withUser } from "@/lib/api";
-import { deleteList, updateList } from "@/lib/repo";
+import { deleteList, moveListToBoard, updateList } from "@/lib/repo";
 import type { ListKind } from "@/lib/types";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -12,6 +12,11 @@ export const PATCH = withUser(async (user, req: Request, ctx: Ctx) => {
   if (kind !== undefined && !KINDS.includes(kind)) throw new ApiError(400, "Tipo de lista inválido");
   const toIndex = body.toIndex === undefined ? undefined : Number(body.toIndex);
   if (toIndex !== undefined && !Number.isInteger(toIndex)) throw new ApiError(400, "toIndex inválido");
+  if (body.boardId !== undefined) {
+    // Transfere a lista inteira para outro quadro.
+    await moveListToBoard(id, user.id, requireString(body.boardId, "boardId"));
+    if (body.name === undefined && body.priority === undefined && kind === undefined && toIndex === undefined) return json({ ok: true });
+  }
   await updateList(id, user.id, {
     name: body.name !== undefined ? requireString(body.name, "name") : undefined,
     priority: optionalPriority(body.priority),
