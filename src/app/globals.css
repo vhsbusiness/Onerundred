@@ -381,16 +381,22 @@ body {
   background-repeat: repeat, no-repeat, no-repeat, no-repeat;
 }
 
-/* Trilho lateral: o conteúdo abre espaço à esquerda no PC */
+/* Trilho lateral: o conteúdo abre espaço à esquerda no PC.
+   Sem escolha salva: 76px (ícones) até xl e 208px (com nomes) a partir de xl;
+   <html data-rail="expanded|collapsed"> fixa a largura em qualquer tela. */
 @media (min-width: 768px) {
   :root[data-design="v2"] #app {
     padding-left: calc(76px + 1.5rem);
     padding-right: 1.5rem;
     max-width: 1640px;
   }
+  :root[data-design="v2"][data-rail="expanded"] #app {
+    padding-left: calc(208px + 2rem);
+    padding-right: 2rem;
+  }
 }
 @media (min-width: 1280px) {
-  :root[data-design="v2"] #app {
+  :root[data-design="v2"]:not([data-rail="collapsed"]) #app {
     padding-left: calc(208px + 2rem);
     padding-right: 2rem;
   }
@@ -487,7 +493,17 @@ body {
   background-color: var(--color-surface-3);
 }
 
-/* Trilho lateral */
+/* Trilho lateral: recolhido (só ícones) por padrão… */
+.v2-rail {
+  width: 76px;
+  transition: width 180ms ease;
+}
+.v2-rail-head {
+  justify-content: center;
+}
+.v2-rail .logo-word {
+  display: none;
+}
 .v2-rail-item {
   display: flex;
   align-items: center;
@@ -496,13 +512,73 @@ body {
   border-radius: 0.8rem;
   padding: 0.65rem;
   font-size: 0.86rem;
+  white-space: nowrap;
   color: var(--color-ink-2);
   transition: background-color 140ms ease, color 140ms ease;
 }
+.v2-rail-label {
+  display: none;
+}
+.v2-when-expanded {
+  display: none;
+}
+/* …expandido (com nomes) a partir de xl sem escolha salva, ou em qualquer tela quando fixado */
 @media (min-width: 1280px) {
-  .v2-rail-item {
+  :root:not([data-rail="collapsed"]) .v2-rail {
+    width: 208px;
+  }
+  :root:not([data-rail="collapsed"]) .v2-rail-head {
+    justify-content: flex-start;
+    padding-inline: 1.25rem;
+  }
+  :root:not([data-rail="collapsed"]) .v2-rail .logo-word {
+    display: inline;
+  }
+  :root:not([data-rail="collapsed"]) .v2-rail-item {
     justify-content: flex-start;
     padding: 0.55rem 0.8rem;
+  }
+  :root:not([data-rail="collapsed"]) .v2-rail-label {
+    display: inline;
+  }
+  :root:not([data-rail="collapsed"]) .v2-rail-foot {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  :root:not([data-rail="collapsed"]) .v2-when-collapsed {
+    display: none;
+  }
+  :root:not([data-rail="collapsed"]) .v2-when-expanded {
+    display: inline;
+  }
+}
+:root[data-rail="expanded"] {
+  & .v2-rail {
+    width: 208px;
+  }
+  & .v2-rail-head {
+    justify-content: flex-start;
+    padding-inline: 1.25rem;
+  }
+  & .v2-rail .logo-word {
+    display: inline;
+  }
+  & .v2-rail-item {
+    justify-content: flex-start;
+    padding: 0.55rem 0.8rem;
+  }
+  & .v2-rail-label {
+    display: inline;
+  }
+  & .v2-rail-foot {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  & .v2-when-collapsed {
+    display: none;
+  }
+  & .v2-when-expanded {
+    display: inline;
   }
 }
 .v2-rail-item:hover {

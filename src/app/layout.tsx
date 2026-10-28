@@ -68,6 +68,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       className={`${geistSans.variable} ${geistMono.variable} ${display.variable} ${bodyV2.variable} ${monoV2.variable} h-full antialiased`}
     >
       <body className="min-h-full">
+        {/* Barra lateral do Design 2.0: aplica a largura salva antes da primeira pintura. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: 'try{var r=localStorage.getItem("onerundred_rail");if(r==="expanded"||r==="collapsed")document.documentElement.dataset.rail=r}catch(e){}',
+          }}
+        />
         <div id="app" className="mx-auto flex min-h-dvh w-full max-w-[1480px] flex-col px-4 pb-24 sm:px-6 md:pb-10"
           style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
           <Nav />

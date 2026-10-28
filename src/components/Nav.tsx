@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, Bell, Gamepad2, LayoutDashboard, LogOut, Moon, Settings, ShieldCheck, SquareKanban, Sun, Target, UserRound } from "lucide-react";
+import { Archive, Bell, ChevronsLeft, ChevronsRight, Gamepad2, LayoutDashboard, LogOut, Moon, Settings, ShieldCheck, SquareKanban, Sun, Target, UserRound } from "lucide-react";
 import { Avatar } from "@/components/profile/ProfilePage";
 import { InviteBell } from "@/components/InviteBell";
 import Link from "next/link";
@@ -252,12 +252,30 @@ function ClockV2() {
 
 type Tab = { href: string; label: string; short: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }> };
 
-/** Design 2.0: trilho lateral fixo no PC (ícones até xl, ícone + nome a partir de xl). */
+const RAIL_KEY = "onerundred_rail";
+
+/**
+ * Design 2.0: trilho lateral fixo no PC, recolhível. Sem escolha salva, fica só com
+ * ícones até xl e com nomes a partir de xl; o botão no rodapé fixa "expanded" ou
+ * "collapsed" em <html data-rail> (CSS cuida da largura) e guarda no aparelho.
+ */
 function Rail({ tabs: items, isActive, me }: { tabs: Tab[]; isActive: (href: string) => boolean; me: MeDTO | null }) {
+  function toggle() {
+    const html = document.documentElement;
+    const rail = document.querySelector<HTMLElement>(".v2-rail");
+    const expandedNow = rail ? rail.offsetWidth > 100 : html.dataset.rail === "expanded";
+    const next = expandedNow ? "collapsed" : "expanded";
+    html.dataset.rail = next;
+    try {
+      localStorage.setItem(RAIL_KEY, next);
+    } catch {
+      /* sem armazenamento: vale só nesta página */
+    }
+  }
   return (
-    <aside className="design-v2-only fixed inset-y-0 left-0 z-30 hidden w-[76px] flex-col border-r border-line bg-surface md:flex xl:w-[208px]" aria-label="Navegação principal">
-      <Link href="/" className="flex h-16 shrink-0 items-center justify-center border-b border-line xl:justify-start xl:px-5">
-        <Logo compact />
+    <aside className="design-v2-only v2-rail fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-line bg-surface md:flex" aria-label="Navegação principal">
+      <Link href="/" className="v2-rail-head flex h-16 shrink-0 items-center border-b border-line">
+        <Logo />
       </Link>
       <nav className="flex-1 overflow-y-auto px-3 py-3 no-scrollbar">
         <ul className="space-y-1">
@@ -267,16 +285,22 @@ function Rail({ tabs: items, isActive, me }: { tabs: Tab[]; isActive: (href: str
               <li key={t.href}>
                 <Link href={t.href} title={t.label} aria-current={active ? "page" : undefined} className={`v2-rail-item ${active ? "is-active" : ""}`}>
                   <t.icon size={18} strokeWidth={active ? 2.2 : 1.8} />
-                  <span className="hidden xl:inline">{t.label}</span>
+                  <span className="v2-rail-label">{t.label}</span>
                 </Link>
               </li>
             );
           })}
         </ul>
       </nav>
-      <div className="flex shrink-0 flex-col items-center gap-2 border-t border-line p-3 xl:flex-row xl:justify-between">
+      <div className="v2-rail-foot flex shrink-0 flex-col items-center gap-2 border-t border-line p-3">
         {me && <UserMenu me={me} placement="up" />}
-        {me && <InviteBell />}
+        <span className="flex items-center gap-1">
+          {me && <InviteBell />}
+          <button type="button" onClick={toggle} className="btn btn-ghost h-8 w-8 p-0" aria-label="Recolher ou expandir a barra lateral" title="Recolher / expandir">
+            <ChevronsLeft size={16} className="v2-when-expanded" />
+            <ChevronsRight size={16} className="v2-when-collapsed" />
+          </button>
+        </span>
       </div>
     </aside>
   );

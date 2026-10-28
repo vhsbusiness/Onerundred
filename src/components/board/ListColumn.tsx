@@ -530,21 +530,27 @@ export function ListColumn({
                 title="Estimativa em minutos"
               />
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            {/* Tarefa contínua: opção discreta; os dias só aparecem depois de ligar. */}
+            {recurring ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" onClick={() => setRecurring(false)} className="flex items-center gap-1 text-[11px] text-ink-2 transition hover:text-ink" title="Não repetir">
+                  <Repeat size={11} /> Repete nos dias
+                </button>
+                <WeekdayChips value={weekdays} onChange={setWeekdays} />
+              </div>
+            ) : (
               <button
                 type="button"
-                onClick={() => setRecurring((r) => !r)}
-                aria-pressed={recurring}
-                className={`pill cursor-pointer ${recurring ? "pill-blue" : ""}`}
+                onClick={() => setRecurring(true)}
+                className="flex items-center gap-1 text-[11px] text-ink-3 transition hover:text-ink-2"
                 title="Tarefa contínua: reaparece nesta lista nos dias escolhidos"
               >
-                <Repeat size={10} /> Contínua
+                <Repeat size={10} /> repetir…
               </button>
-              {recurring && <WeekdayChips value={weekdays} onChange={setWeekdays} />}
-            </div>
+            )}
             <div className="flex gap-2">
               <button type="submit" className="btn btn-primary h-8 flex-1">
-                {recurring ? "Criar contínua" : "Adicionar"}
+                Adicionar
               </button>
               <button type="button" onClick={() => setAdding(false)} className="btn btn-ghost h-8">
                 Cancelar

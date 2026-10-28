@@ -79,8 +79,8 @@ export function CardBody({
             {overdue ? <span className="pill pill-red px-1.5 py-0 text-[10px]">atrasada</span> : null}
             {postponed ? <span className="pill pill-orange px-1.5 py-0 text-[10px]">realocada</span> : null}
             {card.recurring ? (
-              <span className="pill pill-blue px-1.5 py-0 text-[10px]" title="Tarefa contínua">
-                <Repeat size={9} /> contínua
+              <span className="inline-flex items-center text-ink-3" title="Tarefa contínua: repete nos dias escolhidos" aria-label="Tarefa contínua">
+                <Repeat size={11} />
               </span>
             ) : null}
             {future && !postponed ? <span className="pill px-1.5 py-0 text-[10px]">amanhã</span> : null}
