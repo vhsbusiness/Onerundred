@@ -361,14 +361,12 @@ body {
   --radius-card: 1.1rem;
 
   --v2-dots: rgba(255, 255, 255, 0.07);
-  --v2-hard-shadow: 2px 2px 0 rgba(0, 0, 0, 0.6);
 
   --shadow-card: none;
   --grain-opacity: 0;
 }
 :root[data-theme="light"][data-design="v2"] {
   --v2-dots: rgba(28, 25, 18, 0.13);
-  --v2-hard-shadow: 2px 2px 0 #17181c;
 }
 
 /* Fundo: grade de pontos por cima dos brilhos originais do app */
@@ -457,30 +455,22 @@ body {
   background-color: color-mix(in srgb, var(--color-red) 12%, transparent);
 }
 
-/* Botões: retos, com sombra dura no principal (impresso) */
+/* Botões: cantos retos, sem sombra; o principal no laranja do app */
 :root[data-design="v2"] .btn {
   border-radius: 0.7rem;
   border-color: var(--color-line-2);
-  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
 }
 :root[data-design="v2"] .btn-primary {
   background-color: var(--color-orange);
   color: var(--color-on-ink);
   border-color: transparent;
-  box-shadow: var(--v2-hard-shadow);
 }
 :root[data-design="v2"] .btn-primary:hover {
-  filter: none;
-  transform: translate(-1px, -1px);
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.6);
+  filter: brightness(1.06);
 }
 :root[data-theme="light"][data-design="v2"] .btn-primary:hover {
-  filter: none;
-  box-shadow: 3px 3px 0 #17181c;
-}
-:root[data-design="v2"] .btn-primary:active {
-  transform: translate(1px, 1px);
-  box-shadow: 0 0 0 transparent;
+  filter: brightness(1.1);
 }
 :root[data-design="v2"] .btn-ghost {
   border-color: transparent;
@@ -522,7 +512,6 @@ body {
 .v2-rail-item.is-active {
   background-color: var(--color-ink);
   color: var(--color-on-ink);
-  box-shadow: var(--v2-hard-shadow);
 }
 
 /* Barra inferior do celular: papel sólido */
