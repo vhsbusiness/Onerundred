@@ -63,3 +63,10 @@ subir o servidor pelo terminal e usar `onerundred`.
 - Modelo via `OPENAI_MODEL` (padrão `gpt-5-mini`; modelos gpt-5/o* não aceitam
   `temperature`, usamos `reasoning_effort: low`). Limite: 12 análises/dia/usuário.
 - Nunca commitar a chave: fica em `.env` local e nas variáveis do Railway.
+
+## Arquivo de inteligência
+
+`docs/INTELIGENCIA.md` descreve o app inteiro (modelo de dados, páginas, API, regras
+com números, IA, notificações, design, deploy, decisões). Leia antes de mexer em
+regra de negócio e atualize-o quando mudar comportamento. Nunca coloque senhas,
+chaves ou tokens lá: é commitado.

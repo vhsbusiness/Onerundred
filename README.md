@@ -4,6 +4,8 @@ Dashboard pessoal de produtividade. Primeira fase: quadros estilo Trello com
 tarefas priorizadas, cronômetro por tarefa, sessão de trabalho e notas diária /
 semanal / mensal de quanto foi feito.
 
+Referência completa do app (dados, regras, API, IA, design, deploy): [docs/INTELIGENCIA.md](docs/INTELIGENCIA.md).
+
 ## Rodando localmente
 
 Pré-requisito: Node.js 20+ (instalado via nvm em `~/.nvm`).
