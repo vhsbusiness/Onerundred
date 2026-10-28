@@ -8,7 +8,7 @@ import { askConfirm } from "@/components/ui/ConfirmProvider";
 import { TimeField } from "@/components/ui/TimeField";
 import { DateField } from "@/components/ui/DateField";
 import { todayKey } from "@/lib/time";
-import type { NotificationPrefsDTO, OpenCardBrief, ReminderDTO } from "@/lib/types";
+import type { NotificationPrefsDTO, ReminderDTO } from "@/lib/types";
 
 const REPEAT_LABEL = { none: "Uma vez", daily: "Todo dia", weekly: "Toda semana" } as const;
 
@@ -24,23 +24,6 @@ function localTime(iso: string) {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-/** Seleção opcional de uma tarefa aberta para associar ao lembrete. */
-function TaskSelect({ value, onChange, cards }: { value: string; onChange: (id: string) => void; cards: OpenCardBrief[] | null }) {
-  return (
-    <label className="block text-sm">
-      <span className="mb-1 block text-xs uppercase tracking-wide text-ink-3">Tarefa (opcional)</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="input" disabled={!cards}>
-        <option value="">Nenhuma</option>
-        {(cards ?? []).map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.title} · {c.boardName}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
 function TaskPill({ card }: { card: ReminderDTO["card"] }) {
   if (!card) return null;
   return (
@@ -51,9 +34,10 @@ function TaskPill({ card }: { card: ReminderDTO["card"] }) {
 }
 
 /** Formulário de edição de um lembrete (título, detalhe, dia, hora e repetição). */
-function ReminderEditor({ reminder, onDone, onCancel, cards }: { reminder: ReminderDTO; onDone: () => void; onCancel: () => void; cards: OpenCardBrief[] | null }) {
+function ReminderEditor({ reminder, onDone, onCancel }: { reminder: ReminderDTO; onDone: () => void; onCancel: () => void }) {
   const [title, setTitle] = useState(reminder.title);
-  const [cardId, setCardId] = useState(reminder.card?.id ?? "");
+  // A ligação com uma tarefa é feita de dentro da tarefa; aqui só se preserva.
+  const cardId = reminder.card?.id ?? "";
   const [note, setNote] = useState(reminder.note);
   const [date, setDate] = useState(localDateKey(reminder.at));
   const [time, setTime] = useState(localTime(reminder.at));
@@ -87,7 +71,6 @@ function ReminderEditor({ reminder, onDone, onCancel, cards }: { reminder: Remin
         <DateField value={date} onChange={setDate} ariaLabel="Dia" />
         <TimeField value={time} onChange={setTime} ariaLabel="Hora" />
       </div>
-      <TaskSelect value={cardId} onChange={setCardId} cards={cards} />
       <div className="flex flex-wrap items-center gap-1.5">
         {(Object.keys(REPEAT_LABEL) as (keyof typeof REPEAT_LABEL)[]).map((k) => (
           <button key={k} type="button" onClick={() => setRepeat(k)} className={`pill cursor-pointer ${repeat === k ? "pill-blue" : ""}`}>
@@ -123,16 +106,9 @@ export function RemindersPage() {
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [archiveOpen, setArchiveOpen] = useState(false);
-  const [cards, setCards] = useState<OpenCardBrief[] | null>(null);
-  const [cardId, setCardId] = useState("");
 
   const load = useCallback(async () => {
-    const [list, p, open] = await Promise.all([
-      http.get<ReminderDTO[]>("/api/lembretes"),
-      http.get<NotificationPrefsDTO>("/api/notificacoes"),
-      http.get<OpenCardBrief[]>("/api/lembretes?tarefas=1").catch(() => [] as OpenCardBrief[]),
-    ]);
-    setCards(open);
+    const [list, p] = await Promise.all([http.get<ReminderDTO[]>("/api/lembretes"), http.get<NotificationPrefsDTO>("/api/notificacoes")]);
     setItems(list);
     setPrefs(p);
   }, []);
@@ -151,10 +127,9 @@ export function RemindersPage() {
       const [y, m, d] = date.split("-").map(Number);
       const [h, min] = time.split(":").map(Number);
       const at = new Date(y, m - 1, d, h, min, 0, 0);
-      await http.post("/api/lembretes", { title, note, at: at.toISOString(), repeat, cardId: cardId || null });
+      await http.post("/api/lembretes", { title, note, at: at.toISOString(), repeat });
       setTitle("");
       setNote("");
-      setCardId("");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível criar");
@@ -216,7 +191,6 @@ export function RemindersPage() {
               <TimeField value={time} onChange={setTime} />
             </label>
           </div>
-          <TaskSelect value={cardId} onChange={setCardId} cards={cards} />
           <div>
             <span className="mb-1 block text-xs uppercase tracking-wide text-ink-3">Repetir</span>
             <div className="flex gap-1.5">
@@ -252,7 +226,6 @@ export function RemindersPage() {
                           load();
                         }}
                         onCancel={() => setEditing(null)}
-                        cards={cards}
                       />
                     ) : (
                     <>
@@ -297,7 +270,6 @@ export function RemindersPage() {
                           load();
                         }}
                         onCancel={() => setEditing(null)}
-                        cards={cards}
                       />
                     ) : (
                     <>
@@ -347,7 +319,6 @@ export function RemindersPage() {
                             load();
                           }}
                           onCancel={() => setEditing(null)}
-                          cards={cards}
                         />
                       ) : (
                       <>
