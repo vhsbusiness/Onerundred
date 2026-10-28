@@ -1171,7 +1171,7 @@ export async function deleteTaskSession(userId: string, sessionId: string) {
 
 const DEFAULT_DAILY_GOAL = 8 * 60;
 
-const SETTING_KEYS = ["dailyGoalMinutes", "theme", "sleepTargetMinutes", "bedtimeTarget", "wakeTarget", "leisureTargetMinutes"];
+const SETTING_KEYS = ["dailyGoalMinutes", "theme", "sleepTargetMinutes", "bedtimeTarget", "wakeTarget", "leisureTargetMinutes", "performanceTarget"];
 
 export async function getSettings(userId: string): Promise<SettingsDTO> {
   const rows = await prisma.setting.findMany({ where: { userId, key: { in: SETTING_KEYS } } });
@@ -1193,6 +1193,7 @@ export async function getSettings(userId: string): Promise<SettingsDTO> {
       bedtime: clock("bedtimeTarget"),
       wake: clock("wakeTarget"),
       leisureMinutes: num("leisureTargetMinutes"),
+      performanceTarget: num("performanceTarget"),
     },
   };
 }
@@ -1211,6 +1212,7 @@ export async function updateSettings(
     if (t.bedtime !== undefined) entries.push(["bedtimeTarget", t.bedtime ?? ""]);
     if (t.wake !== undefined) entries.push(["wakeTarget", t.wake ?? ""]);
     if (t.leisureMinutes !== undefined) entries.push(["leisureTargetMinutes", t.leisureMinutes === null ? "" : String(t.leisureMinutes)]);
+    if (t.performanceTarget !== undefined) entries.push(["performanceTarget", t.performanceTarget === null ? "" : String(t.performanceTarget)]);
   }
   for (const [key, value] of entries) {
     await prisma.setting.upsert({

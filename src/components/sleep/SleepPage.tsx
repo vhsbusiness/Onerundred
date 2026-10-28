@@ -3,13 +3,13 @@
 import { DateField } from "@/components/ui/DateField";
 
 import { askConfirm } from "@/components/ui/ConfirmProvider";
-import { Moon, Trash2 } from "lucide-react";
+import { Moon, Target, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { TimeField } from "@/components/ui/TimeField";
 import { http } from "@/lib/client";
 import { formatDuration, keyToDate, todayKey, weekdayShort } from "@/lib/time";
 import type { SleepLogDTO, SleepPageDTO } from "@/lib/types";
-import { SleepTargetCard } from "@/components/settings/TargetCards";
 
 const QUALITY = ["Péssimo", "Ruim", "Ok", "Bom", "Ótimo"];
 
@@ -230,7 +230,12 @@ export function SleepPage() {
             </div>
           </section>
 
-          <SleepTargetCard />
+          <Link href="/metas/basicas" className="card flex items-center justify-between gap-3 p-4 text-sm transition hover:border-line-3">
+            <span className="flex items-center gap-2 text-ink-2">
+              <Target size={15} className="text-blue" /> Meta de sono: horas por noite, deitar e acordar
+            </span>
+            <span className="text-xs text-ink-3">Editar em Metas →</span>
+          </Link>
 
           <section className="card p-5">
             <div className="mb-3 flex items-center justify-between">

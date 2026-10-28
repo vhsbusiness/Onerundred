@@ -3,7 +3,7 @@ import { subDays } from "date-fns";
 import { prisma } from "./db";
 import { ApiError } from "./errors";
 import { PRIORITY_LABEL, asPriority, isOverdue } from "./metrics";
-import { boardAccess, getDashboard, getDayReview, getWorkState, reorderListCards } from "./repo";
+import { boardAccess, getDashboard, getDayReview, getSettings, getWorkState, reorderListCards } from "./repo";
 import { computeStats, listSleep } from "./sleep";
 import { listProjects } from "./projects";
 import { computeLeisureStats, listLeisure } from "./leisure";
@@ -115,6 +115,7 @@ async function buildContext(userId: string, observation: AiObservation, day: str
   ]);
   const leisure = computeLeisureStats(leisureLogs.filter((l) => l.endAt));
   const sleepStats = computeStats(sleepLogs);
+  const prefs = await getSettings(userId);
 
   // Minutos trabalhados por dia (14 dias) e distribuição por hora do dia
   const workByDay: Record<string, number> = {};
@@ -186,7 +187,15 @@ async function buildContext(userId: string, observation: AiObservation, day: str
       notaHoje: review ? review.score.score : dash.today.score,
       notaSemana: dash.week.score,
       notaMes: dash.month.score,
-      sequenciaDias70: dash.streak,
+      sequenciaDiasNaMeta: dash.streak,
+      metasDoUsuario: {
+        sonoMinPorNoite: prefs.targets.sleepMinutes,
+        deitarAs: prefs.targets.bedtime,
+        acordarAs: prefs.targets.wake,
+        lazerMinPorDia: prefs.targets.leisureMinutes,
+        trabalhoMinPorDia: prefs.dailyGoalMinutes,
+        performanceAlvo0a100: prefs.targets.performanceTarget ?? 70,
+      },
       contagens: review ? { done: review.done.length, inProgress: 0, pending: review.score.openCount, overdue: 0 } : dash.counts,
       tarefasDeHoje: tasks,
       tarefasFuturas: tomorrowCards.map((c) => ({
@@ -293,6 +302,7 @@ Regras:
 - Em nextTasks use somente ids de tarefas abertas de hoje (feita=false), no máximo 3, da mais importante para a menos.
 - Os horários (schedule) devem partir dos padrões reais do usuário (histogramas de horas, minutos por dia, registros de sono, memória) e ser realistas: jornada compatível com a meta diária, pausas a cada 90–120 min de trabalho, 7–8h de sono. Se houver registros de sono, use a hora real em que a pessoa acorda e dorme e comente se está dormindo pouco; sem registros, sugira e convide a registrar na aba Sono. Horários no formato HH:MM, 24h.
 - Lazer (jogos, séries etc.) não é inimigo: comente o equilíbrio entre trabalho, lazer e sono com base nos números, sem julgar; aponte só quando o lazer está comendo o trabalho planejado ou o sono.
+- metasDoUsuario são as metas pessoais que ele definiu na aba Metas (sono por noite, horários de deitar/acordar, lazer por dia, trabalho por dia, performance alvo). Compare os números reais com elas e diga claramente se ele está dentro ou fora de cada meta (ex.: "dormiu 6h50 em média, 1h10 abaixo da sua meta de 8h"). Meta null = não definida: não invente valor, sugira definir.
 - Metas/projetos (metasProjetos) são marcadas no dia seguinte: se "ontemMarcado" estiver "pending", lembre o usuário de marcar se fez ontem; reconheça sequências longas; sem moralizar.
 - memorySummary é a memória de longo prazo deste usuário. Reescreva-a por completo a partir da memória anterior mais o que você aprendeu agora. Guarde padrões (horário em que rende mais, se subestima tempo, se acumula atrasos, dias fracos da semana), não detalhes do dia. Até 1200 caracteres.`;
 

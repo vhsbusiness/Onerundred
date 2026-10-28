@@ -44,8 +44,8 @@ export function PerformanceCard({ perf, compact = false }: { perf: PerformanceDT
             </div>
           </Tip>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <span className={TONE_PILL[tone]}>{score === null ? "sem dados hoje" : score >= 70 ? "dia bom" : score >= 50 ? "regular" : "abaixo"}</span>
-            <Tip text="Dias seguidos com performance de 70 ou mais. Hoje só entra quando já estiver em 70." className="cursor-help">
+            <span className={TONE_PILL[tone]}>{score === null ? "sem dados hoje" : score >= perf.perfTarget ? "na meta" : score >= 50 ? "regular" : "abaixo"}</span>
+            <Tip text={`Dias seguidos com performance de ${perf.perfTarget} ou mais (sua meta na aba Metas). Hoje só entra quando já estiver em ${perf.perfTarget}.`} className="cursor-help">
               <span className={`pill ${perf.streak > 0 ? "pill-orange" : ""}`}>
                 <Flame size={11} /> constância {perf.streak} {perf.streak === 1 ? "dia" : "dias"}
               </span>

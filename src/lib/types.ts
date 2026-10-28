@@ -196,6 +196,8 @@ export interface TargetsDTO {
   wake: string | null;
   /** Minutos de lazer por dia. */
   leisureMinutes: number | null;
+  /** Nível de performance (0–100) que o usuário quer alcançar por dia. */
+  performanceTarget: number | null;
 }
 
 /* ───────────── Performance ───────────── */
@@ -230,8 +232,10 @@ export interface PerformanceDayDTO {
 
 export interface PerformanceDTO {
   today: PerformanceDayDTO;
-  /** Dias seguidos (até hoje) com performance ≥ 70. */
+  /** Dias seguidos (até hoje) com performance ≥ perfTarget. */
   streak: number;
+  /** Nível alvo em vigor (meta do usuário ou 70). */
+  perfTarget: number;
   /** Últimos 14 dias, do mais antigo ao mais recente. */
   history: { dayKey: string; score: number | null }[];
   targets: TargetsDTO;
@@ -249,6 +253,7 @@ export interface PeriodReviewDTO {
   leisureMinTotal: number;
   avgSleepMin: number | null;
   streak: number;
+  perfTarget: number;
   targets: TargetsDTO;
 }
 

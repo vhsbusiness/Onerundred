@@ -3,13 +3,13 @@
 import { DateField } from "@/components/ui/DateField";
 
 import { askConfirm } from "@/components/ui/ConfirmProvider";
-import { Gamepad2, Pause, Play, Trash2 } from "lucide-react";
+import { Gamepad2, Pause, Play, Target, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { TimeField } from "@/components/ui/TimeField";
 import { elapsedSince, http, useNow } from "@/lib/client";
 import { formatClock, formatDuration, keyToDate, todayKey, weekdayShort } from "@/lib/time";
 import type { LeisureLogDTO, LeisurePageDTO } from "@/lib/types";
-import { LeisureTargetCard } from "@/components/settings/TargetCards";
 
 function Tile({ value, label, hint }: { value: string; label: string; hint?: string }) {
   return (
@@ -250,7 +250,12 @@ export function LeisurePage() {
             </div>
           </section>
 
-          <LeisureTargetCard />
+          <Link href="/metas/basicas" className="card flex items-center justify-between gap-3 p-4 text-sm transition hover:border-line-3">
+            <span className="flex items-center gap-2 text-ink-2">
+              <Target size={15} className="text-green" /> Meta de lazer por dia
+            </span>
+            <span className="text-xs text-ink-3">Editar em Metas →</span>
+          </Link>
 
           <section className="card p-5">
             <div className="mb-3 flex items-center justify-between">

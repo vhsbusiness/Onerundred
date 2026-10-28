@@ -38,6 +38,7 @@ export const PATCH = withUser(async (user, req: Request) => {
       bedtime: clockOrNull(t.bedtime, "Hora de deitar"),
       wake: clockOrNull(t.wake, "Hora de acordar"),
       leisureMinutes: minutesOrNull(t.leisureMinutes, "Meta de lazer", 12 * 60),
+      performanceTarget: minutesOrNull(t.performanceTarget, "Meta de performance", 100),
     };
   }
   if (Object.keys(data).length === 0) throw new ApiError(400, "Nada para salvar");

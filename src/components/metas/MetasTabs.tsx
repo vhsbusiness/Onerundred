@@ -4,7 +4,10 @@ import { Target } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const subtabs = [{ href: "/metas", label: "Projetos" }];
+const subtabs = [
+  { href: "/metas", label: "Projetos" },
+  { href: "/metas/basicas", label: "Metas" },
+];
 
 export function MetasHeader({ title, subtitle }: { title?: string; subtitle?: string }) {
   const pathname = usePathname();
@@ -18,7 +21,7 @@ export function MetasHeader({ title, subtitle }: { title?: string; subtitle?: st
       </div>
       <nav className="flex items-center gap-1 rounded-full border border-line bg-fill p-1">
         {subtabs.map((t) => {
-          const active = pathname === t.href || pathname.startsWith("/metas/projetos");
+          const active = t.href === "/metas" ? pathname === "/metas" || pathname.startsWith("/metas/projetos") : pathname.startsWith(t.href);
           return (
             <Link
               key={t.href}

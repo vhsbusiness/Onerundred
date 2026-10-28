@@ -90,7 +90,7 @@ function computeDay(key: string, d: DayData): PerformanceDayDTO {
       weight: WEIGHTS.sleep,
       score: Math.round(parts.reduce((a, b) => a + b, 0) / parts.length),
       detail: bits.join(" · "),
-      hint: d.targets.sleepMinutes ? undefined : "Defina sua meta de sono na aba Sono (usando 8h por enquanto).",
+      hint: d.targets.sleepMinutes ? undefined : "Defina sua meta de sono na aba Metas (usando 8h por enquanto).",
     });
   } else {
     components.push({ key: "sleep", label: "Sono", weight: WEIGHTS.sleep, score: null, detail: "noite sem registro", hint: "Registre a noite na aba Sono." });
@@ -104,7 +104,7 @@ function computeDay(key: string, d: DayData): PerformanceDayDTO {
     weight: WEIGHTS.leisure,
     score: clamp((leisureMin / leisureTarget) * 100),
     detail: `${formatDuration(leisureMin * 60000)} de ${formatDuration(leisureTarget * 60000)}`,
-    hint: d.targets.leisureMinutes ? undefined : "Defina sua meta de lazer na aba Lazer (usando 1h por enquanto).",
+    hint: d.targets.leisureMinutes ? undefined : "Defina sua meta de lazer na aba Metas (usando 1h por enquanto).",
   });
 
   const goals = d.goalsByDay.get(key);
@@ -192,20 +192,25 @@ async function loadDayData(userId: string, firstKey: string): Promise<DayData> {
   };
 }
 
-function streakOf(days: PerformanceDayDTO[]): number {
-  // Dias do mais recente ao mais antigo; hoje só conta se já estiver ≥ 70, e nunca quebra a sequência.
+function streakOf(days: PerformanceDayDTO[], target: number): number {
+  // Dias do mais recente ao mais antigo; hoje só conta se já estiver no alvo, e nunca quebra a sequência.
   const today = todayKey();
   let streak = 0;
   for (let i = days.length - 1; i >= 0; i--) {
     const d = days[i];
     if (d.dayKey === today) {
-      if (d.score !== null && d.score >= PERF_GOOD) streak += 1;
+      if (d.score !== null && d.score >= target) streak += 1;
       continue;
     }
-    if (d.score !== null && d.score >= PERF_GOOD) streak += 1;
+    if (d.score !== null && d.score >= target) streak += 1;
     else break;
   }
   return streak;
+}
+
+/** Nível alvo em vigor: a meta do usuário ou o padrão (70). */
+export function perfTargetOf(targets: TargetsDTO): number {
+  return targets.performanceTarget ?? PERF_GOOD;
 }
 
 /** Performance de hoje, histórico de 14 dias e constância (calculada sobre 60 dias). */
@@ -217,7 +222,8 @@ export async function getPerformance(userId: string): Promise<PerformanceDTO> {
   for (let i = 59; i >= 0; i--) days.push(computeDay(dayKey(subDays(keyToDate(today), i)), data));
   return {
     today: days[days.length - 1],
-    streak: streakOf(days),
+    streak: streakOf(days, perfTargetOf(data.targets)),
+    perfTarget: perfTargetOf(data.targets),
     history: days.slice(-14).map((d) => ({ dayKey: d.dayKey, score: d.score })),
     targets: data.targets,
   };
@@ -248,7 +254,8 @@ export async function getPeriodReview(userId: string, endKey: string, n: number)
     workMsTotal: days.reduce((a, d) => a + d.workMs, 0),
     leisureMinTotal: days.reduce((a, d) => a + d.leisureMin, 0),
     avgSleepMin: avg(sleeps),
-    streak: streakOf(all),
+    streak: streakOf(all, perfTargetOf(data.targets)),
+    perfTarget: perfTargetOf(data.targets),
     targets: data.targets,
   };
 }
