@@ -170,9 +170,10 @@ function UserMenu({ me, placement = "down" }: { me: MeDTO; placement?: "down" | 
             <Link
               href="/admin"
               onClick={() => setOpen(false)}
+              style={adminLinkStyle}
               className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-fill-2"
             >
-              <ShieldCheck size={14} className="text-green" /> Painel admin
+              <ShieldCheck size={14} /> Painel admin
             </Link>
           )}
           <button
@@ -254,6 +255,11 @@ type Tab = { href: string; label: string; short: string; icon: React.ComponentTy
 
 const RAIL_KEY = "onerundred_rail";
 
+const adminLinkStyle = {
+  color: "var(--color-orange)",
+  backgroundColor: "color-mix(in srgb, var(--color-orange) 14%, transparent)",
+};
+
 /**
  * Design 2.0: trilho lateral fixo no PC, recolhível. Sem escolha salva, fica só com
  * ícones até xl e com nomes a partir de xl; o botão no rodapé fixa "expanded" ou
@@ -283,7 +289,7 @@ function Rail({ tabs: items, isActive, me }: { tabs: Tab[]; isActive: (href: str
             const active = isActive(t.href);
             return (
               <li key={t.href}>
-                <Link href={t.href} title={t.label} aria-current={active ? "page" : undefined} className={`v2-rail-item ${active ? "is-active" : ""}`}>
+                <Link href={t.href} title={t.label} aria-current={active ? "page" : undefined} style={me?.role === "admin" && t.href === "/admin" ? adminLinkStyle : undefined} className={`v2-rail-item ${active ? "is-active" : ""}`}>
                   <t.icon size={18} strokeWidth={active ? 2.2 : 1.8} />
                   <span className="v2-rail-label">{t.label}</span>
                 </Link>
@@ -370,11 +376,12 @@ export function Nav() {
                 key={t.href}
                 href={t.href}
                 title={t.label}
+                style={me?.role === "admin" && t.href === "/admin" ? adminLinkStyle : undefined}
                 className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-1.5 text-[13px] transition lg:px-2 xl:px-2.5 ${
                   active ? "bg-fill-3 text-ink" : "text-ink-2 hover:text-ink"
                 }`}
               >
-                <t.icon size={15} className={active ? "text-orange" : "text-ink-3"} strokeWidth={active ? 2.2 : 1.9} />
+                <t.icon size={15} className={t.href === "/admin" && me?.role === "admin" ? "text-orange" : active ? "text-orange" : "text-ink-3"} strokeWidth={active ? 2.2 : 1.9} />
                 {/* Tablet: só o ícone (nome no tooltip); a partir de lg: ícone + nome curto. */}
                 <span className="hidden lg:inline">{t.short}</span>
               </Link>
