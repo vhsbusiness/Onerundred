@@ -32,8 +32,8 @@ export const PATCH = withUser(async (user, req: Request) => {
     data.theme = body.theme;
   }
   if (body.design !== undefined) {
-    // Design 2.0 é experimental: só o admin liga/desliga, e só para a própria conta.
-    if (user.role !== "admin") throw new ApiError(403, "O Design 2.0 está disponível só para o administrador");
+    // O design antigo fica disponível só para o admin, na própria conta.
+    if (user.role !== "admin") throw new ApiError(403, "A troca de design está disponível só para o administrador");
     if (!isDesign(body.design)) throw new ApiError(400, "Design inválido");
     data.design = body.design;
   }

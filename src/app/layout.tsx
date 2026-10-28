@@ -36,7 +36,7 @@ async function themeFromCookie(): Promise<Theme> {
   return isTheme(t) ? t : DEFAULT_THEME;
 }
 
-/** Design salvo no cookie (v2 = Design 2.0 experimental, ligado pelo admin). */
+/** Design salvo no cookie (v2 = Atelier, padrão; v1 = design antigo, só o admin). */
 async function designFromCookie(): Promise<Design> {
   const d = (await cookies()).get(DESIGN_COOKIE)?.value;
   return isDesign(d) ? d : DEFAULT_DESIGN;

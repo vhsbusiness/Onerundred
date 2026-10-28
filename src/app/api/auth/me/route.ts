@@ -8,8 +8,8 @@ export const GET = handle(async () => {
   const user = await getCurrentUser();
   const settings = user ? await getSettings(user.id) : null;
   const theme = settings?.theme ?? null;
-  // Design 2.0 só vale para o admin; para os demais o app segue no padrão.
-  const design = settings && user?.role === "admin" ? settings.design : "v1";
+  // Atelier (v2) é o padrão de todos; só o admin pode ter o design antigo salvo.
+  const design = settings ? (user?.role === "admin" ? settings.design : "v2") : null;
   return json({ user, theme, design, allowRegistration: await registrationAllowed() });
 });
 

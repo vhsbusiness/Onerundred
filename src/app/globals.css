@@ -337,7 +337,8 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Design 2.0 "Atelier" (experimental) — ligado pelo admin em /admin, só para a
+   Design "Atelier" (v2) — padrão de todos os usuários; o design antigo (v1, os
+   estilos acima) fica guardado e o admin pode voltar a ele em /admin, só na
    conta dele. Papel e tinta: tipografia editorial (Bricolage Grotesque nos
    títulos e números, Instrument Sans no texto, JetBrains Mono nas etiquetas),
    trilho lateral no PC, fundo com grade de pontos. As cores são as mesmas do

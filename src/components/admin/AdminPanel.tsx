@@ -69,8 +69,8 @@ export function AdminPanel() {
     }
   }
 
-  // Design 2.0 (experimental, temporário): só para a conta do admin.
-  const [design, setDesign] = useState<Design>("v1");
+  // Design: Atelier (v2) é o padrão de todos; o admin pode voltar ao antigo só na própria conta.
+  const [design, setDesign] = useState<Design>("v2");
   useEffect(() => {
     // Lê o design já aplicado no <html> e acompanha trocas feitas em outra parte do app.
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -173,10 +173,10 @@ export function AdminPanel() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="flex items-center gap-2 text-sm font-medium text-ink-2">
-              <Palette size={15} className="text-orange" /> Design 2.0 <span className="pill">experimental</span>
+              <Palette size={15} className="text-orange" /> Design
             </h2>
             <p className="mt-1 text-xs text-ink-3">
-              Prévia do visual “Atelier”: barra lateral no PC, títulos em Bricolage Grotesque, etiquetas tipo carimbo e grade de pontos, com as cores de sempre do app nos temas escuro e claro. Vale só para a sua conta, em qualquer aparelho; os outros usuários continuam no padrão. Função temporária até você decidir se vira o visual do app.
+              O Atelier (barra lateral, Bricolage Grotesque, etiquetas tipo carimbo) é o design de todos os usuários. O design antigo continua guardado: aqui você pode voltar a ele só na sua conta, em qualquer aparelho, para comparar.
             </p>
           </div>
           <button
@@ -184,9 +184,9 @@ export function AdminPanel() {
             role="switch"
             aria-checked={design === "v2"}
             onClick={toggleDesign}
-            className={`btn shrink-0 ${design === "v2" ? "btn-primary" : ""}`}
+            className={`btn shrink-0 ${design === "v1" ? "btn-primary" : ""}`}
           >
-            <Palette size={14} /> {design === "v2" ? "Design 2.0 ligado" : "Ativar Design 2.0"}
+            <Palette size={14} /> {design === "v1" ? "Design antigo ligado" : "Ver o design antigo"}
           </button>
         </div>
       </section>
