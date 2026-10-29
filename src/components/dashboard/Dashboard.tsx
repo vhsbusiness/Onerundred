@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight, Layers3 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { formatPercent, http, TONE_PILL, TONE_TEXT, useNow } from "@/lib/client";
 import { scoreTone, type PeriodScore } from "@/lib/metrics";
@@ -177,10 +176,6 @@ export function Dashboard({ initialData, initialAi, initialPerf }: { initialData
 
   return (
     <div className="dashboard-layout space-y-4">
-      <section className="design-v3-only studio-hero">
-        <div><span className="studio-overline">UM DIA DE CADA VEZ · {formatDayLong(data.todayKey)}</span><h1>Menos ruído.<br /><span>Mais progresso.</span></h1><p>Seu tempo, suas prioridades. Tudo no mesmo lugar.</p><Link href="/quadros" className="btn btn-primary mt-5">Ir para meus quadros <ArrowUpRight size={16} /></Link></div>
-        <div className="studio-hero-summary"><span className="studio-hero-icon"><Layers3 size={24} strokeWidth={1.5} /></span><span className="studio-overline">O SEU DIA, EM FOCO</span><strong>{data.today.doneCount}<span> tarefas feitas</span></strong><div className="studio-hero-progress" role="progressbar" aria-label="Conclusão das tarefas de hoje" aria-valuemin={0} aria-valuemax={100} aria-valuenow={data.today.score ?? 0}><span style={{ width: `${data.today.score ?? 0}%` }} /></div><p>{data.remaining.openCount ? `${data.remaining.openCount} tarefas para dar o próximo passo.` : "Tudo em dia. Abra espaço para o que importa."}</p></div>
-      </section>
       <div className="dashboard-heading flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="dashboard-old-title text-xl font-semibold tracking-tight sm:text-2xl">Seu dia</h1>
