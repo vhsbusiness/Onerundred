@@ -14,17 +14,17 @@ export function isTheme(v: unknown): v is Theme {
 }
 
 /*
- * Design: "v2" é o Atelier (padrão para todos); "v1" é o design antigo, guardado
+ * Design: "v2" é o Atelier (padrão para todos); "v3" é uma prévia privada; "v1" é o design clássico, guardado
  * no código e disponível ao admin no painel, só na conta dele, para comparar.
  * Vale por usuário (Setting "design") e vai num cookie para o servidor já
  * renderizar <html data-design> certo sem piscar.
  */
-export type Design = "v1" | "v2";
+export type Design = "v1" | "v2" | "v3";
 export const DEFAULT_DESIGN: Design = "v2";
 export const DESIGN_COOKIE = "onerundred_design";
 
 export function isDesign(v: unknown): v is Design {
-  return v === "v1" || v === "v2";
+  return v === "v1" || v === "v2" || v === "v3";
 }
 
 /** Cor da barra do navegador/PWA para cada combinação de tema e design. */

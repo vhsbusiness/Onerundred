@@ -39,7 +39,7 @@ export function CardBody({
 
   return (
     <div
-      className={`group relative rounded-xl border px-3 py-2.5 transition ${
+      className={`task-card group relative rounded-xl border px-3 py-2.5 transition ${
         running
           ? "border-green/35 bg-green/[0.07]"
           : "border-line bg-card hover:border-line-3 hover:bg-card-hover"

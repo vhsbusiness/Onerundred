@@ -2,9 +2,11 @@ import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import { Bricolage_Grotesque, Geist, Geist_Mono, Instrument_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { getCurrentUser } from "@/lib/current-user";
+import { getSettings } from "@/lib/repo";
 import { Nav } from "@/components/Nav";
 import { ConfirmProvider } from "@/components/ui/ConfirmProvider";
-import { DEFAULT_DESIGN, DEFAULT_THEME, DESIGN_COOKIE, isDesign, isTheme, THEME_COOKIE, themeColorFor, type Design, type Theme } from "@/lib/theme";
+import { DEFAULT_DESIGN, DEFAULT_THEME, isTheme, THEME_COOKIE, themeColorFor, type Design, type Theme } from "@/lib/theme";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,10 +38,11 @@ async function themeFromCookie(): Promise<Theme> {
   return isTheme(t) ? t : DEFAULT_THEME;
 }
 
-/** Design salvo no cookie (v2 = Atelier, padrão; v1 = design antigo, só o admin). */
+/** Design efetivo da conta, validado no servidor, inclusive a prévia privada. */
 async function designFromCookie(): Promise<Design> {
-  const d = (await cookies()).get(DESIGN_COOKIE)?.value;
-  return isDesign(d) ? d : DEFAULT_DESIGN;
+  // O cookie sozinho não libera a prévia em contas comuns ou na tela de login.
+  const user = await getCurrentUser();
+  return user ? (await getSettings(user.id)).design : DEFAULT_DESIGN;
 }
 
 export async function generateViewport(): Promise<Viewport> {
@@ -63,7 +66,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html
       lang="pt-BR"
       data-theme={theme}
-      data-design={design === "v2" ? "v2" : undefined}
+      data-design={design === "v1" ? undefined : design}
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${display.variable} ${bodyV2.variable} ${monoV2.variable} h-full antialiased`}
     >

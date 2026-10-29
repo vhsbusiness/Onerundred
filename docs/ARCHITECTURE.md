@@ -123,3 +123,9 @@ Não há integração de pagamento, e-mail, analytics ou storage externo.
 
 - **[não confirmado]** O conteúdo exato de `src/app/manifest.ts` e `src/lib/images.ts` não foi relido para este documento; os nomes das funções vêm dos exports.
 - **[não confirmado]** Parâmetros aceitos por `GET /api/performance` para períodos (a UI usa `getPeriodReview` pelo `page.tsx`; a rota pode aceitar query de período).
+
+## Prévia privada v3
+
+`src/app/design-v3.css` contém os estilos isolados sob `data-design="v3"`. Os seletores v2 continuam preservados, e a navegação lateral existente é reutilizada. `src/lib/design-preview.ts` é exclusivamente de servidor e restringe a elegibilidade à identidade da conta proprietária com papel admin; promover outro usuário não libera a prévia.
+
+`getSettings` resolve o design efetivo: o proprietário entra em v3 quando não há escolha específica de prévia; a chave `Setting.designPreview` guarda v2/v3 depois de comparar. A preferência antiga em `Setting.design` é preservada. Não existe migração de schema. O layout consulta a sessão e a preferência efetiva no servidor: forjar o cookie de design não libera v3. A API `/api/auth/me` informa `canPreviewDesign` para o painel, sem enviar o critério privado ao bundle do cliente. PATCH `/api/settings` rejeita v3 para qualquer outra conta.

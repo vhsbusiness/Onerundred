@@ -37,17 +37,19 @@ export function AdminPanel() {
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [me, setMe] = useState<MeDTO | null>(null);
+  const [previewAllowed, setPreviewAllowed] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
       const [data, meRes] = await Promise.all([
         http.get<{ overview: AdminOverview; users: AdminUser[] }>("/api/admin/users"),
-        http.get<{ user: MeDTO | null }>("/api/auth/me"),
+        http.get<{ user: MeDTO | null; canPreviewDesign: boolean }>("/api/auth/me"),
       ]);
       setOverview(data.overview);
       setUsers(data.users);
       setMe(meRes.user);
+      setPreviewAllowed(meRes.canPreviewDesign);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao carregar");
@@ -69,7 +71,7 @@ export function AdminPanel() {
     }
   }
 
-  // Design: Atelier (v2) é o padrão de todos; o admin pode voltar ao antigo só na própria conta.
+  // Studio v3 é uma prévia privada; o botão compara com o Atelier v2.
   const [design, setDesign] = useState<Design>("v2");
   useEffect(() => {
     // Lê o design já aplicado no <html> e acompanha trocas feitas em outra parte do app.
@@ -79,10 +81,18 @@ export function AdminPanel() {
     window.addEventListener("design-changed", onChange);
     return () => window.removeEventListener("design-changed", onChange);
   }, []);
-  function toggleDesign() {
-    const next: Design = design === "v2" ? "v1" : "v2";
-    applyDesign(next);
-    http.patch("/api/settings", { design: next }).catch((e) => notify(e instanceof Error ? e.message : "Erro", "error"));
+  const [designSaving, setDesignSaving] = useState(false);
+  async function toggleDesign() {
+    const next: Design = previewAllowed ? (design === "v3" ? "v2" : "v3") : (design === "v2" ? "v1" : "v2");
+    setDesignSaving(true);
+    try {
+      await http.patch("/api/settings", { design: next });
+      applyDesign(next);
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Erro ao salvar o design", "error");
+    } finally {
+      setDesignSaving(false);
+    }
   }
 
   const [obs, setObs] = useState<Record<string, string>>({});
@@ -176,17 +186,19 @@ export function AdminPanel() {
               <Palette size={15} className="text-orange" /> Design
             </h2>
             <p className="mt-1 text-xs text-ink-3">
-              O Atelier (barra lateral, Bricolage Grotesque, etiquetas tipo carimbo) é o design de todos os usuários. O design antigo continua guardado: aqui você pode voltar a ele só na sua conta, em qualquer aparelho, para comparar.
+              {previewAllowed ? "Sua prévia exclusiva está pronta. Compare o novo design com o Atelier anterior; a escolha só muda a sua conta. Os outros usuários continuam no visual atual." : "O Atelier é o design atual. Você pode comparar com a versão clássica apenas na sua conta."}
             </p>
           </div>
           <button
             type="button"
             role="switch"
-            aria-checked={design === "v2"}
+            aria-checked={previewAllowed ? design === "v3" : design === "v2"}
+            aria-label="Usar novo design"
+            disabled={designSaving || !me}
             onClick={toggleDesign}
             className={`btn shrink-0 ${design === "v1" ? "btn-primary" : ""}`}
           >
-            <Palette size={14} /> {design === "v1" ? "Design antigo ligado" : "Ver o design antigo"}
+            <Palette size={14} /> {designSaving ? "Salvando…" : previewAllowed ? (design === "v3" ? "Ver design anterior" : "Usar novo design") : (design === "v1" ? "Usar Atelier" : "Ver versão clássica")}
           </button>
         </div>
       </section>

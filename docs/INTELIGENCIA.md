@@ -409,3 +409,7 @@ Todas em `/api`, JSON, autenticadas pelo cookie (exceto `auth/login`, `auth/regi
 - **Período de observação**: dias mínimos com dados antes de a IA opinar numa dimensão.
 - **Memória de hábitos**: resumo que a IA reescreve a cada análise e lê na seguinte.
 - **Atelier**: o design atual (v2); **design antigo**: v1, guardado e acessível ao admin.
+
+## Atualização: Studio v3 (prévia privada, 29/10/2026)
+
+O visual atual Atelier v2 permanece padrão para usuários. Studio v3 é uma prévia apenas do proprietário admin, com estilos em `src/app/design-v3.css`, autorização em `src/lib/design-preview.ts` e preferência `Setting.designPreview`. O comparador desse proprietário alterna v3/v2; a versão clássica v1 permanece no código. Layout e API validam o design por conta, não apenas por cookie. Consulte ARCHITECTURE e BUSINESS_RULES para detalhes. Ainda depende de pedido explícito para publicar.

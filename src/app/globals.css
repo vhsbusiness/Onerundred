@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./design-v3.css";
 
 /*
  * Cores como variáveis (sem `inline`): as utilities viram var(--color-…) e o
@@ -350,7 +351,7 @@ body {
 :root[data-design="v2"] .design-v1-only {
   display: none !important;
 }
-:root:not([data-design="v2"]) .design-v2-only {
+:root:not([data-design="v2"]):not([data-design="v3"]) .design-v2-only {
   display: none !important;
 }
 

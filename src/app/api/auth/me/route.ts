@@ -1,3 +1,4 @@
+import { canPreviewDesign } from "@/lib/design-preview";
 import { ApiError, handle, json, readBody, withUser } from "@/lib/api";
 import { registrationAllowed, updateProfile } from "@/lib/auth";
 import { getCurrentUser } from "@/lib/current-user";
@@ -10,7 +11,7 @@ export const GET = handle(async () => {
   const theme = settings?.theme ?? null;
   // Atelier (v2) é o padrão de todos; só o admin pode ter o design antigo salvo.
   const design = settings ? (user?.role === "admin" ? settings.design : "v2") : null;
-  return json({ user, theme, design, allowRegistration: await registrationAllowed() });
+  return json({ user, theme, design, canPreviewDesign: canPreviewDesign(user), allowRegistration: await registrationAllowed() });
 });
 
 /** Atualiza nome, usuário, e-mail e/ou foto do próprio perfil. */

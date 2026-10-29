@@ -101,3 +101,11 @@ Roda em leituras relevantes, no máximo uma vez por minuto por instância e semp
 
 - `DEFAULT_DESIGN = "v2"` (Atelier) para todos; `Setting.design = "v1"` só pode ser salvo por admin, e `/api/auth/me` devolve `v2` para não-admins mesmo que exista outro valor.
 - `DEFAULT_THEME = "dark"`.
+
+## Comparação do design privado (v3)
+
+- O padrão global continua `DEFAULT_DESIGN = "v2"`.
+- Somente a conta proprietária com papel admin recebe Studio v3; outros admins e usuários continuam com seus visuais permitidos.
+- Para o proprietário, o botão no painel alterna **Studio v3 ↔ Atelier v2**. Assim, "design anterior" agora significa o Atelier, não a versão clássica v1.
+- A troca só é aplicada após a API confirmar o salvamento e persiste entre aparelhos. Ela não promove a versão para outras contas.
+- Os cálculos, cronômetros, tarefas e demais regras de negócio não foram alterados por esta prévia.

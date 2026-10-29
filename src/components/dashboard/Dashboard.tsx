@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowUpRight, Layers3 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { formatPercent, http, TONE_PILL, TONE_TEXT, useNow } from "@/lib/client";
 import { scoreTone, type PeriodScore } from "@/lib/metrics";
@@ -18,7 +19,7 @@ function ScoreTile({ label, score, help }: { label: string; score: PeriodScore; 
   const tone = scoreTone(score.score);
   const open = score.openCount - score.postponedCount;
   return (
-    <div className="min-w-0">
+    <div className="metric-tile min-w-0">
       <Tip text={help} className="cursor-help">
         <div className={`text-[2rem] font-semibold leading-none tracking-tight tabular-nums ${TONE_TEXT[tone]}`}>
           {formatPercent(score.score)}
@@ -57,7 +58,7 @@ function PlainTile({
   compact?: boolean;
 }) {
   return (
-    <div className="min-w-0">
+    <div className="metric-tile min-w-0">
       <Tip text={help ?? ""} className={help ? "cursor-help" : ""}>
         <div className={`whitespace-nowrap font-semibold leading-none tracking-tight tabular-nums ${compact ? "text-[1.6rem] pt-1" : "text-[2rem]"}`}>{value}</div>
         <div className={`mt-1.5 text-sm text-ink-2 ${help ? "underline decoration-dotted decoration-ink-3/60 underline-offset-4" : ""}`}>{label}</div>
@@ -175,10 +176,14 @@ export function Dashboard({ initialData, initialAi, initialPerf }: { initialData
 
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="dashboard-layout space-y-4">
+      <section className="design-v3-only studio-hero">
+        <div><span className="studio-overline">UM DIA DE CADA VEZ · {formatDayLong(data.todayKey)}</span><h1>Menos ruído.<br /><span>Mais progresso.</span></h1><p>Seu tempo, suas prioridades. Tudo no mesmo lugar.</p><Link href="/quadros" className="btn btn-primary mt-5">Ir para meus quadros <ArrowUpRight size={16} /></Link></div>
+        <div className="studio-hero-summary"><span className="studio-hero-icon"><Layers3 size={24} strokeWidth={1.5} /></span><span className="studio-overline">O SEU DIA, EM FOCO</span><strong>{data.today.doneCount}<span> tarefas feitas</span></strong><div className="studio-hero-progress" role="progressbar" aria-label="Conclusão das tarefas de hoje" aria-valuemin={0} aria-valuemax={100} aria-valuenow={data.today.score ?? 0}><span style={{ width: `${data.today.score ?? 0}%` }} /></div><p>{data.remaining.openCount ? `${data.remaining.openCount} tarefas para dar o próximo passo.` : "Tudo em dia. Abra espaço para o que importa."}</p></div>
+      </section>
+      <div className="dashboard-heading flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Seu dia</h1>
+          <h1 className="dashboard-old-title text-xl font-semibold tracking-tight sm:text-2xl">Seu dia</h1>
           <p className="text-sm text-ink-2">{formatDayLong(data.todayKey)}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -198,7 +203,7 @@ export function Dashboard({ initialData, initialAi, initialPerf }: { initialData
 
       <div className="grid gap-4 lg:grid-cols-12">
         <section className="card p-5 lg:col-span-8">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 xl:grid-cols-6">
+          <div className="dashboard-metrics grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 xl:grid-cols-6">
             <ScoreTile
               label="Hoje"
               score={data.today}

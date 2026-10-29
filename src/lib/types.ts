@@ -190,7 +190,7 @@ export interface SettingsDTO {
   dailyGoalMinutes: number;
   /** Tema da interface escolhido pelo usuário. */
   theme: Theme;
-  /** Design 2.0 experimental (só o admin pode ligar). */
+  /** v2 padrão; v3 prévia exclusiva do proprietário; v1 clássico preservado. */
   design: Design;
   /** Metas pessoais usadas na performance (null = não definida). */
   targets: TargetsDTO;

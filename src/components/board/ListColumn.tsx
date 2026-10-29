@@ -286,7 +286,7 @@ export function ListColumn({
       data-no-pan
       ref={setSortableRef}
       style={{ transform: CSS.Translate.toString(sortTransform), transition: sortTransition }}
-      className={`card flex max-h-full w-[86vw] max-w-[300px] shrink-0 snap-start flex-col bg-list transition md:w-[300px] ${
+      className={`board-column card flex max-h-full w-[86vw] max-w-[300px] shrink-0 snap-start flex-col bg-list transition md:w-[300px] ${
         isOver ? "border-line-2 bg-list-hover" : ""
       } ${sorting ? "z-20 opacity-90 shadow-2xl ring-1 ring-line-3" : ""}`}
     >

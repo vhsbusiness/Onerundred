@@ -27,7 +27,7 @@ export function PerformanceCard({ perf, compact = false }: { perf: PerformanceDT
   const weightTotal = perf.today.components.filter((c) => c.score !== null).reduce((a, c) => a + c.weight, 0);
 
   return (
-    <section className="card p-5">
+    <section className="performance-panel card p-5">
       {/* Celular: nota em cima e frentes embaixo; a partir de sm: lado a lado. */}
       <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-6">
         <div className="w-full sm:w-[200px] sm:shrink-0">

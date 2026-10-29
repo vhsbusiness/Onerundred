@@ -1,6 +1,7 @@
 import { subDays } from "date-fns";
 import { prisma } from "./db";
 import { DEFAULT_THEME, isTheme, DEFAULT_DESIGN, isDesign } from "./theme";
+import { canPreviewDesign } from "./design-preview";
 import { ApiError } from "./errors";
 import { isOverdue, periodScore, type MetricCard, workVerdict } from "./metrics";
 import { autoMarkMissedDays } from "./projects";
@@ -1193,10 +1194,13 @@ export async function deleteTaskSession(userId: string, sessionId: string) {
 
 const DEFAULT_DAILY_GOAL = 8 * 60;
 
-const SETTING_KEYS = ["dailyGoalMinutes", "theme", "design", "sleepTargetMinutes", "bedtimeTarget", "wakeTarget", "leisureTargetMinutes", "performanceTarget"];
+const SETTING_KEYS = ["dailyGoalMinutes", "theme", "design", "designPreview", "sleepTargetMinutes", "bedtimeTarget", "wakeTarget", "leisureTargetMinutes", "performanceTarget"];
 
 export async function getSettings(userId: string): Promise<SettingsDTO> {
-  const rows = await prisma.setting.findMany({ where: { userId, key: { in: SETTING_KEYS } } });
+  const [rows, account] = await Promise.all([
+    prisma.setting.findMany({ where: { userId, key: { in: SETTING_KEYS } } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { role: true, email: true } }),
+  ]);
   const get = (k: string) => rows.find((r) => r.key === k)?.value;
   const num = (k: string) => {
     const v = Number(get(k) ?? NaN);
@@ -1211,7 +1215,9 @@ export async function getSettings(userId: string): Promise<SettingsDTO> {
   return {
     dailyGoalMinutes: num("dailyGoalMinutes") ?? DEFAULT_DAILY_GOAL,
     theme: isTheme(theme) ? theme : DEFAULT_THEME,
-    design: isDesign(design) ? design : DEFAULT_DESIGN,
+    design: canPreviewDesign(account)
+      ? (get("designPreview") === "v2" ? "v2" : "v3")
+      : account?.role === "admin" && isDesign(design) && design !== "v3" ? design : DEFAULT_DESIGN,
     targets: {
       sleepMinutes: num("sleepTargetMinutes"),
       bedtime: clock("bedtimeTarget"),
@@ -1229,7 +1235,10 @@ export async function updateSettings(
   const entries: [string, string][] = [];
   if (data.dailyGoalMinutes !== undefined) entries.push(["dailyGoalMinutes", String(data.dailyGoalMinutes)]);
   if (data.theme !== undefined) entries.push(["theme", data.theme]);
-  if (data.design !== undefined) entries.push(["design", data.design]);
+  if (data.design !== undefined) {
+    entries.push(["design", data.design]);
+    if (data.design === "v2" || data.design === "v3") entries.push(["designPreview", data.design]);
+  }
   if (data.targets) {
     const t = data.targets;
     // null apaga a meta (valor vazio = não definida)

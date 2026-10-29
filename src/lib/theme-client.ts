@@ -29,7 +29,7 @@ export function applyTheme(theme: Theme) {
 
 /** Liga/desliga o Design 2.0 na hora e guarda no cookie. */
 export function applyDesign(design: Design) {
-  if (design === "v2") document.documentElement.dataset.design = "v2";
+  if (design !== "v1") document.documentElement.dataset.design = design;
   else delete document.documentElement.dataset.design;
   document.cookie = `${DESIGN_COOKIE}=${design}; Path=/; Max-Age=31536000; SameSite=Lax`;
   syncMetaColor();

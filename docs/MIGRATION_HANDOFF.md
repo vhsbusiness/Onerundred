@@ -76,3 +76,11 @@
 - Não foi possível confirmar fora do repositório: estado da CLI do Railway, existência do projeto duplicado, rotação da chave da OpenAI, número de réplicas em produção, proteção de branch no GitHub.
 - Os arquivos de memória do agente anterior ficam fora do repositório (diretório do Claude Code na máquina do dono); o conteúdo relevante foi transcrito nas seções 3 a 5.
 - Não há registro formal de requisitos; a história das decisões está nas mensagens de commit (`git log`), no README e aqui.
+
+## Atualização local de 29/10/2026 — Studio v3
+
+A prévia visual privada está implementada (ver ARCHITECTURE, seção "Prévia privada v3"). A identidade elegível é verificada no servidor; manter a prévia restrita ao proprietário até nova instrução. Não alterar `DEFAULT_DESIGN` para v3 como forma de publicar: isso afetaria outras contas. Para o proprietário, o comparador usa v2 como versão anterior; v1 permanece guardada. A reversão do teste temporário de cor no botão Admin está incluída. Não houve publicação desta alteração.
+
+**Limitação encontrada na preparação do teste:** o histórico SQLite de um banco vazio falha em `20261018222608_drop_areas` porque tenta remover a coluna `area`, ausente naquele ponto. Não foi corrigido nem aplicado a bancos existentes. A revisão visual foi executada num SQLite temporário separado, criado a partir do schema atual com `db push`; isso não valida o histórico de migrations. Nunca aplicar esse contorno em produção.
+
+Validação local da prévia: ESLint, TypeScript e build passaram. Navegação nas 12 telas principais e modal de tarefa conferidos em 375/1440 px; dashboard nos temas claro/escuro, alternância v2/v3 após recarregar, rejeição de v3 para usuário comum e outro admin, cookie forjado sem liberar a prévia. Nenhuma mudança nos dados ou configurações de produção.

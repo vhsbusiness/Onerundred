@@ -80,7 +80,7 @@ export function WorkTimer({ work, onChange }: { work: WorkState; onChange: (w: W
 
   return (
     <section
-      className="card blob-surface flex h-full flex-col p-5"
+      className="work-timer-panel card blob-surface flex h-full flex-col p-5"
       style={
         {
           "--blob-a": running ? "rgba(139,227,166,0.55)" : "rgba(245,176,110,0.45)",

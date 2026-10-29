@@ -70,3 +70,7 @@ Produção: `https://app.onerundred.com` (Railway, Postgres). Repositório:
 - `docs/INTELIGENCIA.md` — referência longa em um arquivo só (inclui tabela completa da API e do modelo de dados).
 - `CLAUDE.md` — notas curtas do agente anterior (continuam válidas).
 - `README.md` — histórico das funcionalidades e instruções de uso.
+
+## Prévia visual Studio (v3) — 29/10/2026
+
+Nova linguagem visual preservando a paleta: navegação flutuante, dashboard editorial com resumo real do dia, cartões, campos, botões, tabelas e modais refinados; temas claro/escuro e dock no celular. Disponível exclusivamente para a conta proprietária administradora. Os demais usuários permanecem no Atelier v2, sem adesão automática. A versão v1 clássica permanece preservada no código. Esta alteração foi preparada localmente; publicação depende de autorização explícita.
