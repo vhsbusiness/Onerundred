@@ -80,3 +80,7 @@ Nova linguagem visual preservando a paleta: navegação flutuante, dashboard edi
 Por instrução explícita do proprietário, Studio v3 deixa de ser uma prévia privada e passa a ser `DEFAULT_DESIGN` para todas as contas e para o login. Esta decisão substitui as restrições de prévia descritas acima. Contas comuns recebem v3 mesmo com cookies/preferências antigas; admins podem salvar uma escolha de comparação v2/v3 em `Setting.designPreview`, apenas na própria conta. O Atelier v2 e o clássico v1 continuam preservados. Nenhuma alteração de schema ou de dados de produção é necessária.
 
 A tipografia do v3 foi unificada em Instrument Sans: texto, títulos, métricas, etiquetas e cronômetros de trabalho/lazer/tarefa usam a mesma família, mantendo os números tabulares. O cabeçalho com data e hora e o fundo pontilhado permanecem. Implementação preparada localmente; publicar somente mediante pedido explícito.
+
+## Descrições formatadas — 29/10/2026
+
+O modal de tarefa oferece Editar/Visualizar, botões para negrito, itálico, riscado e lista, e atalhos Ctrl/Cmd+B e Ctrl/Cmd+I. A descrição continua sendo texto no campo existente: `**negrito**`, `*itálico*`, `~~riscado~~` e linhas `- item`. HTTP(S) e www são clicáveis em Visualizar, inclusive em descrições antigas. A renderização usa nós React, sem HTML do usuário, e abre links em outra aba com noopener/noreferrer. Salvamento no blur e ao fechar o modal preservado. Sem dependências ou migrations novas. Implementação local, aguardando autorização para publicar.

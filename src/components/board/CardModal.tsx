@@ -2,6 +2,7 @@
 
 import { askConfirm, notify } from "@/components/ui/ConfirmProvider";
 import { Archive, Bell, Check, Copy, ImagePlus, ListChecks, Pause, Play, Plus, Repeat, RotateCcw, Trash2, X } from "lucide-react";
+import { DescriptionEditor } from "@/components/ui/DescriptionEditor";
 import { TimeField } from "@/components/ui/TimeField";
 import { todayKey } from "@/lib/time";
 import { useEffect, useRef, useState } from "react";
@@ -311,15 +312,12 @@ export function CardModal({
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-3">
               Descrição
             </label>
-            <textarea
+            <DescriptionEditor
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              onBlur={() => {
-                if (description !== card.description) patch({ description });
+              onChange={setDescription}
+              onSave={(value) => {
+                if (value !== card.description) void patch({ description: value });
               }}
-              rows={5}
-              placeholder="Detalhes, links…"
-              className="input resize-y"
             />
           </div>
 
