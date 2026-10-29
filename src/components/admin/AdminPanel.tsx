@@ -37,19 +37,17 @@ export function AdminPanel() {
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [me, setMe] = useState<MeDTO | null>(null);
-  const [previewAllowed, setPreviewAllowed] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
       const [data, meRes] = await Promise.all([
         http.get<{ overview: AdminOverview; users: AdminUser[] }>("/api/admin/users"),
-        http.get<{ user: MeDTO | null; canPreviewDesign: boolean }>("/api/auth/me"),
+        http.get<{ user: MeDTO | null }>("/api/auth/me"),
       ]);
       setOverview(data.overview);
       setUsers(data.users);
       setMe(meRes.user);
-      setPreviewAllowed(meRes.canPreviewDesign);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao carregar");
@@ -71,8 +69,8 @@ export function AdminPanel() {
     }
   }
 
-  // Studio v3 é uma prévia privada; o botão compara com o Atelier v2.
-  const [design, setDesign] = useState<Design>("v2");
+  // Studio v3 é o padrão global; a comparação com v2 só afeta a própria conta.
+  const [design, setDesign] = useState<Design>("v3");
   useEffect(() => {
     // Lê o design já aplicado no <html> e acompanha trocas feitas em outra parte do app.
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -83,7 +81,7 @@ export function AdminPanel() {
   }, []);
   const [designSaving, setDesignSaving] = useState(false);
   async function toggleDesign() {
-    const next: Design = previewAllowed ? (design === "v3" ? "v2" : "v3") : (design === "v2" ? "v1" : "v2");
+    const next: Design = design === "v3" ? "v2" : "v3";
     setDesignSaving(true);
     try {
       await http.patch("/api/settings", { design: next });
@@ -186,19 +184,19 @@ export function AdminPanel() {
               <Palette size={15} className="text-orange" /> Design
             </h2>
             <p className="mt-1 text-xs text-ink-3">
-              {previewAllowed ? "Sua prévia exclusiva está pronta. Compare o novo design com o Atelier anterior; a escolha só muda a sua conta. Os outros usuários continuam no visual atual." : "O Atelier é o design atual. Você pode comparar com a versão clássica apenas na sua conta."}
+              O Studio é o design padrão de todos os usuários. Você pode comparar com o Atelier anterior aqui; essa escolha muda apenas a sua conta.
             </p>
           </div>
           <button
             type="button"
             role="switch"
-            aria-checked={previewAllowed ? design === "v3" : design === "v2"}
+            aria-checked={design === "v3"}
             aria-label="Usar novo design"
             disabled={designSaving || !me}
             onClick={toggleDesign}
             className={`btn shrink-0 ${design === "v1" ? "btn-primary" : ""}`}
           >
-            <Palette size={14} /> {designSaving ? "Salvando…" : previewAllowed ? (design === "v3" ? "Ver design anterior" : "Usar novo design") : (design === "v1" ? "Usar Atelier" : "Ver versão clássica")}
+            <Palette size={14} /> {designSaving ? "Salvando…" : design === "v3" ? "Ver design anterior" : "Usar novo design"}
           </button>
         </div>
       </section>

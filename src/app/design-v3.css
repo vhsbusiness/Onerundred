@@ -1,8 +1,8 @@
-/* Studio · prévia privada v3. A paleta e o Atelier v2 permanecem intactos. */
+/* Studio v3 · padrão global. Paleta e estilos do Atelier v2 preservados. */
 .design-v3-only { display: none !important; }
 :root[data-design="v3"] {
   --font-sans: var(--font-v2-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-v2-display), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-v2-sans), ui-sans-serif, system-ui, sans-serif;
   --radius-card: 1.5rem;
   --shadow-card: none;
   --grain-opacity: 0;
@@ -92,7 +92,7 @@
 :root[data-design="v3"] .v2-rail-item:hover { background: var(--color-fill-2); }
 :root[data-design="v3"] .v2-rail-foot { border-top-color: var(--color-line); }
 :root[data-design="v3"] .v2-eyebrow {
-  font-family: var(--font-v2-mono), ui-monospace, monospace;
+  font-family: var(--font-sans);
   font-size: 0.66rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -154,3 +154,7 @@
 :root[data-design="v3"] .work-timer-panel { background-image: radial-gradient(ellipse at 100% 0%, color-mix(in srgb, var(--color-orange) 9%, transparent), transparent 70%); }
 :root[data-design="v3"] .work-timer-panel::before,
 :root[data-design="v3"] .work-timer-panel::after { display: none; }
+
+/* Mesma família nos cronômetros de trabalho, lazer e tarefa; números tabulares
+   continuam alinhados sem a mudança de fonte do antigo font-mono. */
+:root[data-design="v3"] .font-mono { font-family: var(--font-sans); }

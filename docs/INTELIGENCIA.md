@@ -413,3 +413,9 @@ Todas em `/api`, JSON, autenticadas pelo cookie (exceto `auth/login`, `auth/regi
 ## Atualização: Studio v3 (prévia privada, 29/10/2026)
 
 O visual atual Atelier v2 permanece padrão para usuários. Studio v3 é uma prévia apenas do proprietário admin, com estilos em `src/app/design-v3.css`, autorização em `src/lib/design-preview.ts` e preferência `Setting.designPreview`. O comparador desse proprietário alterna v3/v2; a versão clássica v1 permanece no código. Layout e API validam o design por conta, não apenas por cookie. Consulte ARCHITECTURE e BUSINESS_RULES para detalhes. Ainda depende de pedido explícito para publicar.
+
+## Atualização — Studio padrão global e fontes (29/10/2026)
+
+Por instrução explícita do proprietário, Studio v3 deixa de ser uma prévia privada e passa a ser `DEFAULT_DESIGN` para todas as contas e para o login. Esta decisão substitui as restrições de prévia descritas acima. Contas comuns recebem v3 mesmo com cookies/preferências antigas; admins podem salvar uma escolha de comparação v2/v3 em `Setting.designPreview`, apenas na própria conta. O Atelier v2 e o clássico v1 continuam preservados. Nenhuma alteração de schema ou de dados de produção é necessária.
+
+A tipografia do v3 foi unificada em Instrument Sans: texto, títulos, métricas, etiquetas e cronômetros de trabalho/lazer/tarefa usam a mesma família, mantendo os números tabulares. O cabeçalho com data e hora e o fundo pontilhado permanecem. Implementação preparada localmente; publicar somente mediante pedido explícito.

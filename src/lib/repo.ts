@@ -1,7 +1,6 @@
 import { subDays } from "date-fns";
 import { prisma } from "./db";
 import { DEFAULT_THEME, isTheme, DEFAULT_DESIGN, isDesign } from "./theme";
-import { canPreviewDesign } from "./design-preview";
 import { ApiError } from "./errors";
 import { isOverdue, periodScore, type MetricCard, workVerdict } from "./metrics";
 import { autoMarkMissedDays } from "./projects";
@@ -1199,7 +1198,7 @@ const SETTING_KEYS = ["dailyGoalMinutes", "theme", "design", "designPreview", "s
 export async function getSettings(userId: string): Promise<SettingsDTO> {
   const [rows, account] = await Promise.all([
     prisma.setting.findMany({ where: { userId, key: { in: SETTING_KEYS } } }),
-    prisma.user.findUnique({ where: { id: userId }, select: { role: true, email: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { role: true } }),
   ]);
   const get = (k: string) => rows.find((r) => r.key === k)?.value;
   const num = (k: string) => {
@@ -1211,13 +1210,13 @@ export async function getSettings(userId: string): Promise<SettingsDTO> {
     return v && /^\d{2}:\d{2}$/.test(v) ? v : null;
   };
   const theme = get("theme");
-  const design = get("design");
+  const design = get("designPreview");
   return {
     dailyGoalMinutes: num("dailyGoalMinutes") ?? DEFAULT_DAILY_GOAL,
     theme: isTheme(theme) ? theme : DEFAULT_THEME,
-    design: canPreviewDesign(account)
-      ? (get("designPreview") === "v2" ? "v2" : "v3")
-      : account?.role === "admin" && isDesign(design) && design !== "v3" ? design : DEFAULT_DESIGN,
+    // A escolha de comparação é exclusiva dos admins. Preferências antigas/cookies
+    // de contas comuns não impedem que elas recebam o novo padrão global.
+    design: account?.role === "admin" && isDesign(design) ? design : DEFAULT_DESIGN,
     targets: {
       sleepMinutes: num("sleepTargetMinutes"),
       bedtime: clock("bedtimeTarget"),
@@ -1237,7 +1236,7 @@ export async function updateSettings(
   if (data.theme !== undefined) entries.push(["theme", data.theme]);
   if (data.design !== undefined) {
     entries.push(["design", data.design]);
-    if (data.design === "v2" || data.design === "v3") entries.push(["designPreview", data.design]);
+    entries.push(["designPreview", data.design]);
   }
   if (data.targets) {
     const t = data.targets;

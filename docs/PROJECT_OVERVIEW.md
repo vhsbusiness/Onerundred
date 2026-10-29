@@ -74,3 +74,9 @@ Produção: `https://app.onerundred.com` (Railway, Postgres). Repositório:
 ## Prévia visual Studio (v3) — 29/10/2026
 
 Nova linguagem visual preservando a paleta: navegação flutuante, dashboard editorial com resumo real do dia, cartões, campos, botões, tabelas e modais refinados; temas claro/escuro e dock no celular. Disponível exclusivamente para a conta proprietária administradora. Os demais usuários permanecem no Atelier v2, sem adesão automática. A versão v1 clássica permanece preservada no código. Esta alteração foi preparada localmente; publicação depende de autorização explícita.
+
+## Atualização — Studio padrão global e fontes (29/10/2026)
+
+Por instrução explícita do proprietário, Studio v3 deixa de ser uma prévia privada e passa a ser `DEFAULT_DESIGN` para todas as contas e para o login. Esta decisão substitui as restrições de prévia descritas acima. Contas comuns recebem v3 mesmo com cookies/preferências antigas; admins podem salvar uma escolha de comparação v2/v3 em `Setting.designPreview`, apenas na própria conta. O Atelier v2 e o clássico v1 continuam preservados. Nenhuma alteração de schema ou de dados de produção é necessária.
+
+A tipografia do v3 foi unificada em Instrument Sans: texto, títulos, métricas, etiquetas e cronômetros de trabalho/lazer/tarefa usam a mesma família, mantendo os números tabulares. O cabeçalho com data e hora e o fundo pontilhado permanecem. Implementação preparada localmente; publicar somente mediante pedido explícito.

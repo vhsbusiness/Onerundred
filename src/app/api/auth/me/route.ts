@@ -9,8 +9,8 @@ export const GET = handle(async () => {
   const user = await getCurrentUser();
   const settings = user ? await getSettings(user.id) : null;
   const theme = settings?.theme ?? null;
-  // Atelier (v2) é o padrão de todos; só o admin pode ter o design antigo salvo.
-  const design = settings ? (user?.role === "admin" ? settings.design : "v2") : null;
+  // Studio é o padrão global; getSettings já resolve a comparação por conta.
+  const design = settings?.design ?? null;
   return json({ user, theme, design, canPreviewDesign: canPreviewDesign(user), allowRegistration: await registrationAllowed() });
 });
 

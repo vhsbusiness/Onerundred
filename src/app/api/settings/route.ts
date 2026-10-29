@@ -1,4 +1,3 @@
-import { canPreviewDesign } from "@/lib/design-preview";
 import { ApiError, json, readBody, withUser } from "@/lib/api";
 import { getSettings, updateSettings } from "@/lib/repo";
 import { isDesign, isTheme } from "@/lib/theme";
@@ -36,7 +35,6 @@ export const PATCH = withUser(async (user, req: Request) => {
     // O design antigo fica disponível só para o admin, na própria conta.
     if (user.role !== "admin") throw new ApiError(403, "A troca de design está disponível só para o administrador");
     if (!isDesign(body.design)) throw new ApiError(400, "Design inválido");
-    if (body.design === "v3" && !canPreviewDesign(user)) throw new ApiError(403, "Esta prévia está disponível apenas para a conta proprietária");
     data.design = body.design;
   }
   if (body.targets && typeof body.targets === "object") {

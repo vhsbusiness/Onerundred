@@ -129,3 +129,9 @@ Não há integração de pagamento, e-mail, analytics ou storage externo.
 `src/app/design-v3.css` contém os estilos isolados sob `data-design="v3"`. Os seletores v2 continuam preservados, e a navegação lateral existente é reutilizada. `src/lib/design-preview.ts` é exclusivamente de servidor e restringe a elegibilidade à identidade da conta proprietária com papel admin; promover outro usuário não libera a prévia.
 
 `getSettings` resolve o design efetivo: o proprietário entra em v3 quando não há escolha específica de prévia; a chave `Setting.designPreview` guarda v2/v3 depois de comparar. A preferência antiga em `Setting.design` é preservada. Não existe migração de schema. O layout consulta a sessão e a preferência efetiva no servidor: forjar o cookie de design não libera v3. A API `/api/auth/me` informa `canPreviewDesign` para o painel, sem enviar o critério privado ao bundle do cliente. PATCH `/api/settings` rejeita v3 para qualquer outra conta.
+
+## Atualização — Studio padrão global e fontes (29/10/2026)
+
+Por instrução explícita do proprietário, Studio v3 deixa de ser uma prévia privada e passa a ser `DEFAULT_DESIGN` para todas as contas e para o login. Esta decisão substitui as restrições de prévia descritas acima. Contas comuns recebem v3 mesmo com cookies/preferências antigas; admins podem salvar uma escolha de comparação v2/v3 em `Setting.designPreview`, apenas na própria conta. O Atelier v2 e o clássico v1 continuam preservados. Nenhuma alteração de schema ou de dados de produção é necessária.
+
+A tipografia do v3 foi unificada em Instrument Sans: texto, títulos, métricas, etiquetas e cronômetros de trabalho/lazer/tarefa usam a mesma família, mantendo os números tabulares. O cabeçalho com data e hora e o fundo pontilhado permanecem. Implementação preparada localmente; publicar somente mediante pedido explícito.

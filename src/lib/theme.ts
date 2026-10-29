@@ -14,13 +14,11 @@ export function isTheme(v: unknown): v is Theme {
 }
 
 /*
- * Design: "v2" é o Atelier (padrão para todos); "v3" é uma prévia privada; "v1" é o design clássico, guardado
- * no código e disponível ao admin no painel, só na conta dele, para comparar.
- * Vale por usuário (Setting "design") e vai num cookie para o servidor já
- * renderizar <html data-design> certo sem piscar.
+ * Studio v3 é o padrão de todos. Atelier v2 e clássico v1 permanecem guardados;
+ * o administrador pode comparar versões somente na própria conta.
  */
 export type Design = "v1" | "v2" | "v3";
-export const DEFAULT_DESIGN: Design = "v2";
+export const DEFAULT_DESIGN: Design = "v3";
 export const DESIGN_COOKIE = "onerundred_design";
 
 export function isDesign(v: unknown): v is Design {

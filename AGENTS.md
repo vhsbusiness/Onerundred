@@ -33,4 +33,4 @@ App Next.js 16 + React 19 + Tailwind v4 + Prisma 7 (Postgres em produção, SQLi
 - Não crie contas nem digite senhas em produção; não apague dados de produção sem OK explícito.
 - Não reintroduzir "áreas Pessoal/Profissional" (descartado pelo dono).
 
-- Prévia Studio v3 é exclusiva da conta proprietária (validação server-side em `src/lib/design-preview.ts`). Manter v2 como padrão global; no comparador do proprietário, o design anterior é v2. Não liberar v3 para outras contas sem instrução explícita.
+- Studio v3 é o padrão global, autorizado pelo dono em 29/10/2026. Admins podem comparar v3/v2 só na própria conta. Preservar o Atelier v2 e o clássico v1; tipografia v3 unificada em Instrument Sans, inclusive cronômetros.

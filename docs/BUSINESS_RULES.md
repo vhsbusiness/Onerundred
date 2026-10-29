@@ -109,3 +109,9 @@ Roda em leituras relevantes, no máximo uma vez por minuto por instância e semp
 - Para o proprietário, o botão no painel alterna **Studio v3 ↔ Atelier v2**. Assim, "design anterior" agora significa o Atelier, não a versão clássica v1.
 - A troca só é aplicada após a API confirmar o salvamento e persiste entre aparelhos. Ela não promove a versão para outras contas.
 - Os cálculos, cronômetros, tarefas e demais regras de negócio não foram alterados por esta prévia.
+
+## Atualização — Studio padrão global e fontes (29/10/2026)
+
+Por instrução explícita do proprietário, Studio v3 deixa de ser uma prévia privada e passa a ser `DEFAULT_DESIGN` para todas as contas e para o login. Esta decisão substitui as restrições de prévia descritas acima. Contas comuns recebem v3 mesmo com cookies/preferências antigas; admins podem salvar uma escolha de comparação v2/v3 em `Setting.designPreview`, apenas na própria conta. O Atelier v2 e o clássico v1 continuam preservados. Nenhuma alteração de schema ou de dados de produção é necessária.
+
+A tipografia do v3 foi unificada em Instrument Sans: texto, títulos, métricas, etiquetas e cronômetros de trabalho/lazer/tarefa usam a mesma família, mantendo os números tabulares. O cabeçalho com data e hora e o fundo pontilhado permanecem. Implementação preparada localmente; publicar somente mediante pedido explícito.
