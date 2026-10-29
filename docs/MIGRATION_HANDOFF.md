@@ -86,3 +86,5 @@ A prévia visual privada está implementada (ver ARCHITECTURE, seção "Prévia 
 Validação local da prévia: ESLint, TypeScript e build passaram. Navegação nas 12 telas principais e modal de tarefa conferidos em 375/1440 px; dashboard nos temas claro/escuro, alternância v2/v3 após recarregar, rejeição de v3 para usuário comum e outro admin, cookie forjado sem liberar a prévia. Nenhuma mudança nos dados ou configurações de produção.
 
 Ajuste local posterior (29/10): removido o banner "Menos ruído. Mais progresso." do dashboard v3; o título compacto "Seu dia" voltou a aparecer, e o fundo usa a mesma grade pontilhada de 22 px do Atelier, incluindo o tema claro. A elegibilidade privada e o seletor de versões não mudaram. Publicação deste ajuste ainda depende de autorização.
+
+Ajuste local do cabeçalho (29/10): Studio v3 volta a reutilizar o cabeçalho Atelier com data, hora e indicador de trabalho. Removidos breadcrumb "Seu espaço", selo de prévia e linha divisória; navegação móvel/perfil mantidos. Ainda não publicado.

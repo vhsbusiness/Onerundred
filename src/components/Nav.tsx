@@ -355,11 +355,6 @@ export function Nav() {
       </div>
     </header>
 
-    <header className="design-v3-only studio-topbar">
-      <div className="studio-location"><span className="studio-wordmark">Seu espaço</span><span className="studio-location-divider">/</span><span>{allTabs.find((t) => isActive(t.href))?.label ?? "Minha conta"}</span></div>
-      <div className="studio-topbar-actions"><Link href="/admin" className="studio-preview">Prévia pessoal</Link><WorkIndicator /><InviteBell />{me && <UserMenu me={me} />}</div>
-    </header>
-
     <header className="design-v1-only sticky z-30 mb-6 pt-3" style={{ top: "env(safe-area-inset-top, 0px)" }}>
       <div className="card w-full bg-surface/90 px-4 py-2.5 shadow-[var(--shadow-float)] backdrop-blur-md sm:px-5">
         <div className="flex min-h-11 items-center gap-3 lg:gap-4 2xl:gap-6">
