@@ -79,6 +79,10 @@ export function ListColumn({
   /** Média de minutos por tarefa, para as sem estimativa (vem do quadro). */
   avgTaskMinutes?: number;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [savingName, setSavingName] = useState(false);
+  const savingNameRef = useRef(false);
+  const cancelNameRef = useRef(false);
   const { setNodeRef, isOver } = useDroppable({ id: list.id, data: { type: "list" } });
   // A coluna inteira é arrastável pelo cabeçalho (como no Trello) para reordenar as listas.
   const {
@@ -88,11 +92,10 @@ export function ListColumn({
     isDragging: sorting,
     attributes: sortAttributes,
     listeners: sortListeners,
-  } = useSortable({ id: `${LIST_SORT_PREFIX}${list.id}`, data: { type: "listSort" } });
+  } = useSortable({ id: `${LIST_SORT_PREFIX}${list.id}`, data: { type: "listSort" }, disabled: editing });
   const [menu, setMenu] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [pullOpen, setPullOpen] = useState(false);
-  const [editing, setEditing] = useState(false);
   const [name, setName] = useState(list.name);
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState("");
@@ -176,13 +179,25 @@ export function ListColumn({
   }
 
   async function saveName() {
-    setEditing(false);
+    if (savingNameRef.current || cancelNameRef.current) return;
     const next = name.trim();
     if (!next || next === list.name) {
       setName(list.name);
+      setEditing(false);
       return;
     }
-    await patch({ name: next });
+    savingNameRef.current = true;
+    setSavingName(true);
+    try {
+      await patch({ name: next });
+      setName(next);
+      setEditing(false);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Não foi possível renomear a lista. Tente novamente.");
+    } finally {
+      savingNameRef.current = false;
+      setSavingName(false);
+    }
   }
 
   async function cyclePriority() {
@@ -292,32 +307,46 @@ export function ListColumn({
     >
       <header
         className={`flex items-center gap-2 px-3 pb-2 pt-3 ${sorting ? "cursor-grabbing" : "cursor-grab"}`}
-        {...sortAttributes}
-        {...sortListeners}
+        {...(editing ? {} : sortAttributes)}
+        {...(editing ? {} : sortListeners)}
       >
         {editing ? (
           <input
             autoFocus
+            aria-label="Nome da lista"
+            readOnly={savingName}
+            aria-busy={savingName}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
             value={name}
             onChange={(e) => setName(e.target.value)}
             onBlur={saveName}
             onKeyDown={(e) => {
-              if (e.key === "Enter") saveName();
+              e.stopPropagation();
+              if (e.nativeEvent.isComposing || savingName) return;
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void saveName();
+              }
               if (e.key === "Escape") {
+                e.preventDefault();
+                cancelNameRef.current = true;
                 setName(list.name);
                 setEditing(false);
               }
             }}
-            className="input h-8 flex-1 px-2 py-1 text-sm font-medium"
+            className="input h-9 min-w-0 flex-1 px-2 py-1 text-base font-medium sm:text-sm"
           />
         ) : (
           <button
             type="button"
             onClick={() => {
+              cancelNameRef.current = false;
               setName(list.name);
               setEditing(true);
             }}
-            className="min-w-0 flex-1 truncate text-left text-sm font-semibold"
+            className="min-w-0 flex-1 break-words text-left text-sm font-semibold [overflow-wrap:anywhere]"
             title="Renomear lista"
           >
             {list.name}
