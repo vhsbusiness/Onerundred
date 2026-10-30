@@ -6,7 +6,7 @@ import { getObservation } from "./ai";
 import { periodScore, type MetricCard } from "./metrics";
 import { computeLeisureStats, listLeisure } from "./leisure";
 import { listProjects } from "./projects";
-import { boardAccess, getWorkState } from "./repo";
+import { taskBoardAccess, getWorkState } from "./repo";
 import { dayKey, dayRange, formatDuration, sumSessions, todayKey, weekRange } from "./time";
 import type { NotificationPrefsDTO, NotificationType } from "./types";
 
@@ -249,13 +249,13 @@ export async function evaluateUser(userId: string, now = new Date()): Promise<st
     const period = weekKey(now);
     if (!(await alreadySent(userId, "weekly", period))) {
       const cards = await prisma.card.findMany({
-        where: { list: { board: boardAccess(userId) } },
+        where: { list: { board: taskBoardAccess(userId) } },
         include: { list: { select: { priority: true, kind: true } }, postponements: { select: { dayKey: true } } },
       });
       const metric: MetricCard[] = cards.map((c) => ({ ...c, listPriority: c.list.priority, listKind: c.list.kind, postponedDays: c.postponements.map((p) => p.dayKey) }));
       const last = weekRange(subDays(now, 7));
       const prev = weekRange(subDays(now, 14));
-      const hasTodayList = (await prisma.list.count({ where: { kind: "today", board: boardAccess(userId) } })) > 0;
+      const hasTodayList = (await prisma.list.count({ where: { kind: "today", board: taskBoardAccess(userId) } })) > 0;
       const a = periodScore(metric, last.start, last.end, last.endKey, { hasTodayList }).score;
       const b = periodScore(metric, prev.start, prev.end, prev.endKey, { hasTodayList }).score;
       if (a !== null) {
@@ -303,7 +303,7 @@ export async function evaluateUser(userId: string, now = new Date()): Promise<st
   if (pref.overdue && inWindow(now, 9 * 60, 60) && !(await alreadySent(userId, "overdue", today))) {
     const n = await prisma.card.count({
       // Só listas normais de prioridade Alta atrasam (ver isOverdue em metrics.ts).
-      where: { list: { board: boardAccess(userId), kind: "normal", priority: 1 }, archivedAt: null, completedAt: null, scheduledFor: { lt: today } },
+      where: { list: { board: taskBoardAccess(userId), kind: "normal", priority: 1 }, archivedAt: null, completedAt: null, scheduledFor: { lt: today } },
     });
     if (n > 0) {
       await sendToUser(userId, {

@@ -1,0 +1,1 @@
+ALTER TABLE "Board" ADD COLUMN "type" TEXT NOT NULL DEFAULT 'tasks';

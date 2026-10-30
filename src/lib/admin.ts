@@ -103,9 +103,9 @@ export async function getOverview(): Promise<AdminOverview> {
     prisma.user.count(),
     prisma.user.count({ where: { lastLoginAt: { gte: start } } }),
     prisma.user.count({ where: { createdAt: { gte: new Date(start.getTime() - 6 * 86400000) } } }),
-    prisma.card.count({ where: { completedAt: { gte: start, lt: end } } }),
+    prisma.card.count({ where: { completedAt: { gte: start, lt: end }, list: { board: { type: "tasks" } } } }),
     prisma.workSession.findMany({ where: { startedAt: { gte: start } }, select: { startedAt: true, endedAt: true } }),
-    prisma.card.count({ where: { completedAt: null, archivedAt: null } }),
+    prisma.card.count({ where: { completedAt: null, archivedAt: null, list: { board: { type: "tasks" } } } }),
   ]);
   const since30 = new Date(Date.now() - 30 * 86400000);
   const usage30 = await prisma.aiUsage.aggregate({

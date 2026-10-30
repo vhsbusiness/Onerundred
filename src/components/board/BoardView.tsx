@@ -30,7 +30,7 @@ import { ImportModal } from "./ImportModal";
 import { CardContextMenu, type ContextMenuState } from "./CardContextMenu";
 import { ShareModal } from "./ShareModal";
 import { Avatar } from "@/components/profile/ProfilePage";
-import { askConfirm } from "@/components/ui/ConfirmProvider";
+import { askConfirm, notify } from "@/components/ui/ConfirmProvider";
 import { LIST_SORT_PREFIX, ListColumn } from "./ListColumn";
 
 export function BoardView({ boardId, initialBoard }: { boardId: string; initialBoard?: BoardDTO }) {
@@ -298,6 +298,20 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
     load();
   }
 
+  async function changeBoardType(type: "tasks" | "organization") {
+    if (!board || type === board.type) return;
+    const message = type === "organization"
+      ? "Os cartões ficarão fora das notas, tarefas do dia e análises de produtividade. Cronômetros de tarefas em andamento serão encerrados. As listas e informações serão mantidas."
+      : "Os cartões voltarão a participar das tarefas e notas de produtividade, conforme suas listas e datas.";
+    if (!(await askConfirm({ title: "Mudar tipo do quadro", message, confirmLabel: "Mudar tipo" }))) return;
+    try {
+      const updated = await http.patch<BoardDTO>(`/api/boards/${boardId}`, { type });
+      setBoard(updated);
+      setBoardMenu(false);
+      notifyWorkChanged();
+    } catch (error) { notify(error instanceof Error ? error.message : "Não foi possível mudar o tipo"); }
+  }
+
   async function saveBoardName() {
     setEditingName(false);
     const n = boardName.trim();
@@ -336,7 +350,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
     );
   }
 
-  const openCount = board.lists.reduce((a, l) => a + l.cards.filter((c) => !c.completedAt).length, 0);
+  const openCount = board.lists.reduce((a, l) => a + (board.type === "organization" ? l.cards.length : l.cards.filter((c) => !c.completedAt).length), 0);
   const doneCount = board.lists.reduce((a, l) => a + l.cards.filter((c) => c.completedAt).length, 0);
 
   return (
@@ -373,8 +387,9 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
             {board.name}
           </button>
         )}
-        <span className="pill">{openCount} abertas</span>
-        <span className="pill pill-green">{doneCount} feitas</span>
+        <span className="pill">{board.type === "organization" ? "Organização" : "Lista de tarefas"}</span>
+        <span className="pill">{openCount} {board.type === "organization" ? "cartões" : "abertas"}</span>
+        {board.type === "tasks" && <span className="pill pill-green">{doneCount} feitas</span>}
         {(board.members.length > 0 || !board.isOwner) && (
           <button type="button" onClick={() => setSharing(true)} className="flex items-center -space-x-1.5 rounded-full border border-line bg-fill py-0.5 pl-0.5 pr-2" title="Participantes">
             {[board.owner, ...board.members].slice(0, 4).map((u) => (
@@ -402,6 +417,12 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
             </button>
             {boardMenu && (
               <div className="absolute right-0 top-10 z-30 w-60 rounded-xl border border-line-2 bg-surface-3 p-1 text-sm shadow-2xl">
+                {board.isOwner && <div className="border-b border-line p-2">
+                  <label className="mb-1 block text-xs text-ink-3" htmlFor="board-type">Tipo do quadro</label>
+                  <select id="board-type" value={board.type} onChange={(e) => void changeBoardType(e.target.value as "tasks" | "organization")} className="input">
+                    <option value="tasks">Lista de tarefas</option><option value="organization">Organização</option>
+                  </select>
+                </div>}
                 <button
                   type="button"
                   onClick={() => {
@@ -488,6 +509,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
           {board.lists.map((list, i) => (
             <ListColumn
               key={list.id}
+              organization={board.type === "organization"}
               list={list}
               lists={board.lists}
               index={i}
@@ -542,6 +564,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
           {activeCard ? (
             <div className="w-[276px]">
               <CardBody
+                organization={board.type === "organization"}
                 card={activeCard}
                 listPriority={board.lists.find((l) => l.id === activeCard.listId)?.priority}
                 listKind={board.lists.find((l) => l.id === activeCard.listId)?.kind}
@@ -571,6 +594,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
       {openCard && (
         <CardModal
           key={openCard.id}
+          organization={board.type === "organization"}
           card={openCard}
           lists={board.lists}
           onCopy={() => copyCard(openCard.id)}

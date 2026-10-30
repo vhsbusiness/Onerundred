@@ -84,3 +84,9 @@ A tipografia do v3 foi unificada em Instrument Sans: texto, títulos, métricas,
 ## Descrições formatadas — 29/10/2026
 
 A descrição da tarefa usa um editor visual sempre ativo (Tiptap), sem alternância Editar/Visualizar. Negrito, itálico, riscado e listas aparecem diretamente no texto; links HTTP(S) abrem com clique/toque em outra aba. Atalhos de teclado e histórico de desfazer são fornecidos pelo editor. O campo existente continua armazenando Markdown; descrições antigas são importadas sem migration. HTML literal inicial é escapado e links são limitados a HTTP(S). Mudanças atualizam o estado do modal; blur e fechamento por Esc continuam salvando. Interface conferida em 375/1440 px. Implementação local, aguardando publicação explícita.
+
+## Quadros de tarefas e organização — 30/10/2026
+
+Ao criar um quadro, escolha Lista de tarefas (padrão) ou Organização. O proprietário também pode trocar em Opções do quadro → Tipo do quadro. Organização guarda cartões, descrições, imagens e checklists sem cronômetros, atrasos ou participação nas notas. Os quadros existentes continuam como Lista de tarefas. Foram preparadas migrations PostgreSQL e SQLite; publicação pendente de autorização.
+
+Correção de renomeação: edição do título da lista isolada do arrasto; Enter/clique fora salvam, Esc cancela; falhas mantêm o texto para tentar novamente; nomes longos quebram linha. Verificado em celular e desktop.

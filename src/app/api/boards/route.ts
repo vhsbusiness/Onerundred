@@ -1,4 +1,4 @@
-import { json, readBody, requireString, withUser } from "@/lib/api";
+import { ApiError, json, readBody, requireString, withUser } from "@/lib/api";
 import { createBoard, listBoardLists, listBoards } from "@/lib/repo";
 
 /** ?listas=1 devolve só id, nome e listas de cada quadro (para mover tarefas e listas entre quadros). */
@@ -10,6 +10,7 @@ export const GET = withUser(async (user, req: Request) => {
 
 export const POST = withUser(async (user, req: Request) => {
   const body = await readBody(req);
-  const board = await createBoard(user.id, requireString(body.name, "name"));
+  if (body.type !== undefined && body.type !== "tasks" && body.type !== "organization") throw new ApiError(400, "Tipo de quadro inválido");
+  const board = await createBoard(user.id, requireString(body.name, "name"), body.type as "tasks" | "organization" | undefined);
   return json(board, { status: 201 });
 });

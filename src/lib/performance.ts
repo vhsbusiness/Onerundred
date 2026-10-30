@@ -4,7 +4,7 @@ import { periodScore, type MetricCard } from "./metrics";
 import { listLeisure } from "./leisure";
 import { listProjects } from "./projects";
 import { listSleep } from "./sleep";
-import { boardAccess, getSettings, runMaintenance } from "./repo";
+import { taskBoardAccess, getSettings, runMaintenance } from "./repo";
 import { dayKey, dayRange, formatDuration, keyToDate, todayKey } from "./time";
 import type { PerfComponent, PerformanceDayDTO, PerformanceDTO, PeriodReviewDTO, TargetsDTO } from "./types";
 
@@ -137,10 +137,10 @@ async function loadDayData(userId: string, firstKey: string): Promise<DayData> {
   const spanDays = Math.max(2, Math.round((Date.now() - since.getTime()) / 86400000) + 2);
   const [cards, hasTodayCount, sleepLogs, leisureLogs, projects, workSessions, targets] = await Promise.all([
     prisma.card.findMany({
-      where: { list: { board: boardAccess(userId) } },
+      where: { list: { board: taskBoardAccess(userId) } },
       include: { list: { select: { priority: true, kind: true } }, postponements: { select: { dayKey: true } } },
     }),
-    prisma.list.count({ where: { kind: "today", board: boardAccess(userId) } }),
+    prisma.list.count({ where: { kind: "today", board: taskBoardAccess(userId) } }),
     listSleep(userId, spanDays),
     listLeisure(userId, spanDays),
     listProjects(userId),

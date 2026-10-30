@@ -48,12 +48,14 @@ function fmtDate(iso: string) {
 
 export function CardModal({
   card,
+  organization = false,
   lists,
   onClose,
   onChanged,
   onCopy,
   onArchive,
 }: {
+  organization?: boolean;
   card: CardDTO | null;
   lists: ListDTO[];
   onClose: () => void;
@@ -431,7 +433,7 @@ export function CardModal({
             )}
           </div>
 
-          {card.recurring && (
+          {!organization && card.recurring && (
             <div className="rounded-xl border border-blue/30 bg-blue/5 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-blue">
@@ -498,7 +500,7 @@ export function CardModal({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          {!organization && <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-3">
                 Estimativa (min)
@@ -526,7 +528,7 @@ export function CardModal({
                 }}
               />
             </div>
-          </div>
+          </div>}
 
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-3">
@@ -570,7 +572,7 @@ export function CardModal({
         </div>
 
         <aside className="space-y-4">
-          <div
+          {!organization && <div
             className={`rounded-2xl border p-4 ${
               running ? "border-green/35 bg-green/[0.07]" : "border-line bg-well"
             }`}
@@ -604,10 +606,10 @@ export function CardModal({
                 )}
               </button>
             )}
-          </div>
+          </div>}
 
           <div className="space-y-2">
-            {done ? (
+            {!organization && (done ? (
               <button type="button" onClick={() => patch({ completed: false })} className="btn w-full">
                 <RotateCcw size={14} /> Reabrir
               </button>
@@ -619,10 +621,11 @@ export function CardModal({
               >
                 <Check size={14} /> Concluir
               </button>
-            )}
+            ))}
+
             {onCopy && (
               <button type="button" onClick={onCopy} className="btn w-full">
-                <Copy size={14} /> Copiar tarefa
+                <Copy size={14} /> {organization ? "Copiar cartão" : "Copiar tarefa"}
               </button>
             )}
             {onArchive && (
@@ -647,7 +650,7 @@ export function CardModal({
         </aside>
       </div>
 
-      {card.sessions && card.sessions.length > 0 && (
+      {!organization && card.sessions && card.sessions.length > 0 && (
         <div className="mt-6">
           <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-3">Sessões</h3>
           <ul className="max-h-40 space-y-1 overflow-y-auto">

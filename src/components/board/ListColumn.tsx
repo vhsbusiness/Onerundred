@@ -63,7 +63,9 @@ export function ListColumn({
   lastUndo,
   onUndo,
   avgTaskMinutes,
+  organization = false,
 }: {
+  organization?: boolean;
   list: ListDTO;
   lists: ListDTO[];
   index: number;
@@ -276,7 +278,7 @@ export function ListColumn({
     addRef.current?.focus();
   }
 
-  const openCount = list.cards.filter((c) => !c.completedAt).length;
+  const openCount = organization ? list.cards.length : list.cards.filter((c) => !c.completedAt).length;
 
   // Tempo para fechar a lista: estimativa menos o já gasto em cada tarefa aberta; sem estimativa, a média.
   const avg = avgTaskMinutes ?? 30;
@@ -366,8 +368,8 @@ export function ListColumn({
             {p.label}
           </button>
         )}
-        {list.kind !== "normal" && <span className="pill">{KIND_LABEL[list.kind]}</span>}
-        {list.kind !== "done" && openCount > 0 && (
+        {!organization && list.kind !== "normal" && <span className="pill">{KIND_LABEL[list.kind]}</span>}
+        {!organization && list.kind !== "done" && openCount > 0 && (
           <Tip text={etaText} className="shrink-0">
             <span className="flex h-5 w-5 cursor-help items-center justify-center rounded-full text-ink-3/50 transition hover:text-ink-2" aria-label={etaText}>
               <Clock size={11} />
@@ -388,7 +390,7 @@ export function ListColumn({
             <div className="absolute right-0 top-8 z-20 w-60 rounded-xl border border-line-2 bg-surface-3 p-1 text-sm shadow-2xl">
               <MenuItem
                 icon={<Plus size={14} />}
-                label="Adicionar tarefa"
+                label={organization ? "Adicionar cartão" : "Adicionar tarefa"}
                 onClick={() => {
                   setMenu(false);
                   setAdding(true);
@@ -476,7 +478,7 @@ export function ListColumn({
               <MenuItem
                 icon={<Sparkles size={14} />}
                 label={aiSorting ? "Organizando…" : "Organizar por importância (IA)"}
-                disabled={aiSorting || openCount < 2}
+                disabled={organization || aiSorting || openCount < 2}
                 onClick={aiSort}
                 accent="blue"
               />
@@ -506,7 +508,7 @@ export function ListColumn({
               />
               <div className="my-1 border-t border-line" />
               <div className="px-2 py-1 text-[11px] uppercase tracking-wide text-ink-3">Tipo da lista</div>
-              {(Object.keys(KIND_LABEL) as ListKind[]).map((k) => (
+              {(organization ? ["normal"] as ListKind[] : Object.keys(KIND_LABEL) as ListKind[]).map((k) => (
                 <MenuItem
                   key={k}
                   icon={list.kind === k ? <Check size={14} /> : <span className="w-3.5" />}
@@ -533,14 +535,15 @@ export function ListColumn({
               now={now}
               todayKey={todayKey}
               onOpen={() => onOpenCard(card)}
-              onTimer={() => onTimer(card)}
+              organization={organization}
+              onTimer={organization ? undefined : () => onTimer(card)}
               onContextMenu={onCardContextMenu}
             />
           ))}
         </SortableContext>
         {list.cards.length === 0 && (
           <div className="rounded-xl border border-dashed border-line px-3 py-4 text-center text-xs text-ink-3">
-            {list.kind === "done" ? "Arraste tarefas concluídas para cá" : "Sem tarefas"}
+            {organization ? "Sem cartões" : list.kind === "done" ? "Arraste tarefas concluídas para cá" : "Sem tarefas"}
           </div>
         )}
       </div>
@@ -556,7 +559,7 @@ export function ListColumn({
                 // Esc só fecha o formulário vazio; com texto digitado, nada se perde.
                 if (e.key === "Escape" && !title.trim() && pendingImages.length === 0) setAdding(false);
               }}
-              placeholder="Título da tarefa (cole uma imagem com Ctrl+V)"
+              placeholder={organization ? "Título do cartão" : "Título da tarefa (cole uma imagem com Ctrl+V)"}
               className="input"
             />
             {pendingImages.length > 0 && (
@@ -591,17 +594,17 @@ export function ListColumn({
                   </button>
                 );
               })}
-              <input
+              {!organization && <input
                 value={estimate}
                 onChange={(e) => setEstimate(e.target.value.replace(/\D/g, ""))}
                 placeholder="min"
                 inputMode="numeric"
                 className="input ml-auto h-7 w-16 px-2 py-0 text-xs"
                 title="Estimativa em minutos"
-              />
+              />}
             </div>
             {/* Tarefa contínua: opção discreta; os dias só aparecem depois de ligar. */}
-            {recurring ? (
+            {!organization && (recurring ? (
               <div className="flex flex-wrap items-center gap-2">
                 <button type="button" onClick={() => setRecurring(false)} className="flex items-center gap-1 text-[11px] text-ink-2 transition hover:text-ink" title="Não repetir">
                   <Repeat size={11} /> Repete nos dias
@@ -617,7 +620,7 @@ export function ListColumn({
               >
                 <Repeat size={10} /> repetir…
               </button>
-            )}
+            ))}
             <div className="flex gap-2">
               <button type="submit" className="btn btn-primary h-8 flex-1">
                 Adicionar
@@ -633,7 +636,7 @@ export function ListColumn({
             onClick={() => setAdding(true)}
             className="btn btn-ghost h-9 w-full justify-start px-2 text-ink-3 hover:bg-fill"
           >
-            <Plus size={15} /> Adicionar tarefa
+            <Plus size={15} /> {organization ? "Adicionar cartão" : "Adicionar tarefa"}
           </button>
         )}
       </footer>

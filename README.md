@@ -230,3 +230,7 @@ seguido de `npm run dev` (volte para `file:` e gere de novo ao terminar).
 
 - Mais usos da IA: planejar a semana, revisar estimativas, relatório semanal.
 - Métricas de sono e rotina.
+
+### Tipos de quadro
+
+**Lista de tarefas** é o padrão e participa da produtividade. **Organização** serve para informações, links e checklists, sem cronômetros, atrasos ou influência nas notas. Escolha ao criar ou, sendo dono, em Opções do quadro → Tipo do quadro. Trocar o tipo preserva os cartões; converter para Organização encerra cronômetros de tarefa em andamento.

@@ -18,7 +18,9 @@ export function CardBody({
   onOpen,
   onTimer,
   dragging = false,
+  organization = false,
 }: {
+  organization?: boolean;
   card: CardDTO;
   listPriority?: number;
   listKind?: string;
@@ -30,12 +32,12 @@ export function CardBody({
 }) {
   const p = priorityUi(card.priority);
   const running = Boolean(card.runningSince);
-  const done = Boolean(card.completedAt);
+  const done = !organization && Boolean(card.completedAt);
   const spent = card.spentMs + (running ? elapsedSince(card.runningSince, now) : 0);
-  const overdue = isOverdue({ ...card, listPriority, listKind }, todayKey);
-  const future = !done && card.scheduledFor > todayKey;
+  const overdue = !organization && isOverdue({ ...card, listPriority, listKind }, todayKey);
+  const future = !organization && !done && card.scheduledFor > todayKey;
   // Saiu da lista Hoje sem ser feita (ex.: jogada para Amanhã): marcada como realocada.
-  const postponed = !done && !overdue && card.postponedDays.length > 0;
+  const postponed = !organization && !done && !overdue && card.postponedDays.length > 0;
 
   return (
     <div
@@ -72,13 +74,13 @@ export function CardBody({
               </span>
             ) : null}
             {card.imageIds.length > 1 ? <span>{card.imageIds.length} imagens</span> : null}
-            {card.estimatedMinutes ? <span>est. {minutesToLabel(card.estimatedMinutes)}</span> : null}
-            {spent > 0 ? (
+            {!organization && card.estimatedMinutes ? <span>est. {minutesToLabel(card.estimatedMinutes)}</span> : null}
+            {!organization && spent > 0 ? (
               <span className={running ? "font-medium text-green" : ""}>{formatDuration(spent)}</span>
             ) : null}
             {overdue ? <span className="pill pill-red px-1.5 py-0 text-[10px]">atrasada</span> : null}
             {postponed ? <span className="pill pill-orange px-1.5 py-0 text-[10px]">realocada</span> : null}
-            {card.recurring ? (
+            {!organization && card.recurring ? (
               <span className="inline-flex items-center text-ink-3" title="Tarefa contínua: repete nos dias escolhidos" aria-label="Tarefa contínua">
                 <Repeat size={11} />
               </span>
@@ -108,6 +110,7 @@ export function CardBody({
 }
 
 export function CardItem(props: {
+  organization?: boolean;
   card: CardDTO;
   listId: string;
   listPriority: number;
@@ -115,7 +118,7 @@ export function CardItem(props: {
   now: number;
   todayKey: string;
   onOpen: () => void;
-  onTimer: () => void;
+  onTimer?: () => void;
   onContextMenu?: (e: React.MouseEvent, card: CardDTO) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({

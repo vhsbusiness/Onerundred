@@ -69,7 +69,10 @@ export interface UserBrief {
   avatar: string | null;
 }
 
+export type BoardType = "tasks" | "organization";
+
 export interface BoardDTO {
+  type: BoardType;
   id: string;
   name: string;
   position: number;
@@ -93,6 +96,7 @@ export interface BoardListsDTO {
 }
 
 export interface BoardSummary {
+  type: BoardType;
   id: string;
   name: string;
   position: number;

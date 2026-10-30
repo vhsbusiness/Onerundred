@@ -18,6 +18,7 @@ import {
 import type {
   ArchivedCard,
   BoardDTO,
+  BoardType,
   BoardSummary,
   CardDTO,
   DashboardDTO,
@@ -129,6 +130,10 @@ export function boardAccess(userId: string) {
   return { OR: [{ userId }, { members: { some: { userId } } }] };
 }
 
+export function taskBoardAccess(userId: string) {
+  return { ...boardAccess(userId), type: "tasks" };
+}
+
 async function ownedBoard(id: string, userId: string) {
   const board = await prisma.board.findFirst({ where: { id, ...boardAccess(userId) } });
   if (!board) throw new ApiError(404, "Quadro não encontrado");
@@ -136,7 +141,7 @@ async function ownedBoard(id: string, userId: string) {
 }
 
 async function ownedList(id: string, userId: string) {
-  const list = await prisma.list.findFirst({ where: { id, board: boardAccess(userId) } });
+  const list = await prisma.list.findFirst({ where: { id, board: boardAccess(userId) }, include: { board: true } });
   if (!list) throw new ApiError(404, "Lista não encontrada");
   return list;
 }
@@ -144,7 +149,7 @@ async function ownedList(id: string, userId: string) {
 async function ownedCard(id: string, userId: string) {
   const card = await prisma.card.findFirst({
     where: { id, list: { board: boardAccess(userId) } },
-    include: { list: true },
+    include: { list: { include: { board: true } } },
   });
   if (!card) throw new ApiError(404, "Tarefa não encontrada");
   return card;
@@ -172,7 +177,7 @@ export async function runMaintenance(): Promise<void> {
   const { start } = dayRange(today);
 
   await prisma.card.updateMany({
-    where: { archivedAt: null, completedAt: { lt: start } },
+    where: { archivedAt: null, completedAt: { lt: start }, list: { board: { type: "tasks" } } },
     data: { archivedAt: new Date() },
   });
 
@@ -189,7 +194,7 @@ export async function runMaintenance(): Promise<void> {
   }
 
   const tomorrowLists = await prisma.list.findMany({
-    where: { kind: "tomorrow" },
+    where: { kind: "tomorrow", board: { type: "tasks" } },
     include: {
       cards: { where: { archivedAt: null, scheduledFor: { lte: today } } },
       board: {
@@ -229,7 +234,7 @@ export async function runMaintenance(): Promise<void> {
 async function spawnRecurringCards(today: string): Promise<void> {
   const weekday = keyToDate(today).getDay();
   const due = await prisma.recurringTask.findMany({
-    where: { active: true, OR: [{ lastSpawnedKey: null }, { lastSpawnedKey: { not: today } }] },
+    where: { active: true, list: { board: { type: "tasks" } }, OR: [{ lastSpawnedKey: null }, { lastSpawnedKey: { not: today } }] },
     include: { list: { select: { id: true, kind: true } } },
   });
   for (const r of due) {
@@ -272,6 +277,7 @@ export async function createRecurring(
   input: { listId: string; title: string; description?: string; priority?: number; estimatedMinutes?: number | null; weekdays: number[] },
 ): Promise<{ recurring: RecurringDTO; card: CardDTO | null }> {
   const list = await ownedList(input.listId, userId);
+  if (list.board.type === "organization") throw new ApiError(400, "Quadros de organização não usam tarefas contínuas");
   if (list.kind === "done") throw new ApiError(400, "Escolha uma lista que não seja a de feitas");
   const days = [...new Set(input.weekdays.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort((a, b) => a - b);
   if (days.length === 0) throw new ApiError(400, "Escolha pelo menos um dia da semana");
@@ -452,6 +458,7 @@ export async function moveListToBoard(listId: string, userId: string, toBoardId:
   const count = await prisma.list.count({ where: { boardId: board.id } });
   const siblings = await prisma.list.findMany({ where: { boardId: list.boardId, NOT: { id: listId } }, orderBy: { position: "asc" } });
   await prisma.$transaction([
+    ...(board.type === "organization" ? [prisma.taskSession.updateMany({ where: { endedAt: null, card: { listId } }, data: { endedAt: new Date() } })] : []),
     prisma.list.update({ where: { id: listId }, data: { boardId: board.id, position: count } }),
     ...siblings.map((l, i) => prisma.list.update({ where: { id: l.id }, data: { position: i } })),
   ]);
@@ -488,28 +495,30 @@ export async function listBoards(userId: string): Promise<BoardSummary[]> {
     }
     return {
       id: b.id,
+      type: b.type as BoardType,
       name: b.name,
       position: b.position,
       createdAt: b.createdAt.toISOString(),
       listCount: b.lists.length,
-      openCount,
+      openCount: b.type === "organization" ? b.lists.reduce((sum, list) => sum + list.cards.length, 0) : openCount,
       doneTodayCount,
-      todayScore: periodScore(metricCards, start, end, today, { hasTodayList: b.lists.some((l) => l.kind === "today") }).score,
+      todayScore: b.type === "organization" ? null : periodScore(metricCards, start, end, today, { hasTodayList: b.lists.some((l) => l.kind === "today") }).score,
       sharedBy: b.userId === userId ? null : b.user.username,
       memberCount: b._count.members,
     };
   });
 }
 
-export async function createBoard(userId: string, name: string): Promise<BoardSummary> {
+export async function createBoard(userId: string, name: string, type: BoardType = "tasks"): Promise<BoardSummary> {
   const max = await prisma.board.aggregate({ where: { userId }, _max: { position: true } });
   const board = await prisma.board.create({
     data: {
       userId,
+      type,
       name,
       position: (max._max.position ?? -1) + 1,
       lists: {
-        create: [
+        create: type === "organization" ? [{ name: "Informações", position: 0, priority: 2, kind: "normal" }] : [
           { name: "A fazer", position: 0, priority: 2, kind: "normal" },
           { name: "Feitas", position: 1, priority: 2, kind: "done" },
         ],
@@ -518,10 +527,11 @@ export async function createBoard(userId: string, name: string): Promise<BoardSu
   });
   return {
     id: board.id,
+    type: board.type as BoardType,
     name: board.name,
     position: board.position,
     createdAt: board.createdAt.toISOString(),
-    listCount: 2,
+    listCount: type === "organization" ? 1 : 2,
     openCount: 0,
     doneTodayCount: 0,
     todayScore: null,
@@ -558,6 +568,7 @@ export async function getBoard(id: string, userId: string): Promise<BoardDTO> {
   });
   return {
     id: board.id,
+    type: board.type as BoardType,
     name: board.name,
     position: board.position,
     createdAt: board.createdAt.toISOString(),
@@ -565,7 +576,7 @@ export async function getBoard(id: string, userId: string): Promise<BoardDTO> {
     // Para o reloginho das listas: média usada nas tarefas sem estimativa.
     avgTaskMinutes: averageTaskMinutes(
       await prisma.card.findMany({
-        where: { list: { board: boardAccess(userId) }, completedAt: { not: null } },
+        where: { list: { board: taskBoardAccess(userId) }, completedAt: { not: null } },
         select: { completedAt: true, estimatedMinutes: true, sessions: true },
       }),
       new Date(),
@@ -588,9 +599,15 @@ export async function getBoard(id: string, userId: string): Promise<BoardDTO> {
   };
 }
 
-export async function updateBoard(id: string, userId: string, data: { name?: string }) {
-  await ownedBoard(id, userId);
-  await prisma.board.update({ where: { id }, data });
+export async function updateBoard(id: string, userId: string, data: { name?: string; type?: BoardType }) {
+  const board = await ownedBoard(id, userId);
+  if (data.type && data.type !== board.type && board.userId !== userId) throw new ApiError(403, "Só o dono pode mudar o tipo do quadro");
+  await prisma.$transaction(async (tx) => {
+    if (data.type === "organization" && board.type !== data.type) {
+      await tx.taskSession.updateMany({ where: { endedAt: null, card: { list: { boardId: id } } }, data: { endedAt: new Date() } });
+    }
+    await tx.board.update({ where: { id }, data });
+  });
 }
 
 export async function deleteBoard(id: string, userId: string) {
@@ -708,7 +725,7 @@ export async function moveAllCards(fromListId: string, toListId: string, userId:
       }),
     ),
   );
-  await registerPostponement(cards, from.kind, to.kind);
+  if (from.board.type === "tasks") await registerPostponement(cards, from.kind, to.kind);
   if (cards.length) {
     await recordUndo(userId, `mover ${cards.length} tarefa(s) para "${to.name}"`, {
       kind: "restoreCards",
@@ -743,7 +760,7 @@ export async function pullByPriority(listId: string, priority: number, userId: s
       }),
     ),
   );
-  for (const c of cards) await registerPostponement([c], c.list.kind, target.kind);
+  if (target.board.type === "tasks") for (const c of cards) await registerPostponement([c], c.list.kind, target.kind);
   const label = { 1: "alta", 2: "média", 3: "baixa" }[priority as 1 | 2 | 3] ?? "";
   await recordUndo(userId, `puxar ${cards.length} tarefa(s) de prioridade ${label} para "${target.name}"`, {
     kind: "restoreCards",
@@ -821,7 +838,7 @@ export async function createCard(
       estimatedMinutes: input.estimatedMinutes ?? null,
       scheduledFor,
       position: (max._max.position ?? -1) + 1,
-      completedAt: list.kind === "done" ? new Date() : null,
+      completedAt: list.board.type === "tasks" && list.kind === "done" ? new Date() : null,
     },
     include: cardInclude,
   });
@@ -937,11 +954,12 @@ async function registerPostponement(cards: { id: string; completedAt: Date | nul
  * de agora e não da data antiga.
  */
 function kindEffects(
-  list: { kind: string; priority: number },
+  list: { kind: string; priority: number; board?: { type: string } },
   card: { completedAt: Date | null; scheduledFor: string },
   entering = true,
   postponedBefore = false,
 ) {
+  if (list.board?.type === "organization") return {};
   const today = todayKey();
   const data: { completedAt?: Date | null; scheduledFor?: string } = {};
   if (list.kind === "done") {
@@ -998,13 +1016,13 @@ export async function moveCard(userId: string, cardId: string, toListId: string,
   }
 
   // Tarefa concluída não fica com o cronômetro rodando: ao cair em "Feitas", a sessão aberta encerra.
-  if (target.kind === "done") {
+  if (target.kind === "done" || target.board.type === "organization") {
     await prisma.taskSession.updateMany({ where: { cardId, endedAt: null }, data: { endedAt: new Date() } });
   }
 
   await prisma.$transaction(ops);
-  if (fromListId !== toListId) await registerPostponement([card], card.list.kind, target.kind);
-  if (target.kind === "done") await maybeAutoEndWork(userId);
+  if (fromListId !== toListId && card.list.board.type === "tasks" && target.board.type === "tasks") await registerPostponement([card], card.list.kind, target.kind);
+  if (target.kind === "done" && target.board.type === "tasks") await maybeAutoEndWork(userId);
 }
 
 /** Marca como concluída: move para a lista "Feitas" do quadro, se existir. */
@@ -1020,7 +1038,7 @@ export async function completeCard(userId: string, cardId: string): Promise<Card
     await moveCard(userId, cardId, doneList.id, 0);
   } else {
     await prisma.card.update({ where: { id: cardId }, data: { completedAt: new Date() } });
-    await maybeAutoEndWork(userId);
+    if (card.list.board.type === "tasks") await maybeAutoEndWork(userId);
   }
   return getCard(cardId, userId);
 }
@@ -1080,14 +1098,14 @@ export async function updateChecklistItem(
   itemId: string,
   data: { text?: string; done?: boolean },
 ): Promise<CardDTO> {
-  await ownedCard(cardId, userId);
+  const owned = await ownedCard(cardId, userId);
   const item = await prisma.checklistItem.findFirst({ where: { id: itemId, cardId } });
   if (!item) throw new ApiError(404, "Item não encontrado");
   const text = data.text === undefined ? undefined : data.text.trim().slice(0, 200);
   if (text !== undefined && !text) throw new ApiError(400, "O item não pode ficar vazio");
   await prisma.checklistItem.update({ where: { id: itemId }, data: { text, done: data.done } });
   // Marcar um item como feito inicia a tarefa (e a sessão de trabalho) se ainda não estiver rodando.
-  if (data.done === true) {
+  if (data.done === true && owned.list.board.type === "tasks") {
     const card = await prisma.card.findUnique({ where: { id: cardId }, select: { completedAt: true, archivedAt: true } });
     const running = await prisma.taskSession.findFirst({ where: { cardId, endedAt: null } });
     if (card && !card.completedAt && !card.archivedAt && !running) return startTaskTimer(userId, cardId);
@@ -1131,7 +1149,8 @@ export async function getCardImage(userId: string, imageId: string): Promise<{ d
 /* ───────────────────────── Cronômetro da tarefa ───────────────────────── */
 
 export async function startTaskTimer(userId: string, cardId: string): Promise<CardDTO> {
-  await ownedCard(cardId, userId);
+  const card = await ownedCard(cardId, userId);
+  if (card.list.board.type === "organization") throw new ApiError(400, "Quadros de organização não usam cronômetros");
   const now = new Date();
   await prisma.$transaction([
     prisma.taskSession.updateMany({
@@ -1152,13 +1171,13 @@ export async function startTaskTimer(userId: string, cardId: string): Promise<Ca
  */
 async function maybeAutoEndWork(userId: string) {
   const today = todayKey();
-  const hasTodayList = (await prisma.list.count({ where: { kind: "today", board: boardAccess(userId) } })) > 0;
+  const hasTodayList = (await prisma.list.count({ where: { kind: "today", board: taskBoardAccess(userId) } })) > 0;
   const open = await prisma.card.count({
     where: {
       archivedAt: null,
       completedAt: null,
       scheduledFor: { lte: today },
-      list: hasTodayList ? { kind: "today", board: boardAccess(userId) } : { kind: { not: "done" }, board: boardAccess(userId) },
+      list: hasTodayList ? { kind: "today", board: taskBoardAccess(userId) } : { kind: { not: "done" }, board: taskBoardAccess(userId) },
     },
   });
   if (open > 0) return;
@@ -1262,7 +1281,7 @@ async function plannedMinutesForToday(userId: string): Promise<number> {
   const { start } = dayRange(today);
   const cards = await prisma.card.findMany({
     where: {
-      list: { board: boardAccess(userId) },
+      list: { board: taskBoardAccess(userId) },
       archivedAt: null,
       scheduledFor: { lte: today },
       OR: [{ completedAt: null }, { completedAt: { gte: start } }],
@@ -1379,13 +1398,13 @@ export async function getDashboard(userId: string): Promise<DashboardDTO> {
   const monthR = monthRange(now);
 
   const cards = await prisma.card.findMany({
-    where: { list: { board: boardAccess(userId) } },
+    where: { list: { board: taskBoardAccess(userId) } },
     include: { list: { include: { board: true } }, sessions: true, images: { select: { id: true } }, postponements: { select: { dayKey: true } } },
   });
 
   const metricCards: MetricCard[] = cards.map((c) => ({ ...c, listPriority: c.list.priority, listKind: c.list.kind, postponedDays: c.postponements.map((p) => p.dayKey) }));
   // A lista "Hoje" vale como referência mesmo vazia (tudo feito ou realocado = 100%, não "sem tarefas").
-  const hasTodayList = (await prisma.list.count({ where: { kind: "today", board: boardAccess(userId) } })) > 0;
+  const hasTodayList = (await prisma.list.count({ where: { kind: "today", board: taskBoardAccess(userId) } })) > 0;
   const scoreOpts = { hasTodayList };
 
   const history = [];
@@ -1451,7 +1470,7 @@ export async function getDashboard(userId: string): Promise<DashboardDTO> {
   }
 
   const runningSession = await prisma.taskSession.findFirst({
-    where: { endedAt: null, card: { list: { board: boardAccess(userId) } } },
+    where: { endedAt: null, card: { list: { board: taskBoardAccess(userId) } } },
     include: { card: { include: { list: true } } },
   });
 
@@ -1504,7 +1523,7 @@ export async function getDayReview(userId: string, key: string): Promise<DayRevi
   const { start, end } = dayRange(key);
   const [cards, workSessions, leisure] = await Promise.all([
     prisma.card.findMany({
-      where: { list: { board: boardAccess(userId) } },
+      where: { list: { board: taskBoardAccess(userId) } },
       include: { list: { include: { board: true } }, sessions: true, postponements: { select: { dayKey: true } } },
     }),
     prisma.workSession.findMany({ where: { userId, startedAt: { gte: start, lt: end }, endedAt: { not: null } }, orderBy: { startedAt: "asc" } }),
@@ -1537,7 +1556,7 @@ export async function getDayReview(userId: string, key: string): Promise<DayRevi
   }));
   return {
     dayKey: key,
-    score: periodScore(metricCards, start, end, key, { hasTodayList: (await prisma.list.count({ where: { kind: "today", board: boardAccess(userId) } })) > 0 }),
+    score: periodScore(metricCards, start, end, key, { hasTodayList: (await prisma.list.count({ where: { kind: "today", board: taskBoardAccess(userId) } })) > 0 }),
     done,
     workSessions: sessions,
     workMs: sessions.reduce((acc, s) => acc + s.ms, 0),
