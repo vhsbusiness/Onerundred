@@ -1,4 +1,4 @@
-import { addDays, subDays } from "date-fns";
+import { addDays, subDays, differenceInCalendarDays } from "date-fns";
 import { prisma } from "./db";
 import { ApiError } from "./errors";
 import { dayRange, keyToDate, todayKey } from "./time";
@@ -33,13 +33,18 @@ function minutesToClock(min: number): string {
   return `${Math.floor(m / 60).toString().padStart(2, "0")}:${(m % 60).toString().padStart(2, "0")}`;
 }
 
-/** Média de horários do relógio que atravessam a meia-noite (ex.: 23:00 e 01:00 → 00:00). */
-function averageClock(dates: Date[]): string | null {
-  if (dates.length === 0) return null;
-  // Desloca o "zero" para o meio-dia: horários entre 12:00 e 11:59 do dia seguinte viram contínuos.
-  const shifted = dates.map((d) => (clockMinutes(d) + 720) % 1440);
-  const avg = shifted.reduce((a, b) => a + b, 0) / shifted.length;
-  return minutesToClock(avg - 720);
+/** Alinha cada registro pelo dia em que a pessoa acordou, sem cortar o relógio ao meio-dia.
+ * Deitar às 23h na véspera vale -60 minutos; deitar à 1h no próprio dia vale 60.
+ * Usar a mesma referência para os três horários preserva a sequência da noite.
+ */
+function averageSleepClock(logs: SleepLogDTO[], field: "bedAt" | "sleepAt" | "wakeAt"): string | null {
+  if (logs.length === 0) return null;
+  const total = logs.reduce((sum, log) => {
+    const at = new Date(log[field]);
+    const offset = differenceInCalendarDays(at, keyToDate(log.dayKey));
+    return sum + clockMinutes(at) + offset * 1440;
+  }, 0);
+  return minutesToClock(total / logs.length);
 }
 
 function serialize(row: {
@@ -135,9 +140,9 @@ export function computeStats(logs: SleepLogDTO[]): SleepStats {
     avgDuration7: avg(last7.map((l) => l.durationMin)),
     avgDuration30: avg(last30.map((l) => l.durationMin)),
     avgLatency7: avg(last7.map((l) => l.latencyMin)),
-    avgBedTime7: averageClock(last7.map((l) => new Date(l.bedAt))),
-    avgSleepTime7: averageClock(last7.map((l) => new Date(l.sleepAt))),
-    avgWakeTime7: averageClock(last7.map((l) => new Date(l.wakeAt))),
+    avgBedTime7: averageSleepClock(last7, "bedAt"),
+    avgSleepTime7: averageSleepClock(last7, "sleepAt"),
+    avgWakeTime7: averageSleepClock(last7, "wakeAt"),
     lastNight: logs[0] ?? null,
   };
 }
