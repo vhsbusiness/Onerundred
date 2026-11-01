@@ -46,6 +46,47 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 }
 
+/** Editar o texto não marca o item nem inicia cronômetros. */
+function ChecklistText({ text, done, onSave }: { text: string; done: boolean; onSave: (text: string) => Promise<void> }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(text);
+  const [saving, setSaving] = useState(false);
+  const busy = useRef(false);
+  const cancelled = useRef(false);
+
+  async function save() {
+    if (busy.current || cancelled.current) return;
+    const next = draft.trim();
+    if (!next || next === text) {
+      setDraft(text);
+      setEditing(false);
+      return;
+    }
+    busy.current = true;
+    setSaving(true);
+    try {
+      await onSave(next);
+      setEditing(false);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Não foi possível salvar o item. Tente novamente.");
+    } finally {
+      busy.current = false;
+      setSaving(false);
+    }
+  }
+
+  return editing ? <input autoFocus aria-label="Texto do item do checklist" value={draft} maxLength={200}
+    readOnly={saving} aria-busy={saving} onChange={(e) => setDraft(e.target.value)}
+    onBlur={() => void save()} onKeyDown={(e) => {
+      e.stopPropagation();
+      if (e.nativeEvent.isComposing || saving) return;
+      if (e.key === "Enter") { e.preventDefault(); void save(); }
+      if (e.key === "Escape") { e.preventDefault(); cancelled.current = true; setDraft(text); setEditing(false); }
+    }} className="input min-w-0 flex-1 px-2 py-1 text-base sm:text-sm" />
+    : <button type="button" title="Editar item" onClick={() => { cancelled.current = false; setDraft(text); setEditing(true); }}
+      className={`min-w-0 flex-1 break-words py-1 text-left [overflow-wrap:anywhere] ${done ? "text-ink-3 line-through" : ""}`}>{text}</button>;
+}
+
 export function CardModal({
   card,
   organization = false,
@@ -355,7 +396,10 @@ export function CardModal({
                   >
                     {item.done && <Check size={12} strokeWidth={3} />}
                   </button>
-                  <span className={`min-w-0 flex-1 break-words ${item.done ? "text-ink-3 line-through" : ""}`}>{item.text}</span>
+                  <ChecklistText text={item.text} done={item.done} onSave={async (text) => {
+                    await http.patch(`/api/cards/${card.id}/checklist`, { itemId: item.id, text });
+                    onChanged();
+                  }} />
                   <button
                     type="button"
                     onClick={() => removeItem(item.id)}

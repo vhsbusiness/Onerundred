@@ -158,3 +158,64 @@
 /* Mesma família nos cronômetros de trabalho, lazer e tarefa; números tabulares
    continuam alinhados sem a mudança de fonte do antigo font-mono. */
 :root[data-design="v3"] .font-mono { font-family: var(--font-sans); }
+
+/* Vidro apenas nas superfícies de navegação e nos controles, nunca nos cartões.
+   Expo GlassEffect é nativo de iOS; esta implementação atende o app web/PWA. */
+:root[data-design="v3"] {
+  --glass-edge: color-mix(in srgb, var(--color-ink) 18%, transparent);
+  --glass-shine: color-mix(in srgb, var(--color-ink) 9%, transparent);
+  --glass-bar: color-mix(in srgb, var(--color-surface) 76%, transparent);
+  --glass-button: color-mix(in srgb, var(--color-surface-3) 72%, transparent);
+}
+:root[data-design="v3"][data-theme="light"] {
+  --glass-edge: color-mix(in srgb, var(--color-ink) 16%, transparent);
+  --glass-shine: color-mix(in srgb, var(--color-surface) 65%, transparent);
+  --glass-bar: color-mix(in srgb, var(--color-surface) 82%, transparent);
+}
+:root[data-design="v3"] :is(.v2-rail, nav.fixed.inset-x-0.bottom-0) {
+  background: linear-gradient(145deg, var(--glass-shine), transparent 48%), var(--color-surface);
+  border-color: var(--glass-edge);
+  box-shadow: inset 0 1px 0 var(--glass-shine);
+}
+:root[data-design="v3"] :is(.btn, button.pill) {
+  --control-glass: var(--glass-button);
+  background-image: linear-gradient(160deg, var(--glass-shine), transparent 58%);
+  box-shadow: inset 0 1px 0 var(--glass-shine);
+}
+:root[data-design="v3"] .btn.btn-primary {
+  --control-glass: color-mix(in srgb, var(--color-orange) 90%, transparent);
+  background-image: linear-gradient(160deg, color-mix(in srgb, var(--color-surface) 25%, transparent), transparent 65%);
+  border-color: color-mix(in srgb, var(--color-orange) 70%, var(--glass-edge));
+}
+:root[data-design="v3"] :is(.btn, button).pill-green { --control-glass: color-mix(in srgb, var(--color-green) 13%, transparent); }
+:root[data-design="v3"] :is(.btn, button).pill-blue { --control-glass: color-mix(in srgb, var(--color-blue) 13%, transparent); }
+:root[data-design="v3"] :is(.btn, button).pill-orange { --control-glass: color-mix(in srgb, var(--color-orange) 13%, transparent); }
+:root[data-design="v3"] :is(.btn, button).pill-red { --control-glass: color-mix(in srgb, var(--color-red) 13%, transparent); }
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root[data-design="v3"] :is(.v2-rail, nav.fixed.inset-x-0.bottom-0) {
+    background-color: var(--glass-bar);
+    -webkit-backdrop-filter: blur(22px) saturate(125%);
+    backdrop-filter: blur(22px) saturate(125%);
+  }
+  :root[data-design="v3"] :is(.btn, button.pill) {
+    background-color: var(--control-glass);
+    -webkit-backdrop-filter: blur(10px) saturate(115%);
+    backdrop-filter: blur(10px) saturate(115%);
+  }
+  :root[data-design="v3"] .btn:hover:not(:disabled) { background-color: color-mix(in srgb, var(--control-glass) 82%, var(--color-fill-2)); }
+  :root[data-design="v3"] .btn.btn-primary:hover:not(:disabled) { background-color: var(--color-orange); }
+}
+:root[data-design="v3"] .v2-rail-item.is-active {
+  background-image: linear-gradient(150deg, var(--glass-shine), transparent 65%);
+  box-shadow: inset 0 1px 0 var(--glass-shine);
+}
+/* Respeita a preferência por superfícies opacas sem modificar os demais componentes. */
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-design="v3"] :is(.v2-rail, nav.fixed.inset-x-0.bottom-0, .btn, button.pill) {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-color: var(--color-surface-3);
+    background-image: none;
+  }
+  :root[data-design="v3"] .btn.btn-primary { background-color: var(--color-orange); }
+}

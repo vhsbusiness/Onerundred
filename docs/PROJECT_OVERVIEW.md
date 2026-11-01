@@ -90,3 +90,9 @@ A descrição da tarefa usa um editor visual sempre ativo (Tiptap), sem alternâ
 Ao criar um quadro, escolha Lista de tarefas (padrão) ou Organização. O proprietário também pode trocar em Opções do quadro → Tipo do quadro. Organização guarda cartões, descrições, imagens e checklists sem cronômetros, atrasos ou participação nas notas. Os quadros existentes continuam como Lista de tarefas. Foram preparadas migrations PostgreSQL e SQLite; publicação pendente de autorização.
 
 Correção de renomeação: edição do título da lista isolada do arrasto; Enter/clique fora salvam, Esc cancela; falhas mantêm o texto para tentar novamente; nomes longos quebram linha. Verificado em celular e desktop.
+
+## Vidro e edição de checklist — 31/10/2026
+
+Studio v3: vidro via CSS apenas na barra lateral, navegação inferior e botões (`.btn` / botões `.pill`). Paleta preservada, blur com prefixo WebKit, fundo opaco de fallback e preferência por transparência reduzida. Cartões, listas, formulários e conteúdo não recebem blur. Não foi instalado expo-glass-effect: é um componente nativo iOS, sem efeito de vidro no app Next.js/web. Versões antigas de design preservadas.
+
+Clicar no texto do checklist permite editar inline; Enter/blur salvam, Esc cancela sem fechar o modal. O texto continua limitado a 200 caracteres. Alterar texto não marca como concluído nem inicia tarefa/sessão. Erros preservam o rascunho; checkbox continua independente. Verificações: lint, TypeScript, build, 375/1440px, vidro em claro/escuro, comportamento da edição e persistência via API. Alterações locais, sem deploy.
