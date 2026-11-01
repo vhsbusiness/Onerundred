@@ -870,9 +870,23 @@ export async function updateCard(
     scheduledFor?: string;
   },
 ): Promise<CardDTO> {
-  await ownedCard(id, userId);
+  const existing = await ownedCard(id, userId);
   const { labels, ...fields } = data;
-  const card = await prisma.card.update({ where: { id }, data: { ...fields, ...(labels !== undefined ? { labels: JSON.stringify(parseLabels(labels)) } : {}) }, include: cardInclude });
+  const parsed = labels !== undefined ? parseLabels(labels) : undefined;
+  const card = await prisma.$transaction(async (tx) => {
+    if (parsed) {
+      // Remover de uma tarefa não apaga a etiqueta salva no quadro.
+      for (const label of [...readLabels(existing.labels), ...parsed]) {
+        const key = label.name.toLocaleLowerCase("pt-BR");
+        await tx.boardLabel.upsert({
+          where: { boardId_key: { boardId: existing.list.boardId, key } },
+          create: { boardId: existing.list.boardId, key, ...label },
+          update: {},
+        });
+      }
+    }
+    return tx.card.update({ where: { id }, data: { ...fields, ...(parsed ? { labels: JSON.stringify(parsed) } : {}) }, include: cardInclude });
+  });
   return serializeCard(card);
 }
 
@@ -1594,4 +1608,15 @@ export async function listArchived(userId: string): Promise<ArchivedCard[]> {
     boardId: c.list.boardId,
     boardName: c.list.board.name,
   }));
+}
+
+/** Catálogo privado do quadro, acessível também aos membros convidados. */
+export async function listBoardLabels(boardId: string, userId: string) {
+  await ownedBoard(boardId, userId);
+  // Incorpora também etiquetas de cartões transferidos/copiados para este quadro.
+  const cards = await prisma.card.findMany({ where: { list: { boardId }, labels: { not: "[]" } }, select: { labels: true } });
+  const found = new Map<string, ReturnType<typeof readLabels>[number]>();
+  for (const card of cards) for (const label of readLabels(card.labels)) found.set(label.name.toLocaleLowerCase("pt-BR"), label);
+  for (const [key, label] of found) await prisma.boardLabel.upsert({ where: { boardId_key: { boardId, key } }, create: { boardId, key, ...label }, update: {} });
+  return prisma.boardLabel.findMany({ where: { boardId }, select: { name: true, color: true }, orderBy: { name: "asc" } });
 }

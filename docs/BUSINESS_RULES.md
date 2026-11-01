@@ -130,6 +130,12 @@ As médias de deitar, dormir e acordar alinham cada horário à data de desperta
 
 ### Etiquetas de tarefas (01/11/2026)
 - Cada cartão pode ter até 10 etiquetas, com nome de 1–32 caracteres e cor laranja, verde, azul ou vermelho. Nomes repetidos na mesma tarefa são rejeitados sem diferenciar maiúsculas/minúsculas.
-- São locais à tarefa, sem catálogo global. Editar uma etiqueta não altera outras tarefas. Funcionam em quadros de tarefas e organização, sem efeito na pontuação ou cronômetros.
+- As etiquetas têm um catálogo por quadro (BoardLabel), compartilhado com seus membros. Remover de uma tarefa não apaga do catálogo. Editar a etiqueta de uma tarefa não modifica automaticamente as demais. Funcionam em quadros de tarefas e organização, sem efeito na pontuação ou cronômetros.
 - PATCH /api/cards/[id] recebe `labels: [{name, color}]`. Usa a autorização existente por proprietário/membro do quadro. Cópias de tarefa/lista preservam etiquetas; transferências e arquivamento também.
 - Persistência em Card.labels (JSON serializado em String, padrão `[]`), com migrações aditivas Postgres/SQLite `20261101191719_task_labels`. Nenhuma alteração do banco de produção foi executada durante o desenvolvimento.
+
+### Catálogo de etiquetas por quadro (01/11/2026)
+- GET /api/boards/[id]/etiquetas verifica acesso ao quadro antes de listar. Incorpora ao catálogo as etiquetas existentes em seus cartões (incluindo arquivados e transferidos/copiados), de forma idempotente por nome normalizado.
+- Ao salvar etiquetas de uma tarefa, o catálogo é atualizado na mesma transação, preservando os nomes anteriores mesmo após removê-los da tarefa. O primeiro nome/cor salvo é a referência do catálogo; alterações locais em cartões não alteram outras tarefas.
+- BoardLabel tem chave única (boardId, key), exclusão em cascata com o quadro. Migrações aditivas Postgres e SQLite: 20261101192440_board_labels.
+- UI: botão Etiquetas recolhido por padrão; as etiquetas aplicadas continuam visíveis. Ao expandir, oferece seleção das salvas no quadro e formulário para criar/editar; não há catálogo global entre quadros.

@@ -352,7 +352,7 @@ export function CardModal({
             </div>
           </div>
 
-          <TaskLabels key={card.id} labels={card.labels} onSave={labels => patch({ labels })} />
+          <TaskLabels key={card.id} boardId={boardId} labels={card.labels} onSave={labels => patch({ labels })} />
 
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-3">

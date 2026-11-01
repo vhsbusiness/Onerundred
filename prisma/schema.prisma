@@ -65,6 +65,7 @@ model Board {
   lists     List[]
   members   BoardMember[]
   invites   BoardInvite[]
+  labels    BoardLabel[]
 
   @@index([userId])
 }
@@ -436,4 +437,15 @@ model AiUsage {
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+/// Catálogo de etiquetas reutilizáveis dentro de um quadro.
+model BoardLabel {
+  id String @id @default(cuid())
+  boardId String
+  key String
+  name String
+  color String
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  @@unique([boardId, key])
 }
