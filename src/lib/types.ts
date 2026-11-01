@@ -9,7 +9,10 @@ export interface SessionDTO {
   endedAt: string | null;
 }
 
+export interface CardLabel { name: string; color: "orange" | "green" | "blue" | "red"; }
+
 export interface CardDTO {
+  labels: CardLabel[];
   id: string;
   listId: string;
   title: string;

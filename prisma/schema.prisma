@@ -121,6 +121,7 @@ model Card {
   listId           String
   title            String
   description      String        @default("")
+  labels           String        @default("[]")
   /// 1 = alta, 2 = média, 3 = baixa
   priority         Int           @default(2)
   position         Int           @default(0)

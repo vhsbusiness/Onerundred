@@ -59,6 +59,7 @@ export function CardBody({
           draggable={false}
         />
       )}
+      {card.labels.length > 0 && <div className="mb-2 flex flex-wrap gap-1">{card.labels.map(label => <span key={label.name} className={`pill pill-${label.color} max-w-full break-words text-[10px]`}>{label.name}</span>)}</div>}
       <div className="flex items-start gap-2">
         <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${p.dot}`} title={`Prioridade ${p.label}`} />
         <div className="min-w-0 flex-1">

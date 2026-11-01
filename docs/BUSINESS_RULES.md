@@ -127,3 +127,9 @@ Organização não inicia cronômetros nem trabalho ao marcar checklist. A API r
 ## Médias de horário de sono — 31/10/2026
 
 As médias de deitar, dormir e acordar alinham cada horário à data de despertar (`SleepLog.dayKey`): minutos locais mais a diferença de dias do calendário multiplicada por 1440. Só o resultado é convertido para HH:MM. Não usar o deslocamento fixo de 12 horas: ele fazia horários de despertar dos dois lados do meio-dia produzirem médias de madrugada. Ex.: 11h e 13h → 12h; deitar às 23h da véspera e à 1h do dia de despertar → 00h. Registros, durações, latência e janela de sete dias permanecem inalterados.
+
+### Etiquetas de tarefas (01/11/2026)
+- Cada cartão pode ter até 10 etiquetas, com nome de 1–32 caracteres e cor laranja, verde, azul ou vermelho. Nomes repetidos na mesma tarefa são rejeitados sem diferenciar maiúsculas/minúsculas.
+- São locais à tarefa, sem catálogo global. Editar uma etiqueta não altera outras tarefas. Funcionam em quadros de tarefas e organização, sem efeito na pontuação ou cronômetros.
+- PATCH /api/cards/[id] recebe `labels: [{name, color}]`. Usa a autorização existente por proprietário/membro do quadro. Cópias de tarefa/lista preservam etiquetas; transferências e arquivamento também.
+- Persistência em Card.labels (JSON serializado em String, padrão `[]`), com migrações aditivas Postgres/SQLite `20261101191719_task_labels`. Nenhuma alteração do banco de produção foi executada durante o desenvolvimento.

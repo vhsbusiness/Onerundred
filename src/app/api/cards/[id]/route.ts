@@ -16,6 +16,7 @@ export const PATCH = withUser(async (user, req: Request, ctx: Ctx) => {
   if (body.completed === false) return json(await reopenCard(user.id, id));
 
   const card = await updateCard(id, user.id, {
+    labels: body.labels,
     title: body.title !== undefined ? requireString(body.title, "title") : undefined,
     description: body.description !== undefined ? requireString(body.description, "description", { allowEmpty: true }) : undefined,
     priority: optionalPriority(body.priority),

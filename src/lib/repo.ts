@@ -1,3 +1,4 @@
+import { parseLabels, readLabels } from "./labels";
 import { subDays } from "date-fns";
 import { prisma } from "./db";
 import { DEFAULT_THEME, isTheme, DEFAULT_DESIGN, isDesign } from "./theme";
@@ -49,6 +50,7 @@ interface SessionRow {
 }
 
 interface CardRow {
+  labels: string;
   id: string;
   listId: string;
   title: string;
@@ -95,6 +97,7 @@ export function serializeCard(c: CardRow): CardDTO {
     listId: c.listId,
     title: c.title,
     description: c.description,
+    labels: readLabels(c.labels),
     priority: c.priority,
     position: c.position,
     estimatedMinutes: c.estimatedMinutes,
@@ -682,6 +685,7 @@ export async function copyList(id: string, userId: string) {
         create: cards.map((c, i) => ({
           title: c.title,
           description: c.description,
+          labels: c.labels,
           priority: c.priority,
           position: i,
           estimatedMinutes: c.estimatedMinutes,
@@ -858,6 +862,7 @@ export async function updateCard(
   id: string,
   userId: string,
   data: {
+    labels?: unknown;
     title?: string;
     description?: string;
     priority?: number;
@@ -866,7 +871,8 @@ export async function updateCard(
   },
 ): Promise<CardDTO> {
   await ownedCard(id, userId);
-  const card = await prisma.card.update({ where: { id }, data, include: cardInclude });
+  const { labels, ...fields } = data;
+  const card = await prisma.card.update({ where: { id }, data: { ...fields, ...(labels !== undefined ? { labels: JSON.stringify(parseLabels(labels)) } : {}) }, include: cardInclude });
   return serializeCard(card);
 }
 
@@ -887,6 +893,7 @@ export async function copyCard(userId: string, cardId: string): Promise<CardDTO>
       listId: card.listId,
       title: card.title,
       description: card.description,
+      labels: card.labels,
       priority: card.priority,
       estimatedMinutes: card.estimatedMinutes,
       scheduledFor: card.scheduledFor,
