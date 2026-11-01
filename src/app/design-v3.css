@@ -162,14 +162,14 @@
 /* Vidro apenas nas superfícies de navegação e nos controles, nunca nos cartões.
    Expo GlassEffect é nativo de iOS; esta implementação atende o app web/PWA. */
 :root[data-design="v3"] {
-  --glass-edge: color-mix(in srgb, var(--color-ink) 18%, transparent);
-  --glass-shine: color-mix(in srgb, var(--color-ink) 9%, transparent);
+  --glass-edge: color-mix(in srgb, var(--color-ink) 12%, transparent);
+  --glass-shine: color-mix(in srgb, var(--color-ink) 4%, transparent);
   --glass-bar: color-mix(in srgb, var(--color-surface) 76%, transparent);
   --glass-button: color-mix(in srgb, var(--color-surface-3) 72%, transparent);
 }
 :root[data-design="v3"][data-theme="light"] {
-  --glass-edge: color-mix(in srgb, var(--color-ink) 16%, transparent);
-  --glass-shine: color-mix(in srgb, var(--color-surface) 65%, transparent);
+  --glass-edge: color-mix(in srgb, var(--color-ink) 12%, transparent);
+  --glass-shine: color-mix(in srgb, var(--color-surface) 40%, transparent);
   --glass-bar: color-mix(in srgb, var(--color-surface) 82%, transparent);
 }
 :root[data-design="v3"] :is(.v2-rail, nav.fixed.inset-x-0.bottom-0) {
