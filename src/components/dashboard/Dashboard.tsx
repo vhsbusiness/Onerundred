@@ -197,7 +197,7 @@ export function Dashboard({ initialData, initialAi, initialPerf }: { initialData
       </div>
 
       <div className="grid gap-4 lg:grid-cols-12">
-        <section className="card p-5 lg:col-span-8">
+        <section className="dashboard-panel card p-5 lg:col-span-8">
           <div className="dashboard-metrics grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 xl:grid-cols-6">
             <ScoreTile
               label="Hoje"
@@ -267,7 +267,7 @@ export function Dashboard({ initialData, initialAi, initialPerf }: { initialData
           </div>
         )}
 
-        <section className="card p-5 lg:col-span-5">
+        <section className="dashboard-panel card p-5 lg:col-span-5">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-medium text-ink-2">Últimos 14 dias</h2>
             <span className="pill">nota diária</span>
@@ -275,7 +275,7 @@ export function Dashboard({ initialData, initialAi, initialPerf }: { initialData
           <HistoryChart history={data.history} todayKey={data.todayKey} />
         </section>
 
-        <section className="card p-5 lg:col-span-7">
+        <section className="dashboard-panel card p-5 lg:col-span-7">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-medium text-ink-2">Tarefas de hoje</h2>
             <Link href="/quadros" className="btn btn-ghost h-8 px-3 text-xs">
