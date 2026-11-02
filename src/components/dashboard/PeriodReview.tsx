@@ -6,6 +6,7 @@ import { formatPercent, TONE_PILL, TONE_TEXT } from "@/lib/client";
 import { scoreTone } from "@/lib/metrics";
 import { formatDuration, keyToDate, weekdayShort } from "@/lib/time";
 import type { PeriodReviewDTO } from "@/lib/types";
+import { PerformanceHistory } from "./PerformanceHistory";
 import { DayPicker } from "./DayPicker";
 
 function fmt(key: string) {
@@ -72,6 +73,8 @@ export function PeriodReview({ data, days, range }: { data: PeriodReviewDTO; day
           </div>
         </div>
       </section>
+
+      <PerformanceHistory key={`${data.startKey}-${data.endKey}`} history={data.days} target={data.perfTarget} />
 
       <section className="card p-5">
         <h2 className="mb-3 text-sm font-medium text-ink-2">Dia a dia</h2>

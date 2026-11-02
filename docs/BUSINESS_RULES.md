@@ -139,3 +139,9 @@ As médias de deitar, dormir e acordar alinham cada horário à data de desperta
 - Ao salvar etiquetas de uma tarefa, o catálogo é atualizado na mesma transação, preservando os nomes anteriores mesmo após removê-los da tarefa. O primeiro nome/cor salvo é a referência do catálogo; alterações locais em cartões não alteram outras tarefas.
 - BoardLabel tem chave única (boardId, key), exclusão em cascata com o quadro. Migrações aditivas Postgres e SQLite: 20261101192440_board_labels.
 - UI: botão Etiquetas recolhido por padrão; as etiquetas aplicadas continuam visíveis. Ao expandir, oferece seleção das salvas no quadro e formulário para criar/editar; não há catálogo global entre quadros.
+
+### Evolução da performance nas revisões (01/11/2026)
+- Revisão de um dia exibe os 14 dias encerrados na data selecionada, incluindo esse dia. Intervalos exibem os dias do próprio período (até 90), usando a mesma nota geral existente de tarefas, sono, lazer e metas.
+- Dias sem dados aparecem sem nota, interrompem a linha e não viram zero. A variação em pontos compara o primeiro e o último dia com nota disponível; só aparece com pelo menos dois dias válidos.
+- Gráfico tem referência da meta atual de performance e seleção por toque, mouse ou teclado com link para abrir o dia. Não altera cálculos nem grava notas históricas: mantém a recomputação com os registros e metas atuais do app.
+- getPerformance aceita uma data final opcional (hoje por padrão). getPeriodReview passa a carregar todos os dias pedidos até 90; antes o limite interno de 60 truncava intervalos maiores.

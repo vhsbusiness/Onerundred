@@ -20,8 +20,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
   if (isKey(de) && isKey(ate) && de! <= ate! && ate! <= today) {
     const span = Math.round((new Date(ate!).getTime() - new Date(de!).getTime()) / 86400000) + 1;
     if (span === 1) {
-      const [review, ai] = await Promise.all([getDayReview(user.id, de!), getAiStatus(user.id, de!)]);
-      return <DayReview data={review} initialAi={ai} />;
+      const [review, ai, perf] = await Promise.all([getDayReview(user.id, de!), getAiStatus(user.id, de!), getPerformance(user.id, de!)]);
+      return <DayReview data={review} initialAi={ai} performance={perf} />;
     }
     if (span <= 90) return <PeriodReview data={await getPeriodReview(user.id, ate!, span)} days={span} range={{ from: de!, to: ate! }} />;
   }
@@ -31,8 +31,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
     return <PeriodReview data={await getPeriodReview(user.id, endKey, n)} days={n} />;
   }
   if (endKey < today) {
-    const [review, ai] = await Promise.all([getDayReview(user.id, endKey), getAiStatus(user.id, endKey)]);
-    return <DayReview data={review} initialAi={ai} />;
+    const [review, ai, perf] = await Promise.all([getDayReview(user.id, endKey), getAiStatus(user.id, endKey), getPerformance(user.id, endKey)]);
+    return <DayReview data={review} initialAi={ai} performance={perf} />;
   }
   const [initialData, initialAi, initialPerf] = await Promise.all([getDashboard(user.id), getAiStatus(user.id), getPerformance(user.id)]);
   return <Dashboard initialData={initialData} initialAi={initialAi} initialPerf={initialPerf} />;

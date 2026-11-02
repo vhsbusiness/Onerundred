@@ -5,8 +5,9 @@ import Link from "next/link";
 import { formatPercent, priorityUi, TONE_PILL, TONE_TEXT } from "@/lib/client";
 import { scoreTone } from "@/lib/metrics";
 import { formatDayLong, formatDuration } from "@/lib/time";
-import type { AiStatusDTO, DayReviewDTO } from "@/lib/types";
+import type { AiStatusDTO, DayReviewDTO, PerformanceDTO } from "@/lib/types";
 import { AiInsightCard } from "./AiInsightCard";
+import { PerformanceHistory } from "./PerformanceHistory";
 import { DayPicker } from "./DayPicker";
 
 function timeLabel(iso: string) {
@@ -20,7 +21,7 @@ function endLabel(endIso: string, startIso: string) {
 }
 
 /** Revisão de um dia passado: nota, tarefas feitas, sessões de trabalho e lazer. */
-export function DayReview({ data, initialAi }: { data: DayReviewDTO; initialAi?: AiStatusDTO }) {
+export function DayReview({ data, initialAi, performance }: { data: DayReviewDTO; initialAi?: AiStatusDTO; performance: PerformanceDTO }) {
   const tone = scoreTone(data.score.score);
   return (
     <div className="space-y-4">
@@ -73,6 +74,8 @@ export function DayReview({ data, initialAi }: { data: DayReviewDTO; initialAi?:
           </div>
         </div>
       </section>
+
+      <PerformanceHistory key={data.dayKey} history={performance.history} target={performance.perfTarget} />
 
       <AiInsightCard todayCards={[]} initialStatus={initialAi} dayKey={data.dayKey} />
 

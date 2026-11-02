@@ -214,8 +214,8 @@ export function perfTargetOf(targets: TargetsDTO): number {
 }
 
 /** Performance de hoje, histórico de 14 dias e constância (calculada sobre 60 dias). */
-export async function getPerformance(userId: string): Promise<PerformanceDTO> {
-  const today = todayKey();
+export async function getPerformance(userId: string, endKey = todayKey()): Promise<PerformanceDTO> {
+  const today = endKey;
   const firstKey = dayKey(subDays(keyToDate(today), 59));
   const data = await loadDayData(userId, firstKey);
   const days: PerformanceDayDTO[] = [];
@@ -233,10 +233,11 @@ export async function getPerformance(userId: string): Promise<PerformanceDTO> {
 export async function getPeriodReview(userId: string, endKey: string, n: number): Promise<PeriodReviewDTO> {
   const count = Math.max(2, Math.min(90, n));
   const startKey = dayKey(subDays(keyToDate(endKey), count - 1));
-  // Carrega desde 60 dias antes do fim para a constância ter base.
-  const data = await loadDayData(userId, dayKey(subDays(keyToDate(endKey), 59)));
+  // Garante todo o intervalo escolhido, com pelo menos 60 dias para a constância.
+  const historyDays = Math.max(60, count);
+  const data = await loadDayData(userId, dayKey(subDays(keyToDate(endKey), historyDays - 1)));
   const all: PerformanceDayDTO[] = [];
-  for (let i = 59; i >= 0; i--) all.push(computeDay(dayKey(subDays(keyToDate(endKey), i)), data));
+  for (let i = historyDays - 1; i >= 0; i--) all.push(computeDay(dayKey(subDays(keyToDate(endKey), i)), data));
   const days = all.slice(-count).filter((d) => d.dayKey <= todayKey());
   const scores = days.map((d) => d.score).filter((s): s is number => s !== null);
   const taskScores = days.map((d) => d.taskScore.score).filter((s): s is number => s !== null);
