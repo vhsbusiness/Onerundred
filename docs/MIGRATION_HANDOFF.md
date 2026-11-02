@@ -96,3 +96,8 @@ Por instrução explícita do proprietário, Studio v3 deixa de ser uma prévia 
 A tipografia do v3 foi unificada em Instrument Sans: texto, títulos, métricas, etiquetas e cronômetros de trabalho/lazer/tarefa usam a mesma família, mantendo os números tabulares. O cabeçalho com data e hora e o fundo pontilhado permanecem. Implementação preparada localmente; publicar somente mediante pedido explícito.
 
 Observação de teste (31/10/2026): abrir diretamente `/quadros/ID?card=ID` pode produzir React hydration #418. O BoardView inicializa openCardId a partir de window no cliente, mas null no servidor. Fluxo normal de abrir quadro e clicar no cartão passa; esta divergência preexistente não foi alterada junto do vidro/checklist.
+
+### 01/11/2026 — erro ao atualizar análise de IA
+- Logs de produção confirmaram HTTP 429 do provedor com mensagem de créditos esgotados. Não era falha no cálculo de performance.
+- `src/lib/ai-errors.ts`, chamado pelo wrapper de APIs, converte erros OpenAI em mensagens seguras: quota esgotada (503), rate limit (429), configuração/autorização e indisponibilidade (503). Falhas internas não relacionadas continuam no tratamento anterior.
+- Verificados tipos, lint, build e testes locais de classificação, sem chamadas pagas. O saldo da API precisa ser reposto pelo administrador; não foi alterada cobrança nem chave. A análise anterior permanece armazenada quando a geração falha.

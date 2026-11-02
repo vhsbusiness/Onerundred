@@ -3,6 +3,7 @@ import type { CurrentUser } from "./auth";
 import { requireAdmin, requireUser } from "./current-user";
 
 import { ApiError } from "./errors";
+import { aiProviderError } from "./ai-errors";
 
 export { ApiError };
 
@@ -28,6 +29,11 @@ export function handle<Args extends unknown[]>(
     } catch (err) {
       if (err instanceof ApiError) {
         return json({ error: err.message }, { status: err.status });
+      }
+      const providerError = aiProviderError(err);
+      if (providerError) {
+        console.error("Falha no provedor de IA", { status: providerError.status });
+        return json({ error: providerError.message }, { status: providerError.status });
       }
       console.error(err);
       return json({ error: "Erro interno" }, { status: 500 });
