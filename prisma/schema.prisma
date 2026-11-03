@@ -37,6 +37,8 @@ model User {
   recurring    RecurringTask[]
   aiUsage      AiUsage[]
   memberships  BoardMember[]
+  collaborators Collaboration[] @relation("Manager")
+  supervisors Collaboration[] @relation("Employee")
   invitesSent  BoardInvite[] @relation("InvitesSent")
   invitesGot   BoardInvite[] @relation("InvitesGot")
 }
@@ -448,4 +450,17 @@ model BoardLabel {
   color String
   board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
   @@unique([boardId, key])
+}
+
+model Collaboration {
+  id String @id @default(cuid())
+  managerId String
+  employeeId String
+  accepted Boolean @default(false)
+  createdAt DateTime @default(now())
+  manager User @relation("Manager", fields: [managerId], references: [id], onDelete: Cascade)
+  employee User @relation("Employee", fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([managerId, employeeId])
+  @@index([employeeId, accepted])
 }

@@ -145,3 +145,8 @@ As médias de deitar, dormir e acordar alinham cada horário à data de desperta
 - Dias sem dados aparecem sem nota, interrompem a linha e não viram zero. A variação em pontos compara o primeiro e o último dia com nota disponível; só aparece com pelo menos dois dias válidos.
 - Gráfico tem referência da meta atual de performance e seleção por toque, mouse ou teclado com link para abrir o dia. Não altera cálculos nem grava notas históricas: mantém a recomputação com os registros e metas atuais do app.
 - getPerformance aceita uma data final opcional (hoje por padrão). getPeriodReview passa a carregar todos os dias pedidos até 90; antes o limite interno de 60 truncava intervalos maiores.
+
+### Colaboradores
+Qualquer conta ativa pode convidar outra pelo @ em Configurações. Cada par gestor/colaborador tem no máximo um vínculo nessa direção. O convite chega ao sininho e aos aparelhos com inscrição push. Só o destinatário pode aceitar. Qualquer uma das partes pode cancelar o vínculo. Convidar novamente cria um novo convite e exige outro aceite.
+
+O relatório é de consulta. A página verifica no servidor, em cada requisição, o gestor autenticado, o vínculo aceito e a conta ativa do colaborador. Inclui a performance diária, últimos sete dias, sessões de trabalho, tarefas dos quadros próprios, marcações de metas, sono, lazer, lembretes e análise de IA já registrada. O compartilhamento abrange histórico e registros futuros, conforme informado no aceite. O vínculo não concede acesso de edição nem participação nos quadros.

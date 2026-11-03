@@ -60,6 +60,12 @@ export function SettingsForm() {
       </section>
 
       <section className="card p-5">
+        <h2 className="text-base font-semibold">Colaboradores</h2>
+        <p className="mt-1 text-sm text-ink-2">Convide por @, acompanhe relatórios e gerencie quem pode consultar os seus dados.</p>
+        <Link href="/configuracoes/colaboradores" className="btn mt-4">Adicionar colaborador</Link>
+      </section>
+
+      <section className="card p-5">
         <h2 className="text-base font-semibold">Aparência</h2>
         <p className="mt-1 text-sm text-ink-2">Escolha o tema. Vale para a sua conta em qualquer aparelho.</p>
         <div className="mt-4 grid grid-cols-2 gap-3">

@@ -1,6 +1,8 @@
 "use client";
 
 import { Bell, Check, X } from "lucide-react";
+import Link from "next/link";
+import type { pendingCollaborations } from "@/lib/collaborators";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { http } from "@/lib/client";
@@ -9,15 +11,21 @@ import { Avatar } from "@/components/profile/ProfilePage";
 import type { BoardInviteDTO } from "@/lib/types";
 
 /** Sininho ao lado do avatar: convites de quadro pendentes. */
-export function InviteBell() {
+export function InviteBell({ inRail = false }: { inRail?: boolean }) {
   const router = useRouter();
   const [invites, setInvites] = useState<BoardInviteDTO[]>([]);
+  const [collaborations, setCollaborations] = useState<Awaited<ReturnType<typeof pendingCollaborations>>>([]);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     try {
-      setInvites(await http.get<BoardInviteDTO[]>("/api/convites"));
+      const [boards, requests] = await Promise.all([
+        http.get<BoardInviteDTO[]>("/api/convites"),
+        http.get<Awaited<ReturnType<typeof pendingCollaborations>>>("/api/colaboradores"),
+      ]);
+      setInvites(boards);
+      setCollaborations(requests);
     } catch {
       /* sem sessão */
     }
@@ -30,8 +38,10 @@ export function InviteBell() {
     const id = setInterval(load, 60000);
     const onFocus = () => load();
     window.addEventListener("focus", onFocus);
+    window.addEventListener("collaborations-changed", onFocus);
     return () => {
       clearInterval(id);
+      window.removeEventListener("collaborations-changed", onFocus);
       window.removeEventListener("focus", onFocus);
     };
   }, [load]);
@@ -59,15 +69,16 @@ export function InviteBell() {
     }
   }
 
-  const count = invites.length;
+  const count = invites.length + collaborations.length;
 
   return (
     <div className="relative" ref={ref}>
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => { if (!open) void load(); setOpen(!open); }}
         className="btn btn-ghost relative h-9 w-9 p-0"
         aria-label={count ? `${count} convite(s) pendente(s)` : "Notificações"}
+        aria-expanded={open}
         title="Convites"
       >
         <Bell size={17} className={count ? "text-orange" : "text-ink-2"} />
@@ -78,12 +89,16 @@ export function InviteBell() {
         )}
       </button>
       {open && (
-        <div className="absolute right-0 top-11 z-40 w-80 max-w-[90vw] rounded-xl border border-line-2 bg-surface-3 p-2 text-sm shadow-2xl">
+        <div className={`absolute z-40 max-h-[60vh] w-80 max-w-[calc(100vw_-_6rem)] sm:max-w-[90vw] overflow-y-auto rounded-xl border border-line-2 bg-surface-3 p-2 text-sm shadow-2xl ${inRail ? "bottom-11 left-0" : "right-0 top-11"}`}>
           <div className="px-2 py-1 text-xs font-medium uppercase tracking-wide text-ink-3">Convites</div>
           {count === 0 ? (
             <p className="px-2 py-3 text-sm text-ink-3">Nenhum convite pendente.</p>
           ) : (
             <ul className="space-y-1">
+              {collaborations.map(inv => <li key={inv.id} className="rounded-lg border border-line bg-well p-2.5">
+                <p>@{inv.manager.username} convidou você para colaborar e compartilhar seus resultados.</p>
+                <Link href="/configuracoes/colaboradores" className="btn mt-2" onClick={() => setOpen(false)}>Revisar convite</Link>
+              </li>)}
               {invites.map((inv) => (
                 <li key={inv.id} className="rounded-lg border border-line bg-well p-2.5">
                   <div className="flex items-center gap-2">

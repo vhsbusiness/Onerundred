@@ -295,7 +295,7 @@ function Rail({ tabs: items, isActive, me }: { tabs: Tab[]; isActive: (href: str
       <div className="v2-rail-foot flex shrink-0 flex-col items-center gap-2 border-t border-line p-3">
         {me && <UserMenu me={me} placement="up" />}
         <span className="flex items-center gap-1">
-          {me && <InviteBell />}
+          {me && <InviteBell inRail />}
           <button type="button" onClick={toggle} className="btn btn-ghost h-8 w-8 p-0" aria-label="Recolher ou expandir a barra lateral" title="Recolher / expandir">
             <ChevronsLeft size={16} className="v2-when-expanded" />
             <ChevronsRight size={16} className="v2-when-collapsed" />
