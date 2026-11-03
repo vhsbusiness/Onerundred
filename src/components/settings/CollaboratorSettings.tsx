@@ -49,10 +49,15 @@ export function CollaboratorSettings({ data }: { data: Awaited<ReturnType<typeof
     <section className="card space-y-3 p-5">
       <h2 className="font-semibold">Quem pode acompanhar meus dados</h2>
       {!data.received.length && <p className="text-sm text-ink-3">Nenhum convite recebido ou acesso ativo.</p>}
+      {data.edits.map(r => <div key={r.id} className="space-y-2 border-t border-line py-3 text-sm">
+        <p>@{r.collaboration.manager.username} solicita edição de <strong>{r.board.name}</strong>. Ao aprovar, ele entra como membro do quadro.</p>
+        <div className="flex flex-wrap gap-2">{[true, false].map(approve => <button key={String(approve)} disabled={busy} className="btn" onClick={() => submit(() => http.patch("/api/colaboradores/edicao", { id: r.id, approve }), approve ? "Edição autorizada." : "Pedido recusado.")}>{approve ? "Autorizar edição" : "Recusar edição"}</button>)}</div>
+      </div>)}
       {data.received.map(row => <div key={row.id} className="space-y-2 border-t border-line pt-3 text-sm">
         <strong>{row.manager.name} · @{row.manager.username}</strong>
-        <p className="text-ink-2">{row.accepted ? "Você compartilha" : "Ao aceitar, você compartilha"} seu histórico e seus próximos registros de performance, tarefas, horários de trabalho, metas, sono, lazer, lembretes e análises diárias de IA. O acesso é somente para consulta e você pode encerrá-lo aqui.</p>
+        <p className="text-ink-2">{row.accepted ? "Você compartilha" : "Ao aceitar, você compartilha"} seu histórico e seus próximos registros de tarefas dos seus quadros de trabalho, notas dessas tarefas e horários das sessões de trabalho. {(!row.accepted || row.shareBoards) && "Também permite consultar as listas, cartões e anexos dos seus quadros."} O acesso é somente para consulta e você pode encerrá-lo aqui.</p>
         <div className="flex flex-wrap gap-2">
+          {row.accepted && !row.shareBoards && <button disabled={busy} className="btn" onClick={() => change(row.id, "shareBoards", "Leitura dos quadros autorizada.")}>Permitir leitura dos meus quadros e anexos</button>}
           {!row.accepted && <button disabled={busy} className="btn btn-primary" onClick={() => change(row.id,"accept","Acesso autorizado.")}>Aceitar e compartilhar</button>}
           <button disabled={busy} className="btn" onClick={() => change(row.id,"remove",row.accepted ? "Acesso encerrado." : "Convite recusado.")}>{row.accepted ? "Encerrar acesso" : "Recusar"}</button>
         </div>

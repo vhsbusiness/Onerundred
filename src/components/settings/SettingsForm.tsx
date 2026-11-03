@@ -8,7 +8,7 @@ import { Modal } from "@/components/ui/Modal";
 import type { Theme } from "@/lib/theme";
 import { applyTheme, currentTheme } from "@/lib/theme-client";
 
-export function SettingsForm() {
+export function SettingsForm({ collaborators }: { collaborators: { id: string; employee: { name: string; username: string } }[] }) {
   const [resetOpen, setResetOpen] = useState(false);
   const [understood, setUnderstood] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -62,6 +62,12 @@ export function SettingsForm() {
       <section className="card p-5">
         <h2 className="text-base font-semibold">Colaboradores</h2>
         <p className="mt-1 text-sm text-ink-2">Convide por @, acompanhe relatórios e gerencie quem pode consultar os seus dados.</p>
+        {collaborators.length ? <ul className="mt-3 divide-y divide-line">
+          {collaborators.map(({ id, employee }) => <li key={id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+            <span className="min-w-0 break-words text-sm">{employee.name} <span className="text-ink-3">@{employee.username}</span></span>
+            <Link className="btn" prefetch={false} href={`/configuracoes/colaboradores/${id}`}>Ver relatório</Link>
+          </li>)}
+        </ul> : <p className="mt-3 text-sm text-ink-3">Os colaboradores aparecem aqui após aceitarem o convite.</p>}
         <Link href="/configuracoes/colaboradores" className="btn mt-4">Adicionar colaborador</Link>
       </section>
 

@@ -67,6 +67,7 @@ model Board {
   lists     List[]
   members   BoardMember[]
   invites   BoardInvite[]
+  editRequests BoardEditRequest[]
   labels    BoardLabel[]
 
   @@index([userId])
@@ -457,10 +458,22 @@ model Collaboration {
   managerId String
   employeeId String
   accepted Boolean @default(false)
+  shareBoards Boolean @default(false)
+  editRequests BoardEditRequest[]
   createdAt DateTime @default(now())
   manager User @relation("Manager", fields: [managerId], references: [id], onDelete: Cascade)
   employee User @relation("Employee", fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@unique([managerId, employeeId])
   @@index([employeeId, accepted])
+}
+
+model BoardEditRequest {
+  id String @id @default(cuid())
+  collaborationId String
+  boardId String
+  collaboration Collaboration @relation(fields: [collaborationId], references: [id], onDelete: Cascade)
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  @@unique([collaborationId, boardId])
+  @@index([boardId])
 }

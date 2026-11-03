@@ -2,6 +2,7 @@
 
 import { Bell, Check, X } from "lucide-react";
 import Link from "next/link";
+import type { pendingBoardRequests } from "@/lib/collaboration-boards";
 import type { pendingCollaborations } from "@/lib/collaborators";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -15,15 +16,18 @@ export function InviteBell({ inRail = false }: { inRail?: boolean }) {
   const router = useRouter();
   const [invites, setInvites] = useState<BoardInviteDTO[]>([]);
   const [collaborations, setCollaborations] = useState<Awaited<ReturnType<typeof pendingCollaborations>>>([]);
+  const [edits, setEdits] = useState<Awaited<ReturnType<typeof pendingBoardRequests>>>([]);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     try {
-      const [boards, requests] = await Promise.all([
+      const [boards, requests, editRequests] = await Promise.all([
         http.get<BoardInviteDTO[]>("/api/convites"),
         http.get<Awaited<ReturnType<typeof pendingCollaborations>>>("/api/colaboradores"),
+        http.get<Awaited<ReturnType<typeof pendingBoardRequests>>>("/api/colaboradores/edicao"),
       ]);
+      setEdits(editRequests);
       setInvites(boards);
       setCollaborations(requests);
     } catch {
@@ -69,7 +73,7 @@ export function InviteBell({ inRail = false }: { inRail?: boolean }) {
     }
   }
 
-  const count = invites.length + collaborations.length;
+  const count = invites.length + collaborations.length + edits.length;
 
   return (
     <div className="relative" ref={ref}>
@@ -95,6 +99,10 @@ export function InviteBell({ inRail = false }: { inRail?: boolean }) {
             <p className="px-2 py-3 text-sm text-ink-3">Nenhum convite pendente.</p>
           ) : (
             <ul className="space-y-1">
+              {edits.map(request => <li key={request.id} className="rounded-lg border border-line bg-well p-2">
+                <p>@{request.collaboration.manager.username} quer editar {request.board.name}.</p>
+                <Link href="/configuracoes/colaboradores" className="btn mt-2" onClick={() => setOpen(false)}>Revisar pedido de edição</Link>
+              </li>)}
               {collaborations.map(inv => <li key={inv.id} className="rounded-lg border border-line bg-well p-2.5">
                 <p>@{inv.manager.username} convidou você para colaborar e compartilhar seus resultados.</p>
                 <Link href="/configuracoes/colaboradores" className="btn mt-2" onClick={() => setOpen(false)}>Revisar convite</Link>

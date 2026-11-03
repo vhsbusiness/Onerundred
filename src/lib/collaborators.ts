@@ -1,3 +1,4 @@
+import { pendingBoardRequests } from "./collaboration-boards";
 import { prisma } from "./db";
 import { ApiError } from "./errors";
 import { sendToUser } from "./notifications";
@@ -13,11 +14,12 @@ export function pendingCollaborations(employeeId: string) {
 }
 
 export async function myCollaborations(userId: string) {
-  const [sent, received] = await Promise.all([
+  const [sent, received, edits] = await Promise.all([
     prisma.collaboration.findMany({ where: { managerId: userId }, select: { id: true, accepted: true, employee: { select: person } }, orderBy: { createdAt: "desc" } }),
-    prisma.collaboration.findMany({ where: { employeeId: userId }, select: { id: true, accepted: true, manager: { select: person } }, orderBy: { createdAt: "desc" } }),
+    prisma.collaboration.findMany({ where: { employeeId: userId }, select: { id: true, accepted: true, shareBoards: true, manager: { select: person } }, orderBy: { createdAt: "desc" } }),
+    pendingBoardRequests(userId),
   ]);
-  return { sent, received };
+  return { sent, received, edits };
 }
 
 export async function inviteCollaborator(manager: { id: string; username: string }, username: string) {
@@ -45,9 +47,14 @@ export async function inviteCollaborator(manager: { id: string; username: string
 export async function changeCollaboration(userId: string, id: string, action: string) {
   if (action === "accept") {
     const result = await prisma.collaboration.updateMany({
-      where: { id, employeeId: userId, accepted: false, manager: { active: true } }, data: { accepted: true },
+      where: { id, employeeId: userId, accepted: false, manager: { active: true } }, data: { accepted: true, shareBoards: true },
     });
     if (!result.count) throw new ApiError(404, "Convite indisponível.");
+    return;
+  }
+  if (action === "shareBoards") {
+    const result = await prisma.collaboration.updateMany({ where: { id, employeeId: userId, accepted: true }, data: { shareBoards: true } });
+    if (!result.count) throw new ApiError(404, "Colaboração indisponível.");
     return;
   }
   if (action !== "remove") throw new ApiError(400, "Ação inválida.");
