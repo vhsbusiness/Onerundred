@@ -47,7 +47,7 @@ export default async function Report({ params, searchParams }: { params: Promise
     prisma.card.findMany({ where: {
       list: { board },
       OR: [{ scheduledFor: dia }, { completedAt: dateFilter }, { sessions: { some: { startedAt: dateFilter } } }],
-    }, select: { title: true, completedAt: true, list: { select: { name: true } }, sessions: { where: { startedAt: dateFilter }, select: { startedAt: true, endedAt: true } } }, orderBy: { title: "asc" } }),
+    }, select: { id: true, title: true, completedAt: true, list: { select: { name: true } }, sessions: { where: { startedAt: dateFilter }, select: { startedAt: true, endedAt: true } } }, orderBy: { title: "asc" } }),
     collaborationBoards(manager.id, userId, id),
   ]);
   const cards = lists.flatMap(list => list.cards.map(card => ({
@@ -63,6 +63,16 @@ export default async function Report({ params, searchParams }: { params: Promise
   const selected = week[6];
   const now = new Date().getTime();
   const workMs = sessions.reduce((sum, session) => sum + (session.endedAt?.getTime() ?? now) - session.startedAt.getTime(), 0);
+  const taskTimes = tasks.map(task => ({
+    id: task.id,
+    title: task.title,
+    list: task.list.name,
+    done: Boolean(task.completedAt && task.completedAt < end),
+    duration: task.sessions.reduce((sum, session) =>
+      sum + (session.endedAt?.getTime() ?? now) - session.startedAt.getTime(), 0),
+  })).sort((a, b) => b.duration - a.duration);
+  const doneCount = taskTimes.filter(task => task.done).length;
+  const longest = taskTimes[0]?.duration || 1;
   return <main className="space-y-4">
     <Link href="/configuracoes/colaboradores" className="text-sm text-blue">← Colaboradores</Link>
     <header className="flex flex-wrap items-center justify-between gap-3">
@@ -83,8 +93,8 @@ export default async function Report({ params, searchParams }: { params: Promise
         <div className="flex flex-wrap gap-2">{week.map(d => <Link key={d.key} prefetch={false} href={`?dia=${d.key}`} className="btn text-xs">{d.key.slice(8)}/{d.key.slice(5,7)} · {d.score === null ? "—" : d.score + "%"}</Link>)}</div>
       </section>
     </div>
-    <section className="card space-y-3 p-5">
-      <h2 className="font-semibold">Quadros de {link.employee.name}</h2>
+    <section id="quadros" aria-labelledby="titulo-quadros" tabIndex={-1} className="card scroll-mt-4 space-y-3 p-5">
+      <h2 id="titulo-quadros" className="font-semibold">Quadros de {link.employee.name}</h2>
       {!link.shareBoards && <p className="text-xs text-ink-3">Para disponibilizar os quadros privados, o colaborador pode ativar a leitura nas configurações de colaboração.</p>}
       {!boards.length && <p className="text-sm text-ink-3">Nenhum quadro disponível para consulta.</p>}
       {boards.map(b => <div key={b.id} className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
@@ -95,10 +105,32 @@ export default async function Report({ params, searchParams }: { params: Promise
     </section>
     <div className="grid gap-4 md:grid-cols-2">
       <Entries title={`Trabalho · ${formatDuration(workMs)}`} items={sessions.map(s => `${dateTime(s.startedAt)} até ${s.endedAt ? dateTime(s.endedAt) : "agora"}`)} />
-      <Entries title="Tarefas dos quadros próprios" items={tasks.map(t => {
-        const spent = t.sessions.reduce((sum,s) => sum + (s.endedAt?.getTime() ?? Date.now()) - s.startedAt.getTime(), 0);
-        return `${t.title} · ${t.list.name} · ${t.completedAt && t.completedAt < end ? "concluída" : "em aberto"} · ${formatDuration(spent)} cronometrados`;
-      })} />
+      <section className="card min-w-0 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold">Tarefas dos quadros próprios</h2>
+          <a href="#quadros" className="btn">Ver quadros</a>
+        </div>
+        {taskTimes.length === 0 ? <p className="mt-2 text-sm text-ink-3">Sem tarefas neste dia.</p> : <>
+          <h3 className="mt-4 text-sm font-semibold">Situação das tarefas</h3>
+          <div aria-hidden="true" className="mt-2 h-2 overflow-hidden rounded-full bg-blue">
+            <div className="h-full bg-green" style={{ width: (100 * doneCount / taskTimes.length) + "%" }} />
+          </div>
+          <div className="mt-2 flex flex-wrap gap-x-4 text-xs text-ink-2">
+            <span>Concluídas · {doneCount}</span><span>Em aberto · {taskTimes.length - doneCount}</span>
+          </div>
+          <h3 className="mt-5 text-sm font-semibold">Tempo por tarefa</h3>
+          <ul className="mt-3 space-y-4">{taskTimes.map(task => <li key={task.id}>
+            <div className="flex items-baseline justify-between gap-3 text-sm">
+              <span className="min-w-0 [overflow-wrap:anywhere]">{task.title}</span>
+              <strong className="shrink-0">{formatDuration(task.duration)}</strong>
+            </div>
+            <p className="mt-1 break-words text-xs text-ink-2">{task.list} · {task.done ? "Concluída" : "Em aberto"}</p>
+            <div aria-hidden="true" className="mt-1.5 h-2 overflow-hidden rounded-full bg-line">
+              <div className={task.done ? "h-full bg-green" : "h-full bg-blue"} style={{ width: (100 * task.duration / longest) + "%" }} />
+            </div>
+          </li>)}</ul>
+        </>}
+      </section>
     </div>
   </main>;
 }
