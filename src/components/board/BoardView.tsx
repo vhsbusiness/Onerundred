@@ -403,7 +403,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
             {boardMenu && (
               <div className="absolute right-0 top-10 z-30 w-60 rounded-xl border border-line-2 bg-surface-3 p-1 text-sm shadow-2xl">
                 <div className="flex items-center justify-between gap-2 border-b border-line p-2">Ícone
-                  <SymbolPicker value={board.symbol} change={async symbol=>{
+                  <SymbolPicker type={board.type} value={board.symbol} change={async symbol=>{
                     try { await http.patch(`/api/boards/${board.id}`, {symbol:symbol || null}); await load(); }
                     catch { notify("Não foi possível salvar o ícone.", "error"); }
                   }} />
@@ -474,7 +474,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
         </div>
       </div>
 
-      {isMap ? <MindMap key={board.id} boardId={board.id} nodes={board.mindNodes} onChanged={load} /> : <DndContext
+      {isMap ? <MindMap key={board.id} boardId={board.id} nodes={board.mindNodes} undoId={board.mindUndoId} onChanged={load} /> : <DndContext
         id={`board-${boardId}`}
         sensors={sensors}
         collisionDetection={collision}

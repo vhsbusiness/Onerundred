@@ -93,6 +93,7 @@ export type BoardType = "tasks" | "organization" | "mindmap";
 export interface BoardDTO {
   symbol: string | null;
   mindNodes: MindNodeDTO[];
+  mindUndoId: number | null;
   type: BoardType;
   id: string;
   name: string;

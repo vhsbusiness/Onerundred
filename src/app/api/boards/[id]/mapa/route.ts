@@ -1,7 +1,6 @@
 import { ApiError, json, readBody, requireString, withUser } from "@/lib/api";
 import { palette, positionBranch } from "@/lib/mind-layout";
-import { prisma } from "@/lib/db";
-import { boardAccess } from "@/lib/repo";
+import { remember, subtree, writeMap, type NodePatch } from "@/lib/mind-undo";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -17,14 +16,16 @@ export const POST = withUser(async (user, req: Request, ctx: Context) => {
   const body = await readBody(req);
   const parentId = requireString(body.parentId, "Ideia principal");
   const title = topic(body.title);
-  const node = await prisma.$transaction(async tx => {
+  const node = await writeMap(boardId, user.id, async tx => {
     const parent = await tx.mindNode.findFirst({
-      where: { id: parentId, boardId, board: { type: "mindmap", ...boardAccess(user.id) } },
+      where: { id: parentId, boardId },
     });
     if (!parent) throw new ApiError(404, "Ideia indisponível.");
     const nodes = await tx.mindNode.findMany({ where: { boardId }, select: { id: true, x: true, y: true, parentId: true, color: true } });
     const branch = positionBranch(parent, nodes);
-    return tx.mindNode.create({ data: { boardId, parentId, title, ...branch } });
+    const node = await tx.mindNode.create({ data: { boardId, parentId, title, shape: "plain", ...branch } });
+    await remember(tx, boardId, user.id, { kind: "create", nodes: [node] });
+    return node;
   });
   return json(node, { status: 201 });
 });
@@ -33,7 +34,7 @@ export const PATCH = withUser(async (user, req: Request, ctx: Context) => {
   const { id: boardId } = await ctx.params;
   const body = await readBody(req);
   const id = requireString(body.id, "Ideia");
-  const data: Partial<Omit<import("@/lib/types").MindNodeDTO, "id" | "parentId">> = {};
+  const data: NodePatch = {};
   for (const key of ["bold", "locked"] as const) {
     if (body[key] === undefined) continue;
     if (typeof body[key] !== "boolean") throw new ApiError(400, "Formato inválido.");
@@ -46,7 +47,7 @@ export const PATCH = withUser(async (user, req: Request, ctx: Context) => {
     data[key] = value;
   }
   if (body.shape !== undefined) {
-    if (typeof body.shape !== "string" || !["rounded", "pill", "plain"].includes(body.shape)) throw new ApiError(400, "Forma inválida.");
+    if (typeof body.shape !== "string" || !["rounded", "pill", "plain", "rectangle"].includes(body.shape)) throw new ApiError(400, "Forma inválida.");
     data.shape = body.shape;
   }
   if (body.fontSize !== undefined) {
@@ -73,15 +74,28 @@ export const PATCH = withUser(async (user, req: Request, ctx: Context) => {
     data.y = body.y;
   }
   if (!Object.keys(data).length) throw new ApiError(400, "Escolha uma alteração.");
-  const result = await prisma.mindNode.updateMany({ where: { id, boardId, ...(data.x === undefined ? {} : { locked: false }), board: { type: "mindmap", ...boardAccess(user.id) } }, data });
-  if (!result.count) throw new ApiError(404, "Ideia indisponível.");
+  await writeMap(boardId, user.id, async tx => {
+    const node = await tx.mindNode.findFirst({ where: { id, boardId } });
+    if (!node || (data.x !== undefined && node.locked)) throw new ApiError(404, "Ideia indisponível.");
+    const changed = (Object.keys(data) as (keyof NodePatch)[]).filter(key => node[key] !== data[key]);
+    if (!changed.length) return;
+    const before = Object.fromEntries(changed.map(key => [key, node[key]]));
+    const after = Object.fromEntries(changed.map(key => [key, data[key]]));
+    await tx.mindNode.update({ where: { id }, data });
+    await remember(tx, boardId, user.id, { kind: "edit", id, before, after });
+  });
   return json({ ok: true });
 });
 
 export const DELETE = withUser(async (user, req: Request, ctx: Context) => {
   const { id: boardId } = await ctx.params;
   const id = requireString((await readBody(req)).id, "Ideia");
-  const result = await prisma.mindNode.deleteMany({ where: { id, boardId, parentId: { not: null }, board: { type: "mindmap", ...boardAccess(user.id) } } });
-  if (!result.count) throw new ApiError(404, "Ramo indisponível para exclusão.");
+  await writeMap(boardId, user.id, async tx => {
+    const nodes = await tx.mindNode.findMany({ where: { boardId } });
+    const branch = nodes.find(n => n.id === id);
+    if (!branch?.parentId) throw new ApiError(404, "Ramo indisponível para exclusão.");
+    await remember(tx, boardId, user.id, { kind: "delete", nodes: subtree(nodes, branch) });
+    await tx.mindNode.delete({ where: { id } });
+  });
   return json({ ok: true });
 });

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { ApiError, json, readBody, withUser } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { readBoardScreens } from "@/lib/import";
+import { remember, writeMap } from "@/lib/mind-undo";
 import { positionBranch } from "@/lib/mind-layout";
 import { boardAccess } from "@/lib/repo";
 
@@ -41,10 +42,7 @@ const norm = (s: string) => s.normalize("NFKC").trim().replace(/\s+/g, " ").toLo
 export const PUT = withUser(async (user, req: Request, ctx: Context) => {
   const { id: boardId } = await ctx.params;
   const paths = pathsFrom((await readBody(req)).paths);
-  const count = await prisma.$transaction(async tx => {
-    // Serializa importações no mesmo quadro antes de procurar os ramos já existentes.
-    const allowed = await tx.board.updateMany({ where: { id: boardId, type: "mindmap", ...boardAccess(user.id) }, data: { position: { increment: 0 } } });
-    if (!allowed.count) throw new ApiError(404, "Mapa indisponível.");
+  const count = await writeMap(boardId, user.id, async tx => {
     const nodes = await tx.mindNode.findMany({ where: { boardId }, select: { id: true, parentId: true, boardId: true, title: true, color: true, x: true, y: true } });
     const root = nodes.find(n => !n.parentId);
     if (!root) throw new ApiError(409, "Ideia central indisponível.");
@@ -62,7 +60,10 @@ export const PUT = withUser(async (user, req: Request, ctx: Context) => {
       }
     }
     const added = nodes.slice(original);
-    if (added.length) await tx.mindNode.createMany({ data: added });
+    if (added.length) {
+      const nodes = await tx.mindNode.createManyAndReturn({ data: added.map(n => ({ ...n, shape: "plain" })) });
+      await remember(tx, boardId, user.id, { kind: "create", nodes });
+    }
     return added.length;
   });
   return json({ count });

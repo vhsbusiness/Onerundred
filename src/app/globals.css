@@ -612,3 +612,96 @@ body {
   outline: 2px solid var(--color-orange);
   outline-offset: 2px;
 }
+
+/* Mind map controls use the canvas palette, including when only the map is light. */
+.mind-map {
+  --mind-panel: var(--color-surface);
+  --mind-accent: var(--color-blue);
+}
+.mind-canvas {
+  background-color: var(--color-bg);
+  background-image: radial-gradient(circle, var(--color-grid-2) 0.85px, transparent 1px);
+  background-size: 20px 20px;
+}
+.mind-canvas-light .mind-canvas, :root[data-theme="light"] .mind-canvas {
+  background-color: var(--color-surface-2);
+  background-image: linear-gradient(to right, var(--color-grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-grid) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+.mind-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--color-line-2);
+  border-radius: 12px;
+  color: var(--color-ink);
+  background: var(--mind-panel);
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--color-ink) 8%, transparent);
+}
+.mind-tool, .mind-tools select {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 30px;
+  min-block-size: 32px;
+  border-radius: 7px;
+  padding: 4px 6px;
+  color: var(--color-ink);
+  background: transparent;
+  cursor: pointer;
+}
+.mind-tools select { max-width: 8rem; font-size: 0.78rem; }
+.mind-tools option { color: var(--color-ink); background: var(--mind-panel); }
+.mind-tool:hover:not(:disabled), .mind-tools select:hover { background: var(--color-fill-2); }
+.mind-tool[aria-pressed="true"] { color: var(--mind-accent); background: color-mix(in srgb, var(--mind-accent) 12%, var(--mind-panel)); }
+.mind-tool:disabled { color: var(--color-ink-3); opacity: 0.52; cursor: default; }
+.mind-tool:focus-visible, .mind-tool:focus-within, .mind-handle:focus-visible { outline: 2px solid var(--mind-accent); outline-offset: 1px; }
+.mind-context {
+  position: absolute;
+  z-index: 2;
+  width: min(28rem, calc(100% - 20px));
+  left: clamp(min(50%, 14rem + 10px), calc(50% + var(--mind-x)), max(50%, 100% - 14rem - 10px));
+  top: clamp(86px, calc(50% + var(--mind-y) - 36px), calc(100% - 54px));
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+}
+.mind-context > * { pointer-events: auto; }
+.mind-format { flex-wrap: wrap; justify-content: center; width: fit-content; margin-inline: auto; }
+.mind-history, .mind-zoom { position: absolute; z-index: 1; }
+.mind-history { top: 12px; left: 12px; }
+.mind-zoom { bottom: 12px; right: 12px; }
+.mind-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 7px 9px;
+  border: 1.5px solid;
+  border-radius: 8px;
+  color: var(--color-ink);
+  background: var(--mind-panel);
+  text-align: center;
+  line-height: 1.25;
+  cursor: text;
+}
+.mind-node[data-root="true"] { padding-block: 10px; font-weight: 650; }
+.mind-node[data-shape="pill"] { border-radius: 999px; }
+.mind-node[data-shape="rectangle"] { border-radius: 0; }
+.mind-node[data-shape="plain"] { border-width: 0; background: transparent; }
+.mind-node[aria-pressed="true"], .mind-node:focus-visible { outline: 2px solid var(--mind-accent); outline-offset: 2px; }
+.mind-handles { position: absolute; display: flex; gap: 3px; transform: translateY(-50%); }
+.mind-handle {
+  display: grid; place-items: center; min-width: 22px; height: 22px; padding-inline: 3px;
+  border: 1px solid var(--color-line-2); border-radius: 99px; color: var(--color-ink);
+  background: var(--mind-panel); font-size: 11px; font-weight: 650; cursor: pointer;
+}
+.mind-handle:hover { color: var(--mind-accent); border-color: currentColor; }
+@media (max-width: 639px) {
+  .mind-history { top: auto; bottom: 8px; left: 8px; }
+  .mind-zoom { bottom: 8px; right: 8px; }
+  .mind-context { top: 8px; transform: translateX(-50%); }
+  .mind-tool, .mind-tools select { min-height: 36px; }
+  .mind-handle { min-width: 28px; height: 28px; }
+}
+
+.board-icon-cut { fill: none; stroke: var(--color-surface); stroke-width: 1.9; }

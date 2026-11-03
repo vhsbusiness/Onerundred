@@ -69,7 +69,7 @@ export function BoardsGrid() {
           <label className="flex min-w-0 items-center"><select aria-label="Tipo do novo quadro" value={type} onChange={(e) => setType(e.target.value as BoardType)} className="input w-full sm:w-auto">
             <option value="tasks">Padrão · Lista de tarefas</option><option value="mindmap">Mapa mental</option><option value="organization">Organização</option>
           </select></label>
-          <div className="flex items-center gap-2"><BoardIcon type={type} symbol={symbol} /><SymbolPicker value={symbol} change={setSymbol} /></div>
+          <SymbolPicker type={type} value={symbol} change={setSymbol} />
           <button type="submit" disabled={creating || !name.trim()} className="btn btn-primary">
             <Plus size={14} /> Criar
           </button>
@@ -96,7 +96,7 @@ export function BoardsGrid() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
-                    <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-line bg-surface"><BoardIcon type={b.type} symbol={b.symbol} size={20} /></span>
+                    <BoardIcon type={b.type} symbol={b.symbol} size={38} />
                     <h2 className="min-w-0 break-words text-lg font-semibold tracking-tight">{b.name}</h2>
                   </div>
                   <ArrowUpRight size={18} className="text-ink-3 transition group-hover:text-ink" />

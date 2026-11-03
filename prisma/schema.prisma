@@ -29,6 +29,7 @@ model User {
   sleepLogs    SleepLog[]
   projects     Project[]
   leisureLogs  LeisureLog[]
+  mindUndos    MindUndo[]
   undoActions  UndoAction[]
   pushSubs     PushSubscription[]
   notifPref    NotificationPref?
@@ -69,10 +70,22 @@ model Board {
   members   BoardMember[]
   invites   BoardInvite[]
   mindNodes MindNode[]
+  mindUndos MindUndo[]
   editRequests BoardEditRequest[]
   labels    BoardLabel[]
 
   @@index([userId])
+}
+
+model MindUndo {
+  id      Int    @id @default(autoincrement())
+  boardId String
+  userId  String
+  payload String
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([boardId, userId, id])
 }
 
 model MindNode {

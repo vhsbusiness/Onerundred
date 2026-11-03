@@ -1,0 +1,7 @@
+CREATE TABLE "MindUndo" (
+  "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  "boardId" TEXT NOT NULL REFERENCES "Board"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+  "userId" TEXT NOT NULL REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+  "payload" TEXT NOT NULL
+);
+CREATE INDEX "MindUndo_boardId_userId_id_idx" ON "MindUndo"("boardId", "userId", "id");
