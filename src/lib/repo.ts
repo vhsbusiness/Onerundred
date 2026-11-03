@@ -118,7 +118,7 @@ export function serializeCard(c: CardRow): CardDTO {
   };
 }
 
-const cardInclude = {
+export const cardInclude = {
   sessions: true,
   images: { select: { id: true }, orderBy: { createdAt: "asc" } },
   checklist: { orderBy: { position: "asc" } },

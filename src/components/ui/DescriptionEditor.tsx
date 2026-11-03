@@ -11,16 +11,19 @@ function safeLink(url: string) {
   catch { return false; }
 }
 
-export function DescriptionEditor({ value, onChange, onSave }: {
-  value: string;
+export function DescriptionEditor({ value, onChange, onSave, readOnly }: { value: string } & ({
+  readOnly: true; onChange?: never; onSave?: never;
+} | {
+  readOnly?: false;
   onChange: (value: string) => void;
   onSave: (value: string) => void;
-}) {
+})) {
   // CardModal is keyed by card id. Never replace the document during an API refresh:
   // doing so would reset the selection, undo history and unsaved typing.
   const [initialContent] = useState(() => value.replace(/</g, "&lt;").replace(/>/g, "&gt;"));
   const editor = useEditor({
     immediatelyRender: false,
+    editable: !readOnly,
     extensions: [
       StarterKit.configure({
         heading: false, codeBlock: false, horizontalRule: false, underline: false,
@@ -36,13 +39,13 @@ export function DescriptionEditor({ value, onChange, onSave }: {
     contentType: "markdown",
     editorProps: {
       attributes: {
-        role: "textbox", "aria-label": "Descrição", "aria-multiline": "true",
+        ...(readOnly ? {} : { role: "textbox", "aria-multiline": "true" }), "aria-label": "Descrição",
         class: "description-content min-h-32 px-3 py-3 text-base sm:text-sm text-ink outline-none leading-relaxed [overflow-wrap:anywhere] [&_a]:text-blue [&_a]:underline [&_a]:cursor-pointer [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:min-h-[1.5em] [&_blockquote]:border-l-2 [&_blockquote]:border-line-2 [&_blockquote]:pl-3",
       },
 
     },
-    onUpdate: ({ editor }) => onChange(editor.getMarkdown()),
-    onBlur: ({ editor }) => onSave(editor.getMarkdown()),
+    onUpdate: ({ editor }) => onChange?.(editor.getMarkdown()),
+    onBlur: ({ editor }) => onSave?.(editor.getMarkdown()),
   });
   const active = useEditorState({ editor, selector: ({ editor }) => ({
     bold: editor?.isActive("bold"), italic: editor?.isActive("italic"),
@@ -59,7 +62,7 @@ export function DescriptionEditor({ value, onChange, onSave }: {
   }
 
   return <div className="min-w-0 overflow-hidden rounded-xl border border-line-2 bg-well">
-    <div className="flex flex-wrap items-center gap-1 border-b border-line px-2 py-1.5" role="group" aria-label="Formatação da descrição">
+    {!readOnly && <div className="flex flex-wrap items-center gap-1 border-b border-line px-2 py-1.5" role="group" aria-label="Formatação da descrição">
       {[
         { Icon: Bold, label: "Negrito", kind: "bold" as const },
         { Icon: Italic, label: "Itálico", kind: "italic" as const },
@@ -71,7 +74,7 @@ export function DescriptionEditor({ value, onChange, onSave }: {
         className={`btn btn-ghost h-10 w-10 p-0 ${active?.[kind] ? "bg-fill-2 text-orange" : "text-ink-2"}`}>
         <Icon size={16} />
       </button>)}
-    </div>
+    </div>}
     <EditorContent editor={editor} />
   </div>;
 }

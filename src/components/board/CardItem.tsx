@@ -17,9 +17,11 @@ export function CardBody({
   todayKey,
   onOpen,
   onTimer,
+  collaborationId,
   dragging = false,
   organization = false,
 }: {
+  collaborationId?: string;
   organization?: boolean;
   card: CardDTO;
   listPriority?: number;
@@ -48,11 +50,18 @@ export function CardBody({
       } ${done ? "opacity-60" : ""} ${dragging ? "rotate-[1.5deg] shadow-2xl" : ""}`}
       onClick={onOpen}
       role="button"
+      tabIndex={collaborationId ? 0 : undefined}
+      onKeyDown={collaborationId ? (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen?.();
+        }
+      } : undefined}
     >
       {card.imageIds.length > 0 && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={imageUrl(card.imageIds[0])}
+          src={imageUrl(card.imageIds[0], collaborationId)}
           alt=""
           className="mb-2 h-28 w-full rounded-lg object-cover"
           loading="lazy"

@@ -1,5 +1,7 @@
 "use client";
 
+import { BoardFrame, BoardScroller } from "./BoardLayout";
+
 import {
   DndContext,
   DragOverlay,
@@ -61,9 +63,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
   const [listName, setListName] = useState("");
   const [editingName, setEditingName] = useState(false);
   const [boardName, setBoardName] = useState(initialBoard?.name ?? "");
-  const [panning, setPanning] = useState(false);
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  const panRef = useRef<{ x: number; left: number } | null>(null);
+
   const today = todayKey();
 
   useEffect(() => {
@@ -74,23 +74,6 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, [boardMenu]);
-
-  // Rolagem lateral arrastando o mouse em qualquer área vazia do quadro.
-  function onPanStart(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.button !== 0 || !scrollerRef.current) return;
-    if ((e.target as HTMLElement).closest("[data-no-pan]")) return;
-    panRef.current = { x: e.clientX, left: scrollerRef.current.scrollLeft };
-    setPanning(true);
-    e.preventDefault();
-  }
-  function onPanMove(e: React.MouseEvent<HTMLDivElement>) {
-    if (!panRef.current || !scrollerRef.current) return;
-    scrollerRef.current.scrollLeft = panRef.current.left - (e.clientX - panRef.current.x);
-  }
-  function onPanEnd() {
-    panRef.current = null;
-    setPanning(false);
-  }
 
   const load = useCallback(async () => {
     try {
@@ -354,10 +337,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
   const doneCount = board.lists.reduce((a, l) => a + l.cards.filter((c) => c.completedAt).length, 0);
 
   return (
-    <div
-      className="flex flex-col [--board-offset:11.5rem] md:[--board-offset:7.5rem]"
-      style={{ height: "calc(100dvh - var(--board-offset) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))" }}
-    >
+    <BoardFrame>
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Link href="/quadros?lista=1" className="btn btn-ghost h-8 px-2" aria-label="Todos os quadros" title="Todos os quadros">
           <ArrowLeft size={16} />
@@ -495,16 +475,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
           load();
         }}
       >
-        <div
-          ref={scrollerRef}
-          onMouseDown={onPanStart}
-          onMouseMove={onPanMove}
-          onMouseUp={onPanEnd}
-          onMouseLeave={onPanEnd}
-          className={`board-scroller mx-[calc(50%_-_50vw)] flex min-h-0 flex-1 snap-x snap-mandatory items-start gap-3 overflow-x-auto px-[calc(50vw_-_50%_+_1rem)] pb-4 sm:px-[calc(50vw_-_50%_+_1.5rem)] md:snap-none md:gap-4 ${
-            panning ? "cursor-grabbing select-none" : "cursor-grab"
-          }`}
-        >
+        <BoardScroller>
           <SortableContext items={board.lists.map((l) => `${LIST_SORT_PREFIX}${l.id}`)} strategy={horizontalListSortingStrategy}>
           {board.lists.map((list, i) => (
             <ListColumn
@@ -558,7 +529,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
               <Plus size={15} /> Nova lista
             </button>
           )}
-        </div>
+        </BoardScroller>
 
         <DragOverlay dropAnimation={null}>
           {activeCard ? (
@@ -608,6 +579,6 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
           onChanged={load}
         />
       )}
-    </div>
+    </BoardFrame>
   );
 }

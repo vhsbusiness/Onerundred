@@ -27,6 +27,6 @@ export function imagesFromClipboard(data: DataTransfer | null): File[] {
     .filter((f): f is File => Boolean(f));
 }
 
-export function imageUrl(id: string): string {
-  return `/api/imagens/${id}`;
+export function imageUrl(id: string, collaborationId?: string): string {
+  return `/api/imagens/${id}` + (collaborationId ? `?colaboracao=${encodeURIComponent(collaborationId)}` : "");
 }

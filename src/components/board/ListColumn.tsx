@@ -1,5 +1,7 @@
 "use client";
 
+import { columnClass, KIND_LABEL } from "./BoardLayout";
+
 import { askConfirm, notify } from "@/components/ui/ConfirmProvider";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -42,12 +44,7 @@ function WeekdayChips({ value, onChange, size = "sm" }: { value: number[]; onCha
 /** Prefixo dos ids de ordenação das listas (distinto do id da lista, que é a área de soltar tarefas). */
 export const LIST_SORT_PREFIX = "list:";
 
-const KIND_LABEL: Record<ListKind, string> = {
-  normal: "Normal",
-  today: "Hoje",
-  tomorrow: "Amanhã",
-  done: "Feitas",
-};
+
 
 export function ListColumn({
   list,
@@ -303,7 +300,7 @@ export function ListColumn({
       data-no-pan
       ref={setSortableRef}
       style={{ transform: CSS.Translate.toString(sortTransform), transition: sortTransition }}
-      className={`board-column card flex max-h-full w-[86vw] max-w-[300px] shrink-0 snap-start flex-col bg-list transition md:w-[300px] ${
+      className={`${columnClass} ${
         isOver ? "border-line-2 bg-list-hover" : ""
       } ${sorting ? "z-20 opacity-90 shadow-2xl ring-1 ring-line-3" : ""}`}
     >

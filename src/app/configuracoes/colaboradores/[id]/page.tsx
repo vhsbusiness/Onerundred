@@ -97,11 +97,8 @@ export default async function Report({ params, searchParams }: { params: Promise
     </div>
     <div className="grid gap-4 md:grid-cols-2">
       <Entries title={`Trabalho · ${formatDuration(workMs)}`} items={sessions.map(s => `${dateTime(s.startedAt)} até ${s.endedAt ? dateTime(s.endedAt) : "agora"}`)} />
-      <details className="card min-w-0 self-start p-5">
-        <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 rounded-lg focus-visible:outline-2 focus-visible:outline-blue">
-          <span className="font-semibold">Quadros de {link.employee.name}</span>
-          <span className="btn">Ver quadros</span>
-        </summary>
+      <section className="card min-w-0 self-start p-5">
+        <h2 className="font-semibold">Quadros de {link.employee.name}</h2>
         <div className="mt-3 space-y-3">
           {!boards.length && <p className="text-sm text-ink-3">Nenhum quadro disponível para consulta.</p>}
           {boards.map(b => <div key={b.id} className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
@@ -110,7 +107,7 @@ export default async function Report({ params, searchParams }: { params: Promise
             {!b.editable && <BoardEditButton collaborationId={id} boardId={b.id} pending={b.pending} />}
           </div>)}
         </div>
-      </details>
+      </section>
     </div>
   </main>;
 }
