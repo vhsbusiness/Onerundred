@@ -63,7 +63,7 @@ export function CardBody({
       <div className="flex items-start gap-2">
         <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${p.dot}`} title={`Prioridade ${p.label}`} />
         <div className="min-w-0 flex-1">
-          <div className={`text-sm leading-snug ${done ? "line-through" : ""}`}>{card.title}</div>
+          <div className={`text-sm leading-snug [overflow-wrap:anywhere] ${done ? "line-through" : ""}`}>{card.title}</div>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-ink-3">
             {card.description ? <AlignLeft size={11} className="text-ink-3" /> : null}
             {card.checklist.length > 0 ? (

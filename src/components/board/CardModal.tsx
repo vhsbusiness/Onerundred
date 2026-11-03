@@ -329,8 +329,8 @@ export function CardModal({
 
   return (
     <Modal open onClose={close} title={titleNode} wide>
-      <div className="grid gap-6 md:grid-cols-[1fr_240px]">
-        <div className="space-y-5">
+      <div className="grid grid-cols-1 gap-6 [overflow-wrap:anywhere] md:grid-cols-[minmax(0,1fr)_240px]">
+        <div className="min-w-0 space-y-5">
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-3">
               Prioridade
