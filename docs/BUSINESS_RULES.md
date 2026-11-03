@@ -154,3 +154,8 @@ O relatório é de consulta. A página verifica no servidor, em cada requisiçã
 O aceite de um novo convite de colaboração inclui consulta aos quadros próprios e anexos, conforme informado no convite. A leitura também é habilitada nos vínculos já aceitos. Convites pendentes não liberam acesso. A consulta usa uma página própria e verifica o vínculo a cada requisição. Quadros em que ambos já participam abrem com o acesso habitual.
 
 Um pedido de edição está associado ao vínculo e ao quadro. O dono vê o pedido no sininho, aceita ou recusa em Colaboradores. Ao aprovar, o gestor entra como membro daquele quadro e passa a ser gerenciado pelas regras normais de compartilhamento. Encerrar a colaboração elimina a consulta por vínculo e os pedidos pendentes. Para retirar um compartilhamento já concedido, o dono remove o membro no quadro.
+
+### Mapas mentais
+Em Quadros, o formato Padrão cria listas de tarefas. Mapa mental cria uma ideia central com o nome do quadro. Cada ramo pertence a uma ideia do mesmo mapa. Excluir um ramo remove seus descendentes, e a raiz pode ser renomeada ou movida. Ideias não entram na pontuação nem recebem cronômetros. O formato do mapa é escolhido na criação, e listas e tarefas só podem ser transferidas entre quadros com listas.
+
+O dono e os membros do quadro podem editar as ideias e suas posições. A consulta pelo relatório de colaboração permite navegar pelo mapa e solicitar edição com as mesmas permissões dos demais quadros.

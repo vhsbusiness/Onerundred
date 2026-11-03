@@ -67,10 +67,27 @@ model Board {
   lists     List[]
   members   BoardMember[]
   invites   BoardInvite[]
+  mindNodes MindNode[]
   editRequests BoardEditRequest[]
   labels    BoardLabel[]
 
   @@index([userId])
+}
+
+model MindNode {
+  id       String @id @default(cuid())
+  boardId  String
+  parentId String?
+  title    String
+  color    String @default("orange")
+  x        Int @default(0)
+  y        Int @default(0)
+  board    Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  parent   MindNode? @relation("MindBranches", fields: [parentId], references: [id], onDelete: Cascade)
+  children MindNode[] @relation("MindBranches")
+
+  @@index([boardId])
+  @@index([parentId])
 }
 
 /// Usuário com acesso a um quadro de outra pessoa

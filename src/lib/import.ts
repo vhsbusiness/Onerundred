@@ -153,7 +153,7 @@ export async function extractFromImages(images: string[], userId?: string): Prom
 /** Compara o que a IA leu com o quadro atual e monta o plano: o que já existe e o que será criado. */
 export async function planImport(userId: string, boardId: string, images: string[]): Promise<ImportPlan> {
   const board = await prisma.board.findFirst({
-    where: { id: boardId, ...boardAccess(userId) },
+    where: { id: boardId, type: { not: "mindmap" }, ...boardAccess(userId) },
     include: { lists: { include: { cards: { where: { archivedAt: null }, select: { title: true } } } } },
   });
   if (!board) throw new ApiError(404, "Quadro não encontrado");
@@ -201,7 +201,7 @@ export async function applyImport(
   plan: ImportPlan,
   includeDone: boolean,
 ): Promise<{ lists: number; cards: number }> {
-  const board = await prisma.board.findFirst({ where: { id: boardId, ...boardAccess(userId) }, include: { lists: true } });
+  const board = await prisma.board.findFirst({ where: { id: boardId, type: { not: "mindmap" }, ...boardAccess(userId) }, include: { lists: true } });
   if (!board) throw new ApiError(404, "Quadro não encontrado");
   if (plan.boardId !== boardId) throw new ApiError(400, "Plano de outro quadro");
 

@@ -10,7 +10,7 @@ export const GET = withUser(async (user, req: Request) => {
 
 export const POST = withUser(async (user, req: Request) => {
   const body = await readBody(req);
-  if (body.type !== undefined && body.type !== "tasks" && body.type !== "organization") throw new ApiError(400, "Tipo de quadro inválido");
-  const board = await createBoard(user.id, requireString(body.name, "name"), body.type as "tasks" | "organization" | undefined);
+  if (body.type !== undefined && body.type !== "tasks" && body.type !== "organization" && body.type !== "mindmap") throw new ApiError(400, "Tipo de quadro inválido");
+  const board = await createBoard(user.id, requireString(body.name, "name"), body.type as "tasks" | "organization" | "mindmap" | undefined);
   return json(board, { status: 201 });
 });

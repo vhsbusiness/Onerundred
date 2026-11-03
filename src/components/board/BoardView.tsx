@@ -26,6 +26,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { http, notifyWorkChanged, useNow } from "@/lib/client";
 import { todayKey } from "@/lib/time";
 import type { BoardDTO, CardDTO } from "@/lib/types";
+import { MindMap } from "./MindMap";
 import { CardBody } from "./CardItem";
 import { CardModal } from "./CardModal";
 import { ImportModal } from "./ImportModal";
@@ -333,6 +334,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
     );
   }
 
+  const isMap = board.type === "mindmap";
   const openCount = board.lists.reduce((a, l) => a + (board.type === "organization" ? l.cards.length : l.cards.filter((c) => !c.completedAt).length), 0);
   const doneCount = board.lists.reduce((a, l) => a + l.cards.filter((c) => c.completedAt).length, 0);
 
@@ -367,8 +369,8 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
             {board.name}
           </button>
         )}
-        <span className="pill">{board.type === "organization" ? "Organização" : "Lista de tarefas"}</span>
-        <span className="pill">{openCount} {board.type === "organization" ? "cartões" : "abertas"}</span>
+        <span className="pill">{isMap ? "Mapa mental" : board.type === "organization" ? "Organização" : "Lista de tarefas"}</span>
+        {!isMap && <span className="pill">{openCount} {board.type === "organization" ? "cartões" : "abertas"}</span>}
         {board.type === "tasks" && <span className="pill pill-green">{doneCount} feitas</span>}
         {(board.members.length > 0 || !board.isOwner) && (
           <button type="button" onClick={() => setSharing(true)} className="flex items-center -space-x-1.5 rounded-full border border-line bg-fill py-0.5 pl-0.5 pr-2" title="Participantes">
@@ -382,9 +384,9 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
         )}
 
         <div className="ml-auto flex items-center gap-2">
-          <button type="button" onClick={() => setAddingList(true)} className="btn">
+          {!isMap && <button type="button" onClick={() => setAddingList(true)} className="btn">
             <Plus size={14} /> <span className="hidden sm:inline">Nova lista</span>
-          </button>
+          </button>}
           <div className="relative" ref={boardMenuRef}>
             <button
               type="button"
@@ -397,7 +399,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
             </button>
             {boardMenu && (
               <div className="absolute right-0 top-10 z-30 w-60 rounded-xl border border-line-2 bg-surface-3 p-1 text-sm shadow-2xl">
-                {board.isOwner && <div className="border-b border-line p-2">
+                {board.isOwner && !isMap && <div className="border-b border-line p-2">
                   <label className="mb-1 block text-xs text-ink-3" htmlFor="board-type">Tipo do quadro</label>
                   <select id="board-type" value={board.type} onChange={(e) => void changeBoardType(e.target.value as "tasks" | "organization")} className="input">
                     <option value="tasks">Lista de tarefas</option><option value="organization">Organização</option>
@@ -413,7 +415,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
                 >
                   <Users size={14} className="text-green" /> {board.isOwner ? "Compartilhar quadro" : "Participantes"}
                 </button>
-                <button
+                {!isMap && <button
                   type="button"
                   onClick={() => {
                     setBoardMenu(false);
@@ -422,7 +424,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-fill-2"
                 >
                   <Sparkles size={14} className="text-blue" /> Trazer dados do Trello
-                </button>
+                </button>}
                 <button
                   type="button"
                   onClick={() => {
@@ -463,7 +465,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
         </div>
       </div>
 
-      <DndContext
+      {isMap ? <MindMap key={board.id} boardId={board.id} nodes={board.mindNodes} onChanged={load} /> : <DndContext
         id={`board-${boardId}`}
         sensors={sensors}
         collisionDetection={collision}
@@ -546,7 +548,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
             </div>
           ) : null}
         </DragOverlay>
-      </DndContext>
+      </DndContext>}
 
       <ImportModal boardId={boardId} open={importing} onClose={() => setImporting(false)} onImported={load} />
       <ShareModal board={board} open={sharing} onClose={() => setSharing(false)} onChanged={load} />

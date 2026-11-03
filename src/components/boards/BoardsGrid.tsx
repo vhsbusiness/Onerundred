@@ -1,11 +1,14 @@
 "use client";
 
 import { ArrowUpRight, Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { formatPercent, http, TONE_PILL } from "@/lib/client";
 import { scoreTone } from "@/lib/metrics";
 import type { BoardSummary, BoardType } from "@/lib/types";
+
+const BOARD_LABEL = { tasks: "Lista de tarefas", organization: "Organização", mindmap: "Mapa mental" };
 
 const BLOBS = [
   ["rgba(245,176,110,0.6)", "rgba(127,183,245,0.55)"],
@@ -14,6 +17,7 @@ const BLOBS = [
 ];
 
 export function BoardsGrid() {
+  const router = useRouter();
   const [boards, setBoards] = useState<BoardSummary[] | null>(null);
   const [name, setName] = useState("");
   const [type, setType] = useState<BoardType>("tasks");
@@ -35,7 +39,8 @@ export function BoardsGrid() {
     if (!n) return;
     setCreating(true);
     try {
-      await http.post("/api/boards", { name: n, type });
+      const created = await http.post<BoardSummary>("/api/boards", { name: n, type });
+      if (type === "mindmap") { router.push(`/quadros/${created.id}`); return; }
       setName("");
       await load();
     } finally {
@@ -48,7 +53,7 @@ export function BoardsGrid() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Quadros</h1>
-          <p className="text-sm text-ink-2">Separe suas tarefas das informações que você quer organizar.</p>
+          <p className="text-sm text-ink-2">Organize tarefas em listas ou conecte ideias em um mapa mental.</p>
         </div>
         <form onSubmit={create} className="flex w-full flex-wrap gap-2 sm:w-auto">
           <input
@@ -58,7 +63,7 @@ export function BoardsGrid() {
             className="input min-w-0 flex-1 sm:w-56"
           />
           <select aria-label="Tipo do novo quadro" value={type} onChange={(e) => setType(e.target.value as BoardType)} className="input w-full sm:w-auto">
-            <option value="tasks">Lista de tarefas</option><option value="organization">Organização</option>
+            <option value="tasks">Padrão · Lista de tarefas</option><option value="mindmap">Mapa mental</option><option value="organization">Organização</option>
           </select>
           <button type="submit" disabled={creating || !name.trim()} className="btn btn-primary">
             <Plus size={14} /> Criar
@@ -89,11 +94,11 @@ export function BoardsGrid() {
                   <ArrowUpRight size={18} className="text-ink-3 transition group-hover:text-ink" />
                 </div>
                 <div className="mt-auto flex flex-wrap items-center gap-2 pt-6">
-                  <span className="pill">{b.type === "organization" ? "Organização" : "Lista de tarefas"}</span>
+                  <span className="pill">{BOARD_LABEL[b.type]}</span>
                   {b.type === "tasks" && <span className={TONE_PILL[tone]}>hoje {formatPercent(b.todayScore)}</span>}
-                  <span className="pill">{b.openCount} {b.type === "organization" ? "cartões" : "abertas"}</span>
+                  {b.type !== "mindmap" && <span className="pill">{b.openCount} {b.type === "organization" ? "cartões" : "abertas"}</span>}
                   {b.type === "tasks" && <span className="pill">{b.doneTodayCount} feitas hoje</span>}
-                  <span className="pill">{b.listCount} listas</span>
+                  {b.type !== "mindmap" && <span className="pill">{b.listCount} listas</span>}
                   {b.sharedBy ? <span className="pill pill-green">compartilhado por @{b.sharedBy}</span> : b.memberCount > 0 ? <span className="pill pill-green">{b.memberCount + 1} participantes</span> : null}
                 </div>
               </Link>

@@ -72,9 +72,19 @@ export interface UserBrief {
   avatar: string | null;
 }
 
-export type BoardType = "tasks" | "organization";
+export interface MindNodeDTO {
+  id: string;
+  parentId: string | null;
+  title: string;
+  color: string;
+  x: number;
+  y: number;
+}
+
+export type BoardType = "tasks" | "organization" | "mindmap";
 
 export interface BoardDTO {
+  mindNodes: MindNodeDTO[];
   type: BoardType;
   id: string;
   name: string;

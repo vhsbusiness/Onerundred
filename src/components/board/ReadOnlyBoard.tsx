@@ -9,12 +9,14 @@ import { Modal } from "@/components/ui/Modal";
 import { elapsedSince, priorityUi, useNow } from "@/lib/client";
 import { imageUrl } from "@/lib/images";
 import { formatDayLong, formatDuration, minutesToLabel } from "@/lib/time";
-import type { CardDTO, ListDTO } from "@/lib/types";
+import type { CardDTO, ListDTO, MindNodeDTO } from "@/lib/types";
 import { BoardFrame, BoardScroller, columnClass, KIND_LABEL } from "./BoardLayout";
+import { MindMap } from "./MindMap";
 import { CardBody } from "./CardItem";
 
-export function ReadOnlyBoard({ name, organization, lists, collaborationId, boardId, pending, today }: {
+export function ReadOnlyBoard({ name, organization, lists, mindNodes, collaborationId, boardId, pending, today }: {
   name: string; organization: boolean; lists: ListDTO[]; collaborationId: string;
+  mindNodes?: MindNodeDTO[];
   boardId: string; pending: boolean; today: string;
 }) {
   const [selected, select] = useState<CardDTO | null>(null);
@@ -23,11 +25,11 @@ export function ReadOnlyBoard({ name, organization, lists, collaborationId, boar
     <header className="mb-4 flex flex-wrap items-center gap-3">
       <Link href={`/configuracoes/colaboradores/${collaborationId}`} className="btn btn-ghost h-8 px-2" aria-label="Voltar ao relatório" title="Voltar ao relatório"><ArrowLeft size={16} /></Link>
       <h1 className="min-w-0 truncate text-xl font-semibold tracking-tight sm:text-2xl">{name}</h1>
-      <span className="pill">{organization ? "Organização" : "Lista de tarefas"}</span>
+      <span className="pill">{mindNodes ? "Mapa mental" : organization ? "Organização" : "Lista de tarefas"}</span>
       <span className="pill"><LockKeyhole size={12} /> Somente leitura</span>
       <div className="sm:ml-auto"><BoardEditButton collaborationId={collaborationId} boardId={boardId} pending={pending} /></div>
     </header>
-    <BoardScroller>
+    {mindNodes ? <MindMap boardId={boardId} nodes={mindNodes} /> : <BoardScroller>
       {lists.map(list => {
         const priority = priorityUi(list.priority);
         const count = organization || list.kind === "done" ? list.cards.length : list.cards.filter(card => !card.completedAt).length;
@@ -45,7 +47,7 @@ export function ReadOnlyBoard({ name, organization, lists, collaborationId, boar
         </section>;
       })}
       {!lists.length && <p className="text-sm text-ink-3">Este quadro ainda não tem listas.</p>}
-    </BoardScroller>
+    </BoardScroller>}
     {selected && <Modal wide open onClose={() => select(null)} title={<h2 className="font-semibold [overflow-wrap:anywhere]">{selected.title}</h2>}>
       <div className="space-y-4">
         <div className="flex flex-wrap gap-2"><span className={priorityUi(selected.priority).pill}>{priorityUi(selected.priority).label}</span>

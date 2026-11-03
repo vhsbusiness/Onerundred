@@ -446,7 +446,7 @@ export async function lastBoardId(userId: string): Promise<string | null> {
 /** Quadros acessíveis com as listas, para mover tarefas e listas entre quadros. */
 export async function listBoardLists(userId: string): Promise<BoardListsDTO[]> {
   const boards = await prisma.board.findMany({
-    where: boardAccess(userId),
+    where: { ...boardAccess(userId), type: { not: "mindmap" } },
     orderBy: { position: "asc" },
     include: { lists: { orderBy: { position: "asc" }, select: { id: true, name: true, kind: true } } },
   });
@@ -457,6 +457,7 @@ export async function listBoardLists(userId: string): Promise<BoardListsDTO[]> {
 export async function moveListToBoard(listId: string, userId: string, toBoardId: string): Promise<void> {
   const list = await ownedList(listId, userId);
   const board = await ownedBoard(toBoardId, userId);
+  if (board.type === "mindmap") throw new ApiError(400, "Mapas mentais não recebem listas");
   if (list.boardId === board.id) return;
   const count = await prisma.list.count({ where: { boardId: board.id } });
   const siblings = await prisma.list.findMany({ where: { boardId: list.boardId, NOT: { id: listId } }, orderBy: { position: "asc" } });
@@ -505,7 +506,7 @@ export async function listBoards(userId: string): Promise<BoardSummary[]> {
       listCount: b.lists.length,
       openCount: b.type === "organization" ? b.lists.reduce((sum, list) => sum + list.cards.length, 0) : openCount,
       doneTodayCount,
-      todayScore: b.type === "organization" ? null : periodScore(metricCards, start, end, today, { hasTodayList: b.lists.some((l) => l.kind === "today") }).score,
+      todayScore: b.type !== "tasks" ? null : periodScore(metricCards, start, end, today, { hasTodayList: b.lists.some((l) => l.kind === "today") }).score,
       sharedBy: b.userId === userId ? null : b.user.username,
       memberCount: b._count.members,
     };
@@ -520,7 +521,8 @@ export async function createBoard(userId: string, name: string, type: BoardType 
       type,
       name,
       position: (max._max.position ?? -1) + 1,
-      lists: {
+      mindNodes: type === "mindmap" ? { create: { title: name.slice(0, 160) } } : undefined,
+      lists: type === "mindmap" ? undefined : {
         create: type === "organization" ? [{ name: "Informações", position: 0, priority: 2, kind: "normal" }] : [
           { name: "A fazer", position: 0, priority: 2, kind: "normal" },
           { name: "Feitas", position: 1, priority: 2, kind: "done" },
@@ -534,7 +536,7 @@ export async function createBoard(userId: string, name: string, type: BoardType 
     name: board.name,
     position: board.position,
     createdAt: board.createdAt.toISOString(),
-    listCount: type === "organization" ? 1 : 2,
+    listCount: type === "mindmap" ? 0 : type === "organization" ? 1 : 2,
     openCount: 0,
     doneTodayCount: 0,
     todayScore: null,
@@ -548,6 +550,7 @@ export async function getBoard(id: string, userId: string): Promise<BoardDTO> {
   const board = await prisma.board.findFirst({
     where: { id, ...boardAccess(userId) },
     include: {
+      mindNodes: true,
       user: { select: { id: true, name: true, username: true, avatar: true } },
       members: { include: { user: { select: { id: true, name: true, username: true, avatar: true } } }, orderBy: { createdAt: "asc" } },
       invites: { where: { status: "pending" }, include: { to: { select: { id: true, name: true, username: true, avatar: true } } } },
@@ -575,6 +578,7 @@ export async function getBoard(id: string, userId: string): Promise<BoardDTO> {
     name: board.name,
     position: board.position,
     createdAt: board.createdAt.toISOString(),
+    mindNodes: board.mindNodes,
     lastUndo: await getLastUndo(userId),
     // Para o reloginho das listas: média usada nas tarefas sem estimativa.
     avgTaskMinutes: averageTaskMinutes(
@@ -604,6 +608,7 @@ export async function getBoard(id: string, userId: string): Promise<BoardDTO> {
 
 export async function updateBoard(id: string, userId: string, data: { name?: string; type?: BoardType }) {
   const board = await ownedBoard(id, userId);
+  if (data.type && board.type === "mindmap") throw new ApiError(400, "O formato do mapa mental é fixo");
   if (data.type && data.type !== board.type && board.userId !== userId) throw new ApiError(403, "Só o dono pode mudar o tipo do quadro");
   await prisma.$transaction(async (tx) => {
     if (data.type === "organization" && board.type !== data.type) {
@@ -625,7 +630,8 @@ export async function createList(
   userId: string,
   input: { boardId: string; name: string; priority?: number; kind?: ListKind },
 ) {
-  await ownedBoard(input.boardId, userId);
+  const board = await ownedBoard(input.boardId, userId);
+  if (board.type === "mindmap") throw new ApiError(400, "Mapas mentais não usam listas");
   const max = await prisma.list.aggregate({
     where: { boardId: input.boardId },
     _max: { position: true },
