@@ -16,7 +16,7 @@ export function pendingCollaborations(employeeId: string) {
 export async function myCollaborations(userId: string) {
   const [sent, received, edits] = await Promise.all([
     prisma.collaboration.findMany({ where: { managerId: userId }, select: { id: true, accepted: true, employee: { select: person } }, orderBy: { createdAt: "desc" } }),
-    prisma.collaboration.findMany({ where: { employeeId: userId }, select: { id: true, accepted: true, shareBoards: true, manager: { select: person } }, orderBy: { createdAt: "desc" } }),
+    prisma.collaboration.findMany({ where: { employeeId: userId }, select: { id: true, accepted: true, manager: { select: person } }, orderBy: { createdAt: "desc" } }),
     pendingBoardRequests(userId),
   ]);
   return { sent, received, edits };

@@ -26,7 +26,7 @@ export default async function Report({ params, searchParams }: { params: Promise
   const { id } = await params;
   const link = await prisma.collaboration.findFirst({
     where: { id, managerId: manager.id, accepted: true, employee: { active: true } },
-    select: { shareBoards: true, employeeId: true, employee: { select: { name: true, username: true } } },
+    select: { employeeId: true, employee: { select: { name: true, username: true } } },
   });
   if (!link) notFound();
   const userId = link.employeeId;
@@ -103,7 +103,6 @@ export default async function Report({ params, searchParams }: { params: Promise
           <span className="btn">Ver quadros</span>
         </summary>
         <div className="mt-3 space-y-3">
-          {!link.shareBoards && <p className="text-xs text-ink-3">Para disponibilizar os quadros privados, o colaborador pode ativar a leitura nas configurações de colaboração.</p>}
           {!boards.length && <p className="text-sm text-ink-3">Nenhum quadro disponível para consulta.</p>}
           {boards.map(b => <div key={b.id} className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
             <div className="min-w-0 flex-1"><strong className="break-words">{b.name}</strong><p className="text-xs text-ink-3">{b.editable ? "Compartilhado · edição liberada" : "Somente leitura"}</p></div>
