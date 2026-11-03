@@ -57,6 +57,7 @@ model AuthSession {
 }
 
 model Board {
+  symbol    String?
   type      String   @default("tasks")
   id        String   @id @default(cuid())
   userId    String
@@ -75,6 +76,13 @@ model Board {
 }
 
 model MindNode {
+  bold Boolean @default(false)
+  locked Boolean @default(false)
+  textColor String @default("")
+  highlight String @default("")
+  link String @default("")
+  shape String @default("rounded")
+  fontSize Int @default(14)
   id       String @id @default(cuid())
   boardId  String
   parentId String?

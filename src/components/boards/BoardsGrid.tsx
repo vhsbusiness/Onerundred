@@ -1,5 +1,8 @@
 "use client";
 
+import { SymbolPicker } from "@/components/boards/SymbolPicker";
+import { BoardIcon } from "@/components/boards/BoardIcon";
+
 import { ArrowUpRight, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -20,6 +23,7 @@ export function BoardsGrid() {
   const router = useRouter();
   const [boards, setBoards] = useState<BoardSummary[] | null>(null);
   const [name, setName] = useState("");
+  const [symbol, setSymbol] = useState("");
   const [type, setType] = useState<BoardType>("tasks");
   const [creating, setCreating] = useState(false);
 
@@ -39,7 +43,7 @@ export function BoardsGrid() {
     if (!n) return;
     setCreating(true);
     try {
-      const created = await http.post<BoardSummary>("/api/boards", { name: n, type });
+      const created = await http.post<BoardSummary>("/api/boards", { name: n, type, symbol: symbol || undefined });
       if (type === "mindmap") { router.push(`/quadros/${created.id}`); return; }
       setName("");
       await load();
@@ -60,11 +64,12 @@ export function BoardsGrid() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Nome do novo quadro"
-            className="input min-w-0 flex-1 sm:w-56"
+            className="input min-w-0 basis-full sm:w-56 sm:basis-auto"
           />
-          <select aria-label="Tipo do novo quadro" value={type} onChange={(e) => setType(e.target.value as BoardType)} className="input w-full sm:w-auto">
+          <label className="flex min-w-0 items-center"><select aria-label="Tipo do novo quadro" value={type} onChange={(e) => setType(e.target.value as BoardType)} className="input w-full sm:w-auto">
             <option value="tasks">Padrão · Lista de tarefas</option><option value="mindmap">Mapa mental</option><option value="organization">Organização</option>
-          </select>
+          </select></label>
+          <div className="flex items-center gap-2"><BoardIcon type={type} symbol={symbol} /><SymbolPicker value={symbol} change={setSymbol} /></div>
           <button type="submit" disabled={creating || !name.trim()} className="btn btn-primary">
             <Plus size={14} /> Criar
           </button>
@@ -90,7 +95,10 @@ export function BoardsGrid() {
                 style={{ "--blob-a": a, "--blob-b": c } as React.CSSProperties}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <h2 className="text-lg font-semibold tracking-tight">{b.name}</h2>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-line bg-surface"><BoardIcon type={b.type} symbol={b.symbol} size={20} /></span>
+                    <h2 className="min-w-0 break-words text-lg font-semibold tracking-tight">{b.name}</h2>
+                  </div>
                   <ArrowUpRight size={18} className="text-ink-3 transition group-hover:text-ink" />
                 </div>
                 <div className="mt-auto flex flex-wrap items-center gap-2 pt-6">

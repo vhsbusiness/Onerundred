@@ -1,3 +1,4 @@
+import { isBoardSymbol } from "@/lib/board-icons";
 import { ApiError, json, readBody, requireString, withUser } from "@/lib/api";
 import { createBoard, listBoardLists, listBoards } from "@/lib/repo";
 
@@ -10,7 +11,8 @@ export const GET = withUser(async (user, req: Request) => {
 
 export const POST = withUser(async (user, req: Request) => {
   const body = await readBody(req);
+  if (body.symbol != null && !isBoardSymbol(body.symbol)) throw new ApiError(400, "Ícone inválido");
   if (body.type !== undefined && body.type !== "tasks" && body.type !== "organization" && body.type !== "mindmap") throw new ApiError(400, "Tipo de quadro inválido");
-  const board = await createBoard(user.id, requireString(body.name, "name"), body.type as "tasks" | "organization" | "mindmap" | undefined);
+  const board = await createBoard(user.id, requireString(body.name, "name"), body.type as "tasks" | "organization" | "mindmap" | undefined, body.symbol as string | undefined);
   return json(board, { status: 201 });
 });

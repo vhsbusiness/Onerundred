@@ -70,7 +70,7 @@
 }
 
 /* Tema claro: mesma estrutura, superfícies brancas e acentos mais fechados para ler bem no claro. */
-:root[data-theme="light"] {
+:root[data-theme="light"], .mind-canvas-light {
   --color-bg: #f3f1ec;
   --color-surface: #ffffff;
   --color-surface-2: #f6f4ef;

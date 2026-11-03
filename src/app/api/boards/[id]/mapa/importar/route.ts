@@ -45,7 +45,7 @@ export const PUT = withUser(async (user, req: Request, ctx: Context) => {
     // Serializa importações no mesmo quadro antes de procurar os ramos já existentes.
     const allowed = await tx.board.updateMany({ where: { id: boardId, type: "mindmap", ...boardAccess(user.id) }, data: { position: { increment: 0 } } });
     if (!allowed.count) throw new ApiError(404, "Mapa indisponível.");
-    const nodes = await tx.mindNode.findMany({ where: { boardId } });
+    const nodes = await tx.mindNode.findMany({ where: { boardId }, select: { id: true, parentId: true, boardId: true, title: true, color: true, x: true, y: true } });
     const root = nodes.find(n => !n.parentId);
     if (!root) throw new ApiError(409, "Ideia central indisponível.");
     const original = nodes.length;

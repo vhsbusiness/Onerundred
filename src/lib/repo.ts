@@ -500,6 +500,7 @@ export async function listBoards(userId: string): Promise<BoardSummary[]> {
     return {
       id: b.id,
       type: b.type as BoardType,
+      symbol: b.symbol,
       name: b.name,
       position: b.position,
       createdAt: b.createdAt.toISOString(),
@@ -513,12 +514,13 @@ export async function listBoards(userId: string): Promise<BoardSummary[]> {
   });
 }
 
-export async function createBoard(userId: string, name: string, type: BoardType = "tasks"): Promise<BoardSummary> {
+export async function createBoard(userId: string, name: string, type: BoardType = "tasks", symbol?: string): Promise<BoardSummary> {
   const max = await prisma.board.aggregate({ where: { userId }, _max: { position: true } });
   const board = await prisma.board.create({
     data: {
       userId,
       type,
+      symbol,
       name,
       position: (max._max.position ?? -1) + 1,
       mindNodes: type === "mindmap" ? { create: { title: name.slice(0, 160) } } : undefined,
@@ -533,6 +535,7 @@ export async function createBoard(userId: string, name: string, type: BoardType 
   return {
     id: board.id,
     type: board.type as BoardType,
+    symbol: board.symbol,
     name: board.name,
     position: board.position,
     createdAt: board.createdAt.toISOString(),
@@ -575,6 +578,7 @@ export async function getBoard(id: string, userId: string): Promise<BoardDTO> {
   return {
     id: board.id,
     type: board.type as BoardType,
+    symbol: board.symbol,
     name: board.name,
     position: board.position,
     createdAt: board.createdAt.toISOString(),
@@ -606,7 +610,7 @@ export async function getBoard(id: string, userId: string): Promise<BoardDTO> {
   };
 }
 
-export async function updateBoard(id: string, userId: string, data: { name?: string; type?: BoardType }) {
+export async function updateBoard(id: string, userId: string, data: { name?: string; type?: BoardType; symbol?: string | null }) {
   const board = await ownedBoard(id, userId);
   if (data.type && board.type === "mindmap") throw new ApiError(400, "O formato do mapa mental é fixo");
   if (data.type && data.type !== board.type && board.userId !== userId) throw new ApiError(403, "Só o dono pode mudar o tipo do quadro");

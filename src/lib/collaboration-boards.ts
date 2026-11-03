@@ -13,12 +13,12 @@ export async function collaborationBoards(managerId: string, employeeId: string,
       { user: readableOwner(managerId, collaborationId) },
       { AND: [boardAccess(managerId), boardAccess(employeeId)] },
     ] },
-    select: { id: true, name: true, type: true, userId: true, members: { where: { userId: managerId }, select: { id: true } },
+    select: { id: true, name: true, symbol: true, type: true, userId: true, members: { where: { userId: managerId }, select: { id: true } },
       editRequests: { where: { collaborationId }, select: { id: true } } },
     orderBy: { name: "asc" },
   });
   return boards.map(board => ({
-    id: board.id, name: board.name, type: board.type,
+    id: board.id, name: board.name, type: board.type, symbol: board.symbol,
     editable: board.userId === managerId || board.members.length > 0,
     pending: board.editRequests.length > 0,
   }));

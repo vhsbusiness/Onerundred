@@ -159,3 +159,7 @@ Um pedido de edição está associado ao vínculo e ao quadro. O dono vê o pedi
 Em Quadros, o formato Padrão cria listas de tarefas. Mapa mental cria uma ideia central com o nome do quadro. Cada ramo pertence a uma ideia do mesmo mapa. Excluir um ramo remove seus descendentes, e a raiz pode ser renomeada ou movida. Ideias não entram na pontuação nem recebem cronômetros. O formato do mapa é escolhido na criação, e listas e tarefas só podem ser transferidas entre quadros com listas.
 
 O dono e os membros do quadro podem editar as ideias e suas posições. A consulta pelo relatório de colaboração permite navegar pelo mapa e solicitar edição com as mesmas permissões dos demais quadros.
+
+Um clique edita o texto do ramo. Tab e Enter salvam o texto e criam um filho do ramo selecionado. A formatação e o link pertencem à ideia; fixar a posição impede o arraste, mas permite editar o texto. A tela cheia e o zoom são locais; a escolha de fundo claro fica neste navegador para este quadro.
+
+Cada tipo de quadro tem um ícone padrão: colunas para tarefas, pastas para organização e ramos para mapa mental. O dono e os membros podem escolher outro símbolo ao criar ou pelo menu do quadro. A escolha pertence ao quadro, inclusive para quem o consulta em modo de leitura; restaurar “Ícone do tipo” volta ao padrão sem mudar o tipo nem o conteúdo.

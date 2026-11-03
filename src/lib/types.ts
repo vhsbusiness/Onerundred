@@ -73,6 +73,13 @@ export interface UserBrief {
 }
 
 export interface MindNodeDTO {
+  bold: boolean;
+  locked: boolean;
+  textColor: string;
+  highlight: string;
+  link: string;
+  shape: string;
+  fontSize: number;
   id: string;
   parentId: string | null;
   title: string;
@@ -84,6 +91,7 @@ export interface MindNodeDTO {
 export type BoardType = "tasks" | "organization" | "mindmap";
 
 export interface BoardDTO {
+  symbol: string | null;
   mindNodes: MindNodeDTO[];
   type: BoardType;
   id: string;
@@ -109,6 +117,7 @@ export interface BoardListsDTO {
 }
 
 export interface BoardSummary {
+  symbol: string | null;
   type: BoardType;
   id: string;
   name: string;

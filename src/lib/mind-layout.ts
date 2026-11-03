@@ -1,7 +1,7 @@
 import type { MindNodeDTO } from "./types";
 
 export const palette = ["blue", "green", "orange", "red"];
-type Positioned = Omit<MindNodeDTO, "title">;
+type Positioned = Pick<MindNodeDTO, "id" | "parentId" | "x" | "y" | "color">;
 
 export function positionBranch(parent: Positioned, nodes: Positioned[]) {
   const siblings = nodes.filter(node => node.parentId === parent.id).length;
