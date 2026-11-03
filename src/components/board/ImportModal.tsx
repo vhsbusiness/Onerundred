@@ -22,11 +22,13 @@ async function toUploadDataUrl(file: File): Promise<string> {
 
 export function ImportModal({
   boardId,
+  miro = false,
   open,
   onClose,
   onImported,
 }: {
   boardId: string;
+  miro?: boolean;
   open: boolean;
   onClose: () => void;
   onImported: () => void;
@@ -35,6 +37,9 @@ export function ImportModal({
   const [images, setImages] = useState<string[]>([]);
   const MAX_IMAGES = 8;
   const [plan, setPlan] = useState<ImportPlan | null>(null);
+  const [paths, setPaths] = useState<string[][] | null>(null);
+  const [ignored, setIgnored] = useState<number[]>([]);
+  const [added, setAdded] = useState<number | null>(null);
   const [includeDone, setIncludeDone] = useState(false);
   const [busy, setBusy] = useState<"read" | "apply" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +48,9 @@ export function ImportModal({
   function reset() {
     setImages([]);
     setPlan(null);
+    setPaths(null);
+    setIgnored([]);
+    setAdded(null);
     setError(null);
     setResult(null);
     setBusy(null);
@@ -51,11 +59,14 @@ export function ImportModal({
   const addFiles = useCallback(async (files: File[]) => {
     const valid = files.filter((f) => f.type.startsWith("image/"));
     if (valid.length === 0) {
-      setError("Escolha ou cole uma imagem (print do Trello)");
+      setError("Escolha ou cole um print.");
       return;
     }
     setError(null);
     setPlan(null);
+    setPaths(null);
+    setIgnored([]);
+    setAdded(null);
     setResult(null);
     try {
       const urls = await Promise.all(valid.map(toUploadDataUrl));
@@ -77,7 +88,7 @@ export function ImportModal({
 
   // Colar (Ctrl+V / Cmd+V) enquanto a janela está aberta: aceita quantos prints quiser.
   useEffect(() => {
-    if (!open) return;
+    if (!open || busy) return;
     const onPaste = (e: ClipboardEvent) => {
       const files = Array.from(e.clipboardData?.items ?? [])
         .filter((it) => it.kind === "file" && it.type.startsWith("image/"))
@@ -90,11 +101,14 @@ export function ImportModal({
     };
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
-  }, [open, addFiles]);
+  }, [open, busy, addFiles]);
 
   function removeImage(i: number) {
     setImages((prev) => prev.filter((_, idx) => idx !== i));
     setPlan(null);
+    setPaths(null);
+    setIgnored([]);
+    setAdded(null);
   }
 
   async function analyze() {
@@ -102,7 +116,8 @@ export function ImportModal({
     setBusy("read");
     setError(null);
     try {
-      setPlan(await http.post<ImportPlan>(`/api/boards/${boardId}/importar`, { images }));
+      if (miro) setPaths((await http.post<{ paths: string[][] }>(`/api/boards/${boardId}/mapa/importar`, { images })).paths);
+      else setPlan(await http.post<ImportPlan>(`/api/boards/${boardId}/importar`, { images }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "A IA não conseguiu ler o print");
     } finally {
@@ -111,12 +126,18 @@ export function ImportModal({
   }
 
   async function apply() {
-    if (!plan) return;
+    if (!plan && !paths) return;
     setBusy("apply");
     setError(null);
     try {
-      const r = await http.put<{ lists: number; cards: number }>(`/api/boards/${boardId}/importar`, { plan, includeDone });
-      setResult(r);
+      if (miro && paths) {
+        const selected = paths.filter((_, i) => !ignored.includes(i));
+        const r = await http.put<{ count: number }>(`/api/boards/${boardId}/mapa/importar`, { paths: selected });
+        setAdded(r.count);
+      } else {
+        const r = await http.put<{ lists: number; cards: number }>(`/api/boards/${boardId}/importar`, { plan, includeDone });
+        setResult(r);
+      }
       onImported();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível criar as tarefas");
@@ -131,20 +152,21 @@ export function ImportModal({
     <Modal
       open={open}
       onClose={() => {
+        if (busy === "apply") return;
         reset();
         onClose();
       }}
       title={
         <h2 className="flex items-center gap-2 text-lg font-semibold">
-          <Sparkles size={18} className="text-blue" /> Trazer dados do Trello
+          <Sparkles size={18} className="text-blue" /> {miro ? "Importar prints do Miro" : "Trazer dados do Trello"}
         </h2>
       }
       wide
     >
-      {result ? (
+      {result || added !== null ? (
         <div className="space-y-4">
           <div className="rounded-xl border border-green/30 bg-green/10 px-4 py-3 text-sm text-green">
-            <Check size={14} className="mr-1 inline" /> Pronto: {result.lists} lista(s) e {result.cards} tarefa(s) criadas.
+            <Check size={14} className="mr-1 inline" /> {result ? `Pronto: ${result.lists} lista(s) e ${result.cards} tarefa(s) criadas.` : added ? `${added} ideia(s) adicionada(s) ao mapa.` : "Essas ideias já estão no mapa."}
           </div>
           <div className="flex gap-2">
             <button type="button" onClick={reset} className="btn">
@@ -165,7 +187,7 @@ export function ImportModal({
       ) : (
         <div className="space-y-4">
           <p className="text-sm text-ink-2">
-            Tire prints do seu quadro no Trello (ou de qualquer lista de tarefas) e envie aqui: pode <span className="text-ink">colar com Ctrl+V</span> quantas vezes quiser ou escolher vários arquivos. A IA lê todos, junta as listas, mostra o que encontrou e cria só o que ainda não existe neste quadro.
+            {miro ? "Cole os prints do mapa com Ctrl+V ou ⌘V, ou escolha imagens do celular. Inclua as linhas entre as ideias. A IA junta as partes e você escolhe quais caminhos importar." : <>Tire prints do seu quadro no Trello (ou de qualquer lista de tarefas) e envie aqui: pode <span className="text-ink">colar com Ctrl+V</span> quantas vezes quiser ou escolher vários arquivos. A IA lê todos, junta as listas, mostra o que encontrou e cria só o que ainda não existe neste quadro.</>}
           </p>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -176,7 +198,7 @@ export function ImportModal({
               <ClipboardPaste size={12} /> ou cole com Ctrl+V
             </span>
             <input ref={fileRef} type="file" accept="image/*" multiple onChange={onPick} className="hidden" />
-            {images.length > 0 && !plan && (
+            {images.length > 0 && !plan && paths === null && (
               <button type="button" onClick={analyze} disabled={busy !== null} className="btn btn-primary">
                 <Sparkles size={14} /> {busy === "read" ? `Lendo ${images.length} print(s)…` : `Ler ${images.length} print(s) com a IA`}
               </button>
@@ -206,6 +228,20 @@ export function ImportModal({
 
           {error && <p className="text-sm text-red">{error}</p>}
 
+          {paths && <div className="space-y-3">
+            {paths.length ? <>
+              <h3 className="font-semibold">Revisar caminhos</h3>
+              <p className="text-sm text-ink-2">Cada linha mostra as conexões da ideia principal até a ponta do ramo. Novos caminhos serão ligados à ideia central do quadro.</p>
+              <div className="max-h-64 space-y-1 overflow-auto">
+                {paths.map((path, i) => <label key={i} className="flex items-start gap-2 rounded-lg bg-well p-2 text-sm">
+                  <input type="checkbox" disabled={!!busy} checked={!ignored.includes(i)} onChange={e => setIgnored(e.target.checked ? ignored.filter(n => n !== i) : [...ignored, i])} />
+                  <span className="min-w-0 [overflow-wrap:anywhere]">{path.join(" → ")}</span>
+                </label>)}
+              </div>
+              <button className="btn btn-primary" disabled={!!busy || ignored.length === paths.length} onClick={apply}>{busy === "apply" ? "Importando…" : "Importar caminhos selecionados"}</button>
+            </> : <p className="text-sm text-ink-2">Nenhum mapa legível encontrado. Tente um recorte mais próximo das ideias e conexões.</p>}
+            <button className="btn btn-ghost" disabled={!!busy} onClick={reset}>Recomeçar</button>
+          </div>}
           {plan && (
             <div className="space-y-3">
               {plan.lists.length === 0 ? (

@@ -1,9 +1,10 @@
 import { ApiError, json, readBody, requireString, withUser } from "@/lib/api";
+import { palette, positionBranch } from "@/lib/mind-layout";
 import { prisma } from "@/lib/db";
 import { boardAccess } from "@/lib/repo";
 
 type Context = { params: Promise<{ id: string }> };
-const palette = ["blue", "green", "orange", "red"];
+
 
 function topic(value: unknown) {
   const title = requireString(value, "Ideia");
@@ -21,14 +22,9 @@ export const POST = withUser(async (user, req: Request, ctx: Context) => {
       where: { id: parentId, boardId, board: { type: "mindmap", ...boardAccess(user.id) } },
     });
     if (!parent) throw new ApiError(404, "Ideia indisponível.");
-    const nodes = await tx.mindNode.findMany({ where: { boardId }, select: { x: true, y: true, parentId: true } });
-    const siblings = nodes.filter(n => n.parentId === parentId).length;
-    const root = nodes.find(n => n.parentId === null)!;
-    const right = parent.parentId ? parent.x >= root.x : siblings % 2 === 0;
-    const x = parent.x + (right ? 240 : -240);
-    let y = parent.y;
-    while (nodes.some(n => Math.abs(n.x - x) < 202 && Math.abs(n.y - y) < 84)) y += 96;
-    return tx.mindNode.create({ data: { boardId, parentId, title, x, y, color: parent.parentId ? parent.color : palette[siblings % palette.length] } });
+    const nodes = await tx.mindNode.findMany({ where: { boardId }, select: { id: true, x: true, y: true, parentId: true, color: true } });
+    const branch = positionBranch(parent, nodes);
+    return tx.mindNode.create({ data: { boardId, parentId, title, ...branch } });
   });
   return json(node, { status: 201 });
 });

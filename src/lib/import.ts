@@ -66,28 +66,31 @@ const SYSTEM = `Você lê prints de quadros do Trello (ou de outras listas de ta
 - done: true quando a tarefa está riscada, com check, ou dentro de uma lista de concluídos.
 - Ignore elementos de interface (botões, "Adicionar cartão", menus). Se a imagem não parecer um quadro de tarefas, devolva lists vazio.`;
 
-/** Lê a imagem com a IA e devolve listas/tarefas. */
-export async function extractFromImage(image: string, userId?: string): Promise<Extracted> {
-  if (!aiEnabled()) throw new ApiError(503, "IA não configurada (OPENAI_API_KEY ausente)");
-  if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(image)) throw new ApiError(400, "Imagem inválida");
-  if (image.length > MAX_IMPORT_IMAGE_CHARS) throw new ApiError(400, "Imagem grande demais");
+export async function readBoardScreens(images: string[], system: string, prompt: string, schema: Record<string, unknown>, userId?: string) {
+  if (!images.length || images.length > MAX_IMPORT_IMAGES) throw new ApiError(400, "Envie de 1 a 8 prints.");
 
+  if (!aiEnabled()) throw new ApiError(503, "IA não configurada (OPENAI_API_KEY ausente)");
+  for (const image of images) {
+    if (typeof image !== "string" || !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(image)) throw new ApiError(400, "Imagem inválida");
+    if (image.length > MAX_IMPORT_IMAGE_CHARS) throw new ApiError(400, "Imagem grande demais");
+
+  }
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   const model = modelName();
   const completion = await client.chat.completions.create({
     model,
     ...(/^(gpt-5|o\d)/.test(model) ? { reasoning_effort: "low" as const } : {}),
     messages: [
-      { role: "system", content: SYSTEM },
+      { role: "system", content: system },
       {
         role: "user",
         content: [
-          { type: "text", text: "Extraia as listas e tarefas deste print." },
-          { type: "image_url", image_url: { url: image, detail: "high" } },
+          { type: "text", text: prompt },
+          ...images.map(image => ({ type: "image_url" as const, image_url: { url: image, detail: "high" as const } })),
         ],
       },
     ],
-    response_format: { type: "json_schema", json_schema: { name: "quadro", strict: true, schema: extractionSchema } },
+    response_format: { type: "json_schema", json_schema: { name: "quadro", strict: true, schema } },
   });
   if (userId) {
     await prisma.aiUsage.create({
@@ -102,6 +105,11 @@ export async function extractFromImage(image: string, userId?: string): Promise<
   }
   const raw = completion.choices[0]?.message?.content;
   if (!raw) throw new ApiError(502, "A IA não conseguiu ler a imagem");
+  return raw;
+}
+
+export async function extractFromImage(image: string, userId?: string): Promise<Extracted> {
+  const raw = await readBoardScreens([image], SYSTEM, "Extraia as listas e tarefas deste print.", extractionSchema, userId);
   const parsed = JSON.parse(raw) as Extracted;
   // Higiene: nomes/títulos não vazios, limites de tamanho
   parsed.lists = parsed.lists

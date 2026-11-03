@@ -415,7 +415,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
                 >
                   <Users size={14} className="text-green" /> {board.isOwner ? "Compartilhar quadro" : "Participantes"}
                 </button>
-                {!isMap && <button
+                <button
                   type="button"
                   onClick={() => {
                     setBoardMenu(false);
@@ -423,8 +423,8 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
                   }}
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-fill-2"
                 >
-                  <Sparkles size={14} className="text-blue" /> Trazer dados do Trello
-                </button>}
+                  <Sparkles size={14} className="text-blue" /> {isMap ? "Importar prints do Miro" : "Trazer dados do Trello"}
+                </button>
                 <button
                   type="button"
                   onClick={() => {
@@ -550,7 +550,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
         </DragOverlay>
       </DndContext>}
 
-      <ImportModal boardId={boardId} open={importing} onClose={() => setImporting(false)} onImported={load} />
+      {importing && <ImportModal boardId={boardId} miro={isMap} open onClose={() => setImporting(false)} onImported={load} />}
       <ShareModal board={board} open={sharing} onClose={() => setSharing(false)} onChanged={load} />
 
       <CardContextMenu
