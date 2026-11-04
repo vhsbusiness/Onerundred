@@ -1,6 +1,5 @@
 "use client";
 
-import { SymbolPicker } from "@/components/boards/SymbolPicker";
 import { BoardIcon } from "@/components/boards/BoardIcon";
 
 import { ArrowUpRight, Plus } from "lucide-react";
@@ -16,7 +15,6 @@ export function BoardsGrid() {
   const router = useRouter();
   const [boards, setBoards] = useState<BoardSummary[] | null>(null);
   const [name, setName] = useState("");
-  const [symbol, setSymbol] = useState("");
   const [type, setType] = useState<BoardType>("tasks");
   const [creating, setCreating] = useState(false);
 
@@ -36,7 +34,7 @@ export function BoardsGrid() {
     if (!n) return;
     setCreating(true);
     try {
-      const created = await http.post<BoardSummary>("/api/boards", { name: n, type, symbol: symbol || undefined });
+      const created = await http.post<BoardSummary>("/api/boards", { name: n, type });
       if (type === "mindmap") { router.push(`/quadros/${created.id}`); return; }
       setName("");
       await load();
@@ -62,7 +60,6 @@ export function BoardsGrid() {
           <label className="flex min-w-0 items-center"><select aria-label="Tipo do novo quadro" value={type} onChange={(e) => setType(e.target.value as BoardType)} className="input w-full sm:w-auto">
             <option value="tasks">Padrão · Lista de tarefas</option><option value="mindmap">Mapa mental</option><option value="organization">Organização</option>
           </select></label>
-          <SymbolPicker type={type} value={symbol} change={setSymbol} />
           <button type="submit" disabled={creating || !name.trim()} className="btn btn-primary">
             <Plus size={14} /> Criar
           </button>
@@ -84,11 +81,11 @@ export function BoardsGrid() {
               className="card board-tile group flex min-h-40 flex-col p-5 transition hover:border-line-2"
             >
               <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <BoardIcon type={b.type} symbol={b.symbol} size={25} />
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <BoardIcon type={b.type} symbol={b.symbol} size={18} />
                   <h2 className="min-w-0 break-words text-lg font-semibold tracking-tight">{b.name}</h2>
                 </div>
-                <ArrowUpRight size={18} className="text-ink-3 transition group-hover:text-ink" />
+                <ArrowUpRight size={14} className="text-ink-3 transition group-hover:text-ink" />
               </div>
               <div className="mt-auto flex flex-wrap items-center gap-2 pt-6">
                 <span className="pill">{BOARD_LABEL[b.type]}</span>

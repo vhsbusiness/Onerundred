@@ -130,7 +130,7 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged }: {
     queue.current = queue.current.then(async () => {
       try { await operation(); await onChanged(); }
       catch (e) { notify(e instanceof Error ? e.message : "Não foi possível salvar a ideia.", "error"); }
-      finally { if (!--pending.current) setBusy(false); setDrag(null); }
+      finally { if (!--pending.current) setBusy(false); }
     });
     return queue.current;
   }
@@ -163,13 +163,14 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged }: {
     const secondary = mouse && (e.button === 2 || (e.button === 0 && e.ctrlKey));
     const pan = mouse && e.button === 1;
     if (gesture.current || (!secondary && !pan && e.button !== 0) ||
-        element.closest("button,a") || (!secondary && !pan && element.closest("input,textarea"))) return;
+        element.closest("button,a,input:not([data-mind-title]),textarea")) return;
     const target = element.closest<HTMLElement>("[data-node]");
     const node = target && byId.get(target.dataset.node!);
     let mode: Gesture["mode"] = "click";
-    if (pan) mode = "pan";
-    else if (!node && !secondary && (mouse || boxTool)) mode = "box";
-    else if (secondary || !mouse) mode = node && onChanged && !node.locked ? "move" : "pan";
+    if (secondary || pan) mode = "pan";
+    else if (!node && (mouse || boxTool)) mode = "box";
+    else if (node && onChanged && !node.locked) mode = "move";
+    else if (!mouse) mode = "pan";
     const ids = node && group.has(node.id) ? groupIds.filter(id => byId.has(id) && !byId.get(id)?.locked) : node ? [node.id] : [];
     if (secondary || pan) {
       e.preventDefault();
@@ -198,8 +199,12 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged }: {
     if (!g || g.pointer !== e.pointerId) return;
     const dx = e.clientX - g.start.x, dy = e.clientY - g.start.y;
     if (!g.moved && Math.hypot(dx, dy) < 4) return;
+    if (!g.moved && g.mode === "move") {
+      if (editor) commitTitle();
+      if (g.node && !group.has(g.node)) select(g.node);
+    }
     g.moved = true;
-    if (!g.secondary && g.mode === "pan") setGrabbing(true);
+    if (g.mode === "pan" || g.mode === "move") setGrabbing(true);
     if (g.mode === "box") selectArea(g, { x: e.clientX, y: e.clientY });
     if (g.mode === "move") setDrag({ ids: new Set(g.ids), x: Math.round(dx / view.zoom), y: Math.round(dy / view.zoom) });
     if (g.mode === "pan") setView({ ...view, x: g.origin.x + dx, y: g.origin.y + dy });
@@ -214,7 +219,6 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged }: {
     if (e.type === "pointercancel" || e.type === "lostpointercapture") { setDrag(null); return; }
     if (!g.moved) {
       if (g.secondary && !g.node) openCreateMenu({ x: e.clientX, y: e.clientY });
-      else if (g.secondary && g.node && !group.has(g.node)) select(g.node);
       return;
     }
     if (g.mode !== "move" || !g.ids.length) return;
@@ -222,7 +226,7 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged }: {
     const dy = Math.round((e.clientY - g.start.y) / view.zoom);
     void save(async () => {
       await http.post(url + "/selecao", { action: "move", ids: g.ids, dx, dy });
-    });
+    }).finally(() => setDrag(null));
   }
   function rename(n: MindNodeDTO) {
     select(n.id);
@@ -267,7 +271,7 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged }: {
           commitTitle();
           return;
         }
-        addBranch(parentId, { direction: e.key === "Tab" ? "right" : undefined });
+        addBranch(parentId, { direction: "right" });
       }
     }
   }
@@ -450,7 +454,7 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged }: {
       <button className="mind-tool" aria-label="Enquadrar mapa" title="Enquadrar mapa" onClick={fit}><Focus size={16} /></button>
     </div>
     <div className="pointer-events-none absolute bottom-4 left-4 hidden items-center gap-1 text-xs text-ink-2 sm:flex">
-      <span aria-live="polite">{busy ? "Salvando…" : onChanged ? "Esquerdo seleciona · Direito arrasta" : "Somente leitura"}</span>
+      <span aria-live="polite">{busy ? "Salvando…" : onChanged ? "Esquerdo seleciona e move blocos · Direito move o mapa" : "Somente leitura"}</span>
       {selected?.link && <a className="pointer-events-auto inline-flex items-center gap-1 text-blue" href={selected.link} target="_blank" rel="noopener noreferrer"><ExternalLink size={12} /> Abrir link</a>}
     </div>
     {!onChanged && selected?.link && <a className="mind-tools absolute bottom-16 left-3 p-2 text-xs sm:hidden" href={selected.link} target="_blank" rel="noopener noreferrer">Abrir link</a>}

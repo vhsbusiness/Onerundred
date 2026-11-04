@@ -1,6 +1,5 @@
 "use client";
 
-import { SymbolPicker } from "@/components/boards/SymbolPicker";
 import { BoardIcon } from "@/components/boards/BoardIcon";
 
 import { BoardFrame, BoardScroller } from "./BoardLayout";
@@ -372,7 +371,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
             {board.name}
           </button>
         )}
-        <span className="pill"><BoardIcon type={board.type} symbol={board.symbol} />{isMap ? "Mapa mental" : board.type === "organization" ? "Organização" : "Lista de tarefas"}</span>
+        <span className="pill"><BoardIcon type={board.type} symbol={board.symbol} size={14} />{isMap ? "Mapa mental" : board.type === "organization" ? "Organização" : "Lista de tarefas"}</span>
         {!isMap && <span className="pill">{openCount} {board.type === "organization" ? "cartões" : "abertas"}</span>}
         {board.type === "tasks" && <span className="pill pill-green">{doneCount} feitas</span>}
         {(board.members.length > 0 || !board.isOwner) && (
@@ -402,12 +401,6 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
             </button>
             {boardMenu && (
               <div className="absolute right-0 top-10 z-30 w-60 rounded-xl border border-line-2 bg-surface-3 p-1 text-sm shadow-2xl">
-                <div className="flex items-center justify-between gap-2 border-b border-line p-2">Ícone
-                  <SymbolPicker type={board.type} value={board.symbol} change={async symbol=>{
-                    try { await http.patch(`/api/boards/${board.id}`, {symbol:symbol || null}); await load(); }
-                    catch { notify("Não foi possível salvar o ícone.", "error"); }
-                  }} />
-                </div>
                 {board.isOwner && !isMap && <div className="border-b border-line p-2">
                   <label className="mb-1 block text-xs text-ink-3" htmlFor="board-type">Tipo do quadro</label>
                   <select id="board-type" value={board.type} onChange={(e) => void changeBoardType(e.target.value as "tasks" | "organization")} className="input">
