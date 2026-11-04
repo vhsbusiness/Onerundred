@@ -66,3 +66,7 @@ Usar como referência de comportamento; não copiar a aparência do Miro por cim
 Ajuste solicitado com prints do Miro em 49%, 23% e 8%: fundo claro cinza neutro (sem amarelo), grade de linhas principais/secundárias com baixo contraste. `src/lib/mind-grid.ts` mantém a célula menor entre 16–64 px de tela, com níveis em potências de quatro. As linhas menores somem progressivamente antes da troca de nível; a grade acompanha o deslocamento e o zoom no mesmo sistema de coordenadas dos itens. O tema escuro conserva o fundo escuro e linhas discretas. Escopo somente no canvas, sem modificar o fundo geral, ferramentas, dados ou interações do mapa.
 
 Validação: teste puro de densidade/continuidade/ancoragem nas trocas de nível, testes existentes, TypeScript, ESLint e build. Chrome local em 375/1440 px, temas claro/escuro, zoom de 5% a 250%, pan direito, seleção/edição por mouse e toque, tela cheia e movimento reduzido. Publicação depende de novo pedido explícito.
+
+## Paleta de texto mais forte — 04/11/2026
+
+As mesmas opções de cor de texto agora usam tons mais escuros/saturados, definidos em `--mind-text-*` no CSS global. O popover resolve esses tokens ao abrir e salva o hexadecimal escolhido; cores já gravadas não são convertidas. Branco/preto, reset e personalização continuam disponíveis. Cores de ramo, marca-texto e lápis mantêm suas paletas próprias. Validado em 375/1440 px, claro/escuro, aplicação, seleção da cor e persistência após recarregar; TypeScript, lint, oito testes do mapa e build aprovados. O dono autorizou o deploy após a conferência.

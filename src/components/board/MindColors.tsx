@@ -14,9 +14,17 @@ const presets = [
   ["Verde", "#8be3a6"], ["Azul", "#7fb7f5"], ["Roxo", "#b9a0f5"],
   ["Rosa", "#ef9ec5"], ["Verde escuro", "#2a9a5c"], ["Azul escuro", "#2f74c4"],
 ];
+// Text needs stronger ink than branch fills and highlights. Resolve the CSS
+// tokens on opening so saved nodes keep a concrete, theme-independent color.
+const textPresetTokens: Record<string, string> = {
+  Cinza: "--mind-text-gray", Vermelho: "--mind-text-red", Laranja: "--mind-text-orange",
+  Amarelo: "--mind-text-yellow", Verde: "--mind-text-green", Azul: "--mind-text-blue",
+  Roxo: "--mind-text-purple", Rosa: "--mind-text-pink",
+  "Verde escuro": "--mind-text-dark-green", "Azul escuro": "--mind-text-dark-blue",
+};
 const labels = { color: "Cor do ramo", textColor: "Cor do texto", highlight: "Marca-texto" };
 
-type OpenPalette = { host: HTMLElement; left: number; top: number };
+type OpenPalette = { host: HTMLElement; left: number; top: number; colors: typeof presets };
 function ColorInput({ field, value, preview, commit, label }: {
   field: ColorField; value: string; preview: ColorHandler; commit: ColorHandler; label?: string;
 }) {
@@ -66,7 +74,12 @@ function ColorInput({ field, value, preview, commit, label }: {
     const left = Math.max(8, Math.min(a.left - b.left, b.width - width - 8));
     const below = a.bottom - b.top + 8;
     const top = below + height <= b.height - 8 ? below : Math.max(8, a.top - b.top - height - 8);
-    setOpen({ host, left, top });
+    const styles = getComputedStyle(host);
+    const colors = presets.map(([name, color]) => {
+      const token = field === "textColor" ? textPresetTokens[name] : undefined;
+      return [name, token ? styles.getPropertyValue(token).trim() || color : color];
+    });
+    setOpen({ host, left, top, colors });
   }
   function choose(color: string) {
     pending.current = false;
@@ -87,7 +100,7 @@ function ColorInput({ field, value, preview, commit, label }: {
       }}>
       <div className="flex items-center justify-between gap-2 text-xs"><span>{title}</span><button type="button" aria-label="Fechar cores" className="mind-tool !w-auto !min-h-6" onClick={() => close(true)}><X size={14} /></button></div>
       <div className="mind-color-grid" role="group" aria-label="Cores prontas">
-        {presets.map(([name, color]) => <button type="button" className="mind-color-swatch" key={color} aria-label={name} title={name} aria-pressed={swatch.toLowerCase() === color} onClick={() => choose(color)}><span style={{ backgroundColor: color }} /></button>)}
+        {open.colors.map(([name, color]) => <button type="button" className="mind-color-swatch" key={color} aria-label={name} title={name} aria-pressed={swatch.toLowerCase() === color} onClick={() => choose(color)}><span style={{ backgroundColor: color }} /></button>)}
       </div>
       <button type="button" className="mind-tool" onClick={() => choose(field === "color" ? "blue" : "")}><RotateCcw size={14} />{field === "highlight" ? "Sem marca-texto" : "Cor padrão"}</button>
       <label className="mind-tool relative"><Palette size={14} />Cor personalizada

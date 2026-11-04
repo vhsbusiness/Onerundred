@@ -618,6 +618,16 @@ body {
   --mind-panel: var(--color-surface);
   --mind-accent: var(--color-blue);
   --mind-grid: color-mix(in srgb, var(--color-ink) 6%, transparent);
+  --mind-text-gray: #4b5563;
+  --mind-text-red: #d92d20;
+  --mind-text-orange: #c65d11;
+  --mind-text-yellow: #ad7b00;
+  --mind-text-green: #16803c;
+  --mind-text-blue: #2563eb;
+  --mind-text-purple: #7c3aed;
+  --mind-text-pink: #c02670;
+  --mind-text-dark-green: #166534;
+  --mind-text-dark-blue: #1e40af;
 }
 .mind-canvas { background-color: var(--color-bg); }
 .mind-canvas-light .mind-canvas, :root[data-theme="light"] .mind-canvas {
