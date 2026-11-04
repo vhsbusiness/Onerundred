@@ -208,13 +208,19 @@
   background-image: linear-gradient(150deg, var(--glass-shine), transparent 65%);
   box-shadow: inset 0 1px 0 var(--glass-shine);
 }
-/* Respeita a preferência por superfícies opacas sem modificar os demais componentes. */
+/* A preferência reduz a transparência real, não o acabamento do vidro.
+   Mantém os reflexos/bordas já definidos sobre uma base opaca, inclusive no Windows. */
 @media (prefers-reduced-transparency: reduce) {
   :root[data-design="v3"] :is(.v2-rail, nav.fixed.inset-x-0.bottom-0, .btn, button.pill) {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
     background-color: var(--color-surface-3);
-    background-image: none;
+  }
+  :root[data-design="v3"] :is(.v2-rail, nav.fixed.inset-x-0.bottom-0) {
+    background-color: var(--color-surface);
+  }
+  :root[data-design="v3"] .btn:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-surface-3) 94%, var(--color-ink));
   }
   :root[data-design="v3"] .btn.btn-primary { background-color: var(--color-orange); }
 }
@@ -245,7 +251,6 @@
   :root[data-design="v3"] .board-tile,
   :root[data-design="v3"] .dashboard-layout :is(.dashboard-panel, .work-timer-panel, .performance-panel, .metric-tile, .ai-insight-panel) {
     background-color: var(--color-surface);
-    background-image: none;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }

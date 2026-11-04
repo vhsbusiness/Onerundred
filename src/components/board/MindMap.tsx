@@ -10,6 +10,8 @@ import { prepareMindImage } from "@/lib/mind-image-client";
 import { copyMindSelection, readMindClipboard, MIND_CLIPBOARD_MIME, MIND_CLIPBOARD_PREFIX, type MindClipboard } from "@/lib/mind-clipboard";
 import { textBlockSize } from "@/lib/mind-size";
 import { mindBranchIds } from "@/lib/mind-tree";
+import { mindDropTarget } from "@/lib/mind-drop";
+import { readMindText, writeMindText, safeMindTextStyle } from "@/lib/mind-text-clipboard";
 import { isMindRoot } from "@/lib/mind-root";
 import { parseDrawing, normalizeDrawing, inkPath } from "@/lib/mind-drawing";
 import { fadeMindItems } from "./mind-motion";
@@ -33,6 +35,7 @@ type Gesture = {
   draft?: { id: string; title: string };
   ink?: Point[]; color?: string; strokeWidth?: number; ids: string[]; boxes: HitBox[];
   node?: string; roots: string[]; secondary: boolean;
+  drop?: { id: string; parentId: string } | null;
 };
 type Ink = { points: Point[]; color: string; width: number };
 type PendingInk = Ink & { key: string; nodeId?: string; failed?: boolean };
@@ -75,6 +78,7 @@ export function MindMap({ boardId, nodes, undoId = null, redoId = null, onChange
 
   const selected = nodes.find(n => n.id === selectedId);
   const [view, setView] = useState({ x: -(root?.x ?? 0), y: -(root?.y ?? 0), zoom: 1 });
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [drag, setDrag] = useState<(Point & { ids: Set<string> }) | null>(null);
   const [resize, setResize] = useState<{ id: string; textWidth: number; textHeight: number } | null>(null);
   const [editor, edit] = useState<{id: string; title: string} | null>(null);
@@ -124,7 +128,7 @@ export function MindMap({ boardId, nodes, undoId = null, redoId = null, onChange
       });
     }
     const sync = () => setFull(document.fullscreenElement === section.current);
-    const escape = (e: globalThis.KeyboardEvent) => { if (e.key === "Escape" && !document.fullscreenElement) setFull(false); };
+    const escape = (e: globalThis.KeyboardEvent) => { if (!e.defaultPrevented && e.key === "Escape" && !document.fullscreenElement) setFull(false); };
     element.addEventListener("wheel", wheel, { passive:false });
     document.addEventListener("fullscreenchange", sync);
     document.addEventListener("keydown", escape);
@@ -264,7 +268,7 @@ export function MindMap({ boardId, nodes, undoId = null, redoId = null, onChange
     gesture.current = {
       ...(mode === "draw" && { ink: [canvasPoint(e.clientX, e.clientY)], color: penColor, strokeWidth: penWidth }),
       pointer: e.pointerId, start: { x: e.clientX, y: e.clientY }, origin: view, moved: false, ids, roots, mode, secondary, node: node?.id,
-      boxes: mode === "box" ? Array.from(e.currentTarget.querySelectorAll<HTMLElement>("[data-node]"), el => ({ id: el.dataset.node!, rect: el.getBoundingClientRect() })) : [],
+      boxes: mode === "box" || mode === "move" ? Array.from(e.currentTarget.querySelectorAll<HTMLElement>("[data-node]"), el => ({ id: el.dataset.node!, rect: el.getBoundingClientRect() })) : [],
     };
     (mode === "draw" ? e.currentTarget : target ?? e.currentTarget).setPointerCapture(e.pointerId);
   }
@@ -296,7 +300,11 @@ export function MindMap({ boardId, nodes, undoId = null, redoId = null, onChange
     g.moved = true;
     if (g.mode === "pan" || g.mode === "move") setGrabbing(true);
     if (g.mode === "box") selectArea(g, { x: e.clientX, y: e.clientY });
-    if (g.mode === "move") setDrag({ ids: new Set(g.ids), x: Math.round(dx / view.zoom), y: Math.round(dy / view.zoom) });
+    if (g.mode === "move") {
+      setDrag({ ids: new Set(g.ids), x: Math.round(dx / view.zoom), y: Math.round(dy / view.zoom) });
+      g.drop = e.metaKey || e.ctrlKey ? null : mindDropTarget(nodes, g.roots, g.boxes, { x: e.clientX, y: e.clientY });
+      setDropTarget(g.drop?.parentId ?? null);
+    }
     if (g.mode === "pan") setView({ ...view, x: g.origin.x + dx, y: g.origin.y + dy });
   }
   function saveStroke(stroke: PendingInk) {
@@ -318,6 +326,7 @@ export function MindMap({ boardId, nodes, undoId = null, redoId = null, onChange
     suppressedClick.current = g.moved || g.secondary || g.mode === "draw";
     setGrabbing(false);
     setBox(null);
+    setDropTarget(null);
     if (g.draft) skipBlur.current = false;
     if (e.type === "pointercancel" || e.type === "lostpointercapture") { setDrag(null); setResize(null); setInk(null); if (g.draft) edit(g.draft); return; }
     if (g.mode === "draw" && g.ink) {
@@ -349,6 +358,21 @@ export function MindMap({ boardId, nodes, undoId = null, redoId = null, onChange
       return;
     }
     if (g.mode !== "move" || !g.ids.length) return;
+    const modifiers = e as PointerEnd & { metaKey?: boolean; ctrlKey?: boolean };
+    const drop = !modifiers.metaKey && !modifiers.ctrlKey && g.drop && mindDropTarget(nodes, g.roots, g.boxes, { x: e.clientX, y: e.clientY });
+    if (drop) {
+      void save(async () => {
+        try {
+          await http.post(url + "/estrutura", { action: "connect", ...drop, ...(g.draft?.title.trim() && { title: g.draft.title.trim() }) });
+        } catch (error) {
+          if (g.draft) edit(previous => previous ?? g.draft!);
+          throw error;
+        }
+        setFolded(old => new Set([...old].filter(id => id !== drop.parentId)));
+        select(drop.id);
+      }).finally(() => setDrag(null));
+      return;
+    }
     const dx = Math.round((e.clientX - g.start.x) / view.zoom);
     const dy = Math.round((e.clientY - g.start.y) / view.zoom);
     void save(async () => {
@@ -479,8 +503,17 @@ export function MindMap({ boardId, nodes, undoId = null, redoId = null, onChange
     return true;
   }
   const copyItems = useEffectEvent((event: ClipboardEvent) => {
-    if (event.defaultPrevented || !acceptsClipboard(event.target as HTMLElement) || editingText(event.target as HTMLElement) || (!selectedId && !groupIds.length)) return;
-    copySelection(event);
+    const target = event.target as HTMLElement;
+    if (event.defaultPrevented || !acceptsClipboard(target) || !event.clipboardData) return;
+    if (target instanceof HTMLTextAreaElement && target.matches("[data-mind-title]") && selected) {
+      const text = target.value.slice(target.selectionStart, target.selectionEnd);
+      if (!text) return;
+      if (!editingText(target)) copySelection(event);
+      writeMindText(event.clipboardData, text, byId.get(selected.id) ?? selected);
+      event.preventDefault();
+      return;
+    }
+    if (!editingText(target) && (selectedId || groupIds.length)) copySelection(event);
   });
   const pasteItems = useEffectEvent((event: ClipboardEvent) => {
     if (!onChanged || event.defaultPrevented || document.querySelector('[aria-modal="true"]')) return;
@@ -490,6 +523,23 @@ export function MindMap({ boardId, nodes, undoId = null, redoId = null, onChange
     try {
       const text = event.clipboardData?.getData(MIND_CLIPBOARD_MIME) || event.clipboardData?.getData("text/plain") || "";
       const data = readMindClipboard(text);
+      if (target instanceof HTMLTextAreaElement && target.matches("[data-mind-title]") && editor && event.clipboardData) {
+        const single = data?.nodes.length === 1 && !data.nodes[0].imageData && !data.nodes[0].drawing ? data.nodes[0] : null;
+        const phrase = readMindText(event.clipboardData) ?? (single ? { text: single.title, style: safeMindTextStyle(single) } : null);
+        if (phrase) {
+          event.preventDefault();
+          const start = target.selectionStart;
+          const title = target.value.slice(0, start) + phrase.text + target.value.slice(target.selectionEnd);
+          if (title.length > 160) { notify("Use até 160 caracteres por ideia.", "error"); return; }
+          if (!title.trim()) return;
+          const id = editor.id;
+          edit({ id, title });
+          void save(async () => { await http.patch(url, { id, title, ...phrase.style }); });
+          requestAnimationFrame(() => { if (target.isConnected) target.setSelectionRange(start + phrase.text.length, start + phrase.text.length); });
+          return;
+        }
+        if (data) { event.preventDefault(); notify("Para colar vários itens, clique primeiro no fundo do mapa.", "info"); return; }
+      }
       if (data && !editingText(target)) {
         event.preventDefault();
         const previous = copied.current;
@@ -697,7 +747,7 @@ export function MindMap({ boardId, nodes, undoId = null, redoId = null, onChange
           const central = isMindRoot(n);
           const hasChildren = children.has(n.id);
           return <div key={n.id} data-ink-object={!!drawing} className="mind-object absolute" style={{ left: n.x, top: n.y }}>
-            <div data-node={n.id} role="button" tabIndex={0} aria-pressed={marked} title={n.title}
+            <div data-node={n.id} data-drop-target={dropTarget === n.id} role="button" tabIndex={0} aria-pressed={marked} title={n.title}
               onClick={event => {
                 if (tool === "hand" || tool === "draw" || suppressedClick.current) return;
                 if (event.shiftKey || event.metaKey) {
@@ -751,6 +801,7 @@ export function MindMap({ boardId, nodes, undoId = null, redoId = null, onChange
       </div>
     </div>
     {!busy && pendingInk.length > 0 && <button className="mind-tools absolute top-16 right-3 px-3 py-2 text-xs" onClick={() => pendingInk.forEach(saveStroke)}>Tentar salvar desenhos</button>}
+    {dropTarget && <div className="mind-tools mind-drop-hint" role="status">Solte para conectar a “{byId.get(dropTarget)?.title}”</div>}
     {box && <div aria-hidden="true" className="mind-marquee" style={box} />}
     {menu && onChanged && <div className="mind-create-menu mind-tools" role="group" aria-label="Criar no mapa" style={{ left: menu.screen.x, top: menu.screen.y }}>
       <button className="mind-tool" onClick={() => void pasteCopied(menu.at)}><ClipboardPaste size={15} /> Colar itens</button>

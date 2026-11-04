@@ -20,9 +20,9 @@ Usar como referência de comportamento; não copiar a aparência do Miro por cim
 | Movimento | Arrastar um ramo leva todos os descendentes, inclusive recolhidos. Selecionar pai e filho não duplica o deslocamento. Item fixado no conjunto impede o movimento inteiro. |
 | Auto | Calcula altura das subárvores, alinha níveis, separa grupos e considera dimensões de texto. Raízes e posições fixadas são preservadas. Arraste manual desativa Auto apenas nas árvores afetadas e explica isso na interface. |
 | Organização pontual | “Organizar agora” reorganiza uma árvore sem mudar sua preferência de Auto. |
-| Conexões | Alternância curvas/retas sem mover itens. Preferência local por quadro. “Conectar a outro ramo” troca o pai e leva os filhos; pode tornar o ramo independente. Ciclos e conexões entre quadros são rejeitados. |
+| Conexões | Alternância curvas/retas sem mover itens. Preferência local por quadro. Arrastar sobre outro texto destaca o destino e reconecta a subárvore; o menu “Conectar a outro ramo” também permite escolher o pai ou tornar o ramo independente. Ciclos e conexões entre quadros são rejeitados. |
 | Bloco de texto | Alça no canto, aumentar/diminuir, voltar ao tamanho automático. Dimensões persistidas e independentes do tamanho da fonte. Shift+Enter insere quebra de linha. |
-| Formatação | Moldura, cor, destaque, negrito, fonte, link e posição fixa. Seleção múltipla permite alterar estilos em lote. |
+| Formatação | Moldura, paleta de cores prontas/personalizadas, destaque, negrito, fonte, link e posição fixa. Seleção múltipla permite alterar estilos em lote. |
 | Seleção | Retângulo, Shift/⌘+clique para alternar itens, Ctrl/⌘+A fora do editor para selecionar os itens visíveis. |
 | Navegação | Setas entre pai/filho/irmãos fora do campo de texto, F2 para editar, V/H/T/P para selecionar/mover/criar texto/desenhar. Tecla 1 enquadra o mapa. |
 | Busca | Ctrl/⌘+F ou botão. Busca títulos, percorre resultados e expande os ancestrais de um item recolhido. |
@@ -32,12 +32,11 @@ Usar como referência de comportamento; não copiar a aparência do Miro por cim
 | Mídia | Imagens coladas/anexadas, lápis, espessura/cor e recuperação de traços com resposta perdida. |
 | Importação | Prints do Miro pela IA, prévia antes de salvar, negrito/emojis e ramos novos à direita. |
 | Exportação | Mapa completo em SVG, PNG (até 4096 px no lado maior) e texto com hierarquia. Inclui ramos recolhidos. Exportação ocorre no navegador; não envia os dados a outro serviço. |
-| Tela | Zoom, enquadramento, tela cheia, claro/escuro com pontinhos; ferramentas adaptadas a celular e computador. |
+| Tela | Zoom, enquadramento, tela cheia, claro/escuro com grade quadrada; ferramentas adaptadas a celular e computador. |
 | Acesso | Dono/membros editam; colaboradores com leitura consultam. Novas rotas verificam o acesso novamente. |
 
 ## Diferenças ainda existentes
 
-- Reconexão é explícita pelo controle de destino; arrastar por cima de outro ramo não troca seu pai automaticamente.
 - Não há conexões extras entre nós fora da hierarquia (cross-links), orientação vertical, comentários ancorados, presença/cursores simultâneos ou sincronização ao vivo.
 - IA importa prints; ainda não expande uma ideia em tópicos, perguntas ou respostas dentro do mapa.
 - Não há biblioteca de modelos, modo apresentação, histórico de versões de todo o quadro ou importação de arquivos nativos do Miro.
@@ -52,3 +51,12 @@ Usar como referência de comportamento; não copiar a aparência do Miro por cim
 3. Respeitar itens fixados e outras árvores; organização automática não deve interferir em mapas independentes.
 4. Testar 375/1440 px, claro/escuro, toque/mouse, rede lenta, editor de texto ativo e leitura por colaborador.
 5. Publicar somente após pedido explícito do dono. O pedido de estudar/implementar não autoriza deploy.
+
+## Incremento local — 04/11/2026
+
+- Arraste esquerdo sobre outro texto reconecta uma subárvore inteira (também quando pai e filho estão selecionados). O destino é destacado antes de soltar. Seleções de árvores independentes continuam somente movendo. Não conecta mídia, o próprio ramo, seus descendentes ou seu pai atual. Ctrl/⌘ durante o movimento suprime a reconexão; botão direito continua apenas movendo a visão. O controle existente de conexão permanece.
+- Reconexão, título em edição e deslocamento usam uma transação/entrada de histórico. Descendentes fixados bloqueiam a ação inteira. Destino recolhido abre após a reconexão. Erro do servidor preserva o rascunho no editor.
+- Copiar texto do editor inclui texto simples, HTML seguro e metadados dos estilos suportados. Colar em um item aberto aplica texto, negrito, cor, destaque, tamanho e link do texto de origem. Fora do editor, a cópia de objetos continua usando o formato interno e preserva as ligações. Textos sem formatação mantêm o comportamento nativo.
+- A formatação continua sendo **do bloco inteiro**: não há estilos diferentes por palavra no mesmo título. HTML externo usa o estilo da primeira frase visível, limitado aos atributos já suportados. Não armazena/executa HTML do clipboard; links só http/https. Limite de 160 caracteres continua; ultrapassá-lo não descarta silenciosamente o restante.
+- Paleta com 12 cores, padrão/sem destaque e cor personalizada, inclusive em seleção múltipla e lápis. Popover usa o tema local do mapa e funciona em tela cheia. Esc fecha a paleta sem perder a seleção.
+- Canvas usa grade discreta clara/escura; o fundo do aplicativo permanece pontilhado. Esta escolha substitui a preferência anterior por pontos dentro do mapa.

@@ -177,3 +177,9 @@ Rotas novas: `POST /api/boards/[id]/mapa/estrutura` (`organize`/`connect`) e `/r
 `MindNode.textWidth/textHeight` são anuláveis; null usa tamanho automático. UI inclui alça, botões, editor multilinha, busca/navegação e `MindConnect`. `mind-export.ts` serializa um SVG seguro usando APIs DOM, rasteriza PNG com dimensão limitada e exporta texto hierárquico. Não insere HTML de títulos nem carrega mídias externas. Importação de screenshots continua separada.
 
 Migration aditiva `20261104023919_mind_text_size` para Postgres e SQLite: dimensões do texto e marcador de refazer. `npm run test:mind` executa testes puros do layout, tamanho, seleção de subárvore e direção dos filhos, sem banco ou rede. Comparação funcional e limites em [MIND_MAP_REFERENCE.md](MIND_MAP_REFERENCE.md).
+
+### Arraste com reconexão e clipboard de texto — 04/11/2026
+
+`mind-drop.ts` faz hit-test contra os limites dos destinos medidos no início do gesto; exclui a subárvore em movimento, mídia e ciclos. `MindMap` mostra o destino, continua movendo descendentes e chama a rota existente `/mapa/estrutura` ao soltar. `reconnectMindBranch` aceita opcionalmente o título em edição e grava título, pai e posições sob `writeMap`/`remember`, com histórico composto. Não há schema ou migration nova.
+
+`mind-text-clipboard.ts` fornece um MIME específico para texto formatado, além de texto simples/HTML. A colagem usa somente uma lista permitida de atributos e passa pela validação existente de PATCH. HTML externo é interpretado em template inerte, nunca montado no DOM. `MindColors` usa portal dentro da seção do mapa (inclusive fullscreen), preservando os tokens locais de tema, e mantém preview/confirmação do seletor nativo de cores.

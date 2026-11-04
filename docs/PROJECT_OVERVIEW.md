@@ -98,3 +98,12 @@ Studio v3: vidro via CSS apenas na barra lateral, navegação inferior e botões
 Clicar no texto do checklist permite editar inline; Enter/blur salvam, Esc cancela sem fechar o modal. O texto continua limitado a 200 caracteres. Alterar texto não marca como concluído nem inicia tarefa/sessão. Erros preservam o rascunho; checkbox continua independente. Verificações: lint, TypeScript, build, 375/1440px, vidro em claro/escuro, comportamento da edição e persistência via API. Alterações locais, sem deploy.
 
 Complemento visual (31/10/2026): a pedido do usuário, o vidro também foi aplicado aos painéis do dashboard (métricas, análise, sessão de trabalho, performance e painéis inferiores). Escopo limitado a `.dashboard-layout` no Studio v3. Blur apenas nas superfícies externas para evitar camadas excessivas; cartões internos têm transparência e reflexo. Conferido em 375/1440px e claro/escuro; demais telas e versões antigas preservadas. Ainda não publicado.
+
+
+## Vidro com transparência reduzida — 04/11/2026
+
+O Studio v3 mantém os reflexos suaves e as bordas de vidro mesmo quando o Chrome recebe `prefers-reduced-transparency: reduce` (por exemplo, com efeitos de transparência desligados no Windows). O fundo fica opaco e o desfoque continua desligado conforme a preferência, mas o gradiente decorativo não é removido. Navegação usa a superfície padrão; hover dos botões também usa fundo opaco. Temas claro/escuro, demais versões e comportamento do aplicativo permanecem preservados. Não é uma regra por user-agent nem requer alterar configurações do computador.
+
+## Ajustes do mapa mental — 04/11/2026
+
+Reconectar uma subárvore arrastando sobre outro item, com indicação do destino e desfazer/refazer da operação inteira. Colagem em um texto aberto preserva a formatação suportada pelo bloco. Paleta com cores prontas/personalizadas e grade quadrada no canvas, tanto claro quanto escuro. Detalhes e limites em `MIND_MAP_REFERENCE.md`. Alterações locais, sem publicar nesta etapa.

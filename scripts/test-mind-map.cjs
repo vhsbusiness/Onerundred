@@ -67,3 +67,24 @@ test("Resizing keeps links clear and translates descendants together", () => {
   assert.equal(next[2].y, 30);
   assert.throws(() => spaceMindChildren(nodes.map(n => n.id === "b" ? { ...n, locked: true } : n), new Set(["root"])));
 });
+
+const { mindDropTarget } = load('mind-drop');
+test('Drop reconnects one subtree, never itself, a descendant, its current parent or media', () => {
+  const nodes = [n('r', null, 0, 0), n('a', 'r', 1, 0), n('b', 'a', 2, 0), n('target', null, 3, 0), n('image', null, 4, 0, { imageData: 'data:' })];
+  const boxes = nodes.map((n, i) => ({ id: n.id, rect: { left: i * 100, right: i * 100 + 40, top: 0, bottom: 30 } }));
+  assert.deepEqual(mindDropTarget(nodes, ['a'], boxes, { x: 320, y: 15 }), { id: 'a', parentId: 'target' });
+  for (const x of [20, 120, 220, 420, 500]) assert.equal(mindDropTarget(nodes, ['a'], boxes, { x, y: 15 }), null);
+  assert.deepEqual(mindDropTarget(nodes, ['a', 'b'], boxes, { x: 320, y: 15 }), { id: 'a', parentId: 'target' });
+  assert.equal(mindDropTarget(nodes, ['a', 'target'], boxes, { x: 20, y: 15 }), null);
+});
+test('Text clipboard accepts only supported formatting, not structure or executable links', () => {
+  const { safeMindTextStyle, writeMindText, MIND_TEXT_MIME } = load('mind-text-clipboard');
+  assert.deepEqual(safeMindTextStyle({ bold: true, textColor: '#ff0011', highlight: '', fontSize: 18, link: 'https://example.test', parentId: 'injected', locked: true }),
+    { bold: true, textColor: '#ff0011', highlight: '', fontSize: 18, link: 'https://example.test' });
+  assert.deepEqual(safeMindTextStyle({ bold: 'true', textColor: 'url(evil)', fontSize: 999, link: 'javascript:alert(1)' }), {});
+  const values = {}, clipboard = { setData: (type, data) => values[type] = data };
+  writeMindText(clipboard, '<img src=x> & 🟢', { bold: true, textColor: '#123456', highlight: '', fontSize: 14, link: '' });
+  assert.equal(values['text/plain'], '<img src=x> & 🟢');
+  assert(!values['text/html'].includes('<img'));
+  assert.equal(JSON.parse(values[MIND_TEXT_MIME]).style.bold, true);
+});

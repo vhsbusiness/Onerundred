@@ -214,3 +214,8 @@ O fundo do mapa mantém os pontinhos nos temas claro e escuro. As cores têm pr�
 - Ctrl/⌘+D duplica os ramos selecionados com todos os descendentes; Copiar seleção continua capturando exatamente os itens explicitamente selecionados. O limite da cópia continua 1.000 itens/8 MiB.
 - Busca revela os ancestrais recolhidos. Setas e atalhos de ferramenta atuam fora de campos de digitação; atalhos nativos de texto continuam disponíveis.
 - Exportação inclui todo o mapa, mesmo ramos recolhidos. SVG é vetorial; PNG limita o lado maior a 4096 px; texto mantém hierarquia/títulos/links. Não modifica os dados do quadro.
+
+### Reconexão por arraste e colagem formatada — 04/11/2026
+
+- Reconectar leva todos os descendentes, incluindo recolhidos, para a direita do novo pai; uma ação de histórico restaura título em edição, ligação e posições. O backend continua exigindo escrita no quadro, sem ciclos ou ligações entre quadros. Itens fixados impedem mover a subárvore. Auto continua respeitando as regras existentes nas árvores envolvidas.
+- Colar uma frase formatada em um item aberto atualiza texto e os estilos suportados do **bloco**. Não altera cor da conexão, hierarquia, posição ou travamento por dados do clipboard. O limite de título permanece 160 caracteres. Cópia de vários blocos deve ser colada no fundo do mapa; não inserir sua representação JSON num título.
