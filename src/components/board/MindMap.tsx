@@ -130,19 +130,14 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
         return { zoom, x: px - (px - old.x) * zoom / old.zoom, y: py - (py - old.y) * zoom / old.zoom };
       });
     }
-    const sync = () => setFull(document.fullscreenElement === section.current);
-    const escape = (e: globalThis.KeyboardEvent) => { if (!e.defaultPrevented && e.key === "Escape" && !document.fullscreenElement) setFull(false); };
+    const escape = (e: globalThis.KeyboardEvent) => { if (!e.defaultPrevented && e.key === "Escape") setFull(false); };
     element.addEventListener("wheel", wheel, { passive:false });
-    document.addEventListener("fullscreenchange", sync);
     document.addEventListener("keydown", escape);
-    return () => { element.removeEventListener("wheel", wheel); document.removeEventListener("fullscreenchange", sync); document.removeEventListener("keydown", escape); };
+    return () => { element.removeEventListener("wheel", wheel); document.removeEventListener("keydown", escape); };
   }, []);
-  async function toggleFull() {
-    if (document.fullscreenElement) await document.exitFullscreen();
-    else if (full) setFull(false);
-    else if (section.current?.requestFullscreen) {
-      try { await section.current.requestFullscreen(); } catch { setFull(true); }
-    } else setFull(true);
+  function toggleFull() {
+    // Expand within the browser viewport so its tabs and toolbar remain visible.
+    setFull(value => !value);
   }
   const [busy, setBusy] = useState(false);
   const queue = useRef(Promise.resolve());

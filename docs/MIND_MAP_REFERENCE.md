@@ -86,3 +86,10 @@ Validado no Chrome local em 375/1440 px, claro/escuro, edição, alternância de
 - O menu considera a altura da nova opção para caber no canvas. Usa os mesmos controles de vidro e ícones do app.
 
 Validação local: TypeScript, ESLint, oito testes puros e build. Chrome 375/1440 px em claro/escuro: recarga imediata, retorno entre quadros, reinício com armazenamento preservado, recolhimento aninhado/em lote, sincronização entre abas e isolamento de contas; leitura de colaborador, armazenamento inválido/bloqueado e itens intactos. Organizar verificado com duas árvores, itens fixados, raízes preservadas, desfazer/refazer completo, compatibilidade da organização de uma única árvore, mapa vazio e rejeição de acesso sem permissão. Sem push/deploy nesta etapa.
+
+
+## Mapa ampliado preservando o navegador — 04/11/2026
+
+O botão Tela cheia expande o mapa dentro da área visível da página com posicionamento fixo, sem chamar a Fullscreen API. Abas, endereço e barras do navegador permanecem disponíveis; o app não controla tela cheia ativada manualmente pelo próprio navegador/sistema. Sair da tela cheia ou Esc restaura o quadro. Ferramentas, tema e conteúdo continuam no mesmo componente, sem remontar o mapa. Não há alteração de schema.
+
+Validação: tipos, lint, oito testes do mapa e build; Chrome local 375/1440 px, claro/escuro, área ampliada ocupando o viewport, ausência de chamadas a requestFullscreen, ferramentas visíveis e saída por botão/Esc. Banco temporário de QA, sem dados de produção. Roteiro `/private/tmp/onerundred-browser-full-qa.cjs`. Publicação autorizada pelo pedido de deploy em andamento, junto da animação/seta dos favoritos.

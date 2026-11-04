@@ -197,3 +197,10 @@ Validação: TypeScript, ESLint e build aprovados; Chrome em 375/1440 px confirm
 O submenu de quadros favoritos expande/recolhe com transição de altura e opacidade, mantendo hover e foco de teclado. Quadros ganha uma seta para baixo somente quando existem favoritos; a seta gira ao abrir. Funciona na barra expandida e recolhida e respeita movimento reduzido. Aplica-se aos atalhos de tarefas, organização e mapa mental. Sem alteração de banco.
 
 TypeScript, ESLint, build e diff aprovados. Chrome com banco temporário de QA: altura intermediária da animação, recolhimento completo, rotação da seta, travessia dos links, teclado, movimento reduzido, barra recolhida, 375/1440 px e ausência da seta sem favoritos. Roteiro `/private/tmp/onerundred-favorites-animation-qa.cjs`. Ainda sem push/deploy desta etapa.
+
+
+## Mapa ampliado preservando o navegador — 04/11/2026
+
+O botão Tela cheia expande o mapa dentro da área visível da página com posicionamento fixo, sem chamar a Fullscreen API. Abas, endereço e barras do navegador permanecem disponíveis; o app não controla tela cheia ativada manualmente pelo próprio navegador/sistema. Sair da tela cheia ou Esc restaura o quadro. Ferramentas, tema e conteúdo continuam no mesmo componente, sem remontar o mapa. Não há alteração de schema.
+
+Validação: tipos, lint, oito testes do mapa e build; Chrome local 375/1440 px, claro/escuro, área ampliada ocupando o viewport, ausência de chamadas a requestFullscreen, ferramentas visíveis e saída por botão/Esc. Banco temporário de QA, sem dados de produção. Roteiro `/private/tmp/onerundred-browser-full-qa.cjs`. Publicação autorizada pelo pedido de deploy em andamento, junto da animação/seta dos favoritos.
