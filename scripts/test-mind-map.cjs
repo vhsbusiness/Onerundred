@@ -88,3 +88,22 @@ test('Text clipboard accepts only supported formatting, not structure or executa
   assert(!values['text/html'].includes('<img'));
   assert.equal(JSON.parse(values[MIND_TEXT_MIME]).style.bold, true);
 });
+
+const { mindGrid } = load('mind-grid');
+test('Grid stays sparse across the zoom range and changes levels without a jump', () => {
+  for (let percent = 5; percent <= 250; percent++) {
+    const grid = mindGrid(percent / 100);
+    assert(grid.step >= 16 - 1e-9 && grid.step <= 64 + 1e-9);
+    assert.equal(grid.majorStep, grid.step * 4);
+    assert(grid.fade >= 0 && grid.fade <= 1);
+  }
+  for (const boundary of [.05, .2, .8]) {
+    const below = mindGrid(boundary * (1 - 1e-8));
+    const above = mindGrid(boundary * (1 + 1e-8));
+    assert(Math.abs(below.step - above.majorStep) < 1e-5);
+    assert(below.fade > .99999 && above.fade < .00001);
+    // An existing grid intersection stays anchored at the same world position.
+    assert(Math.abs(below.step / (boundary * (1 - 1e-8)) - above.majorStep / (boundary * (1 + 1e-8))) < 1e-8);
+  }
+  for (const zoom of [0, -1, NaN, Infinity]) assert.deepEqual(mindGrid(zoom), mindGrid(1));
+});

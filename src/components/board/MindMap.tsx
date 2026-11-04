@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useRef, useState, useMemo, type PointerEvent } from "react";
+import { useEffect, useEffectEvent, useRef, useState, useMemo, type PointerEvent, type CSSProperties } from "react";
 import { Focus, Minus, Maximize, Minimize, Moon, Sun, Plus, Undo2, ExternalLink, MousePointer2, Hand, ImagePlus, GitBranchPlus, Sparkles, Type, Square, Pencil, ClipboardPaste, Spline, Slash, Redo2, Search, X, ChevronUp, ChevronDown, ChevronsDownUp, Download } from "lucide-react";
 import { http } from "@/lib/client";
 import type { MindNodeDTO } from "@/lib/types";
@@ -11,6 +11,7 @@ import { copyMindSelection, readMindClipboard, MIND_CLIPBOARD_MIME, MIND_CLIPBOA
 import { textBlockSize } from "@/lib/mind-size";
 import { mindBranchIds } from "@/lib/mind-tree";
 import { mindDropTarget } from "@/lib/mind-drop";
+import { mindGrid } from "@/lib/mind-grid";
 import { readMindText, writeMindText, safeMindTextStyle } from "@/lib/mind-text-clipboard";
 import { isMindRoot } from "@/lib/mind-root";
 import { parseDrawing, normalizeDrawing, inkPath } from "@/lib/mind-drawing";
@@ -78,6 +79,7 @@ export function MindMap({ boardId, nodes, undoId = null, redoId = null, onChange
 
   const selected = nodes.find(n => n.id === selectedId);
   const [view, setView] = useState({ x: -(root?.x ?? 0), y: -(root?.y ?? 0), zoom: 1 });
+  const grid = mindGrid(view.zoom);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [drag, setDrag] = useState<(Point & { ids: Set<string> }) | null>(null);
   const [resize, setResize] = useState<{ id: string; textWidth: number; textHeight: number } | null>(null);
@@ -725,6 +727,10 @@ export function MindMap({ boardId, nodes, undoId = null, redoId = null, onChange
         } else { dismiss(); event.currentTarget.focus({ preventScroll: true }); }
       }} data-tool={tool}
       className="mind-canvas absolute inset-0 touch-none select-none overflow-hidden">
+      <div aria-hidden="true" className="mind-grid" style={{
+        "--mind-grid-step": `${grid.step}px`, "--mind-grid-major-step": `${grid.majorStep}px`,
+        "--mind-grid-fade": grid.fade, "--mind-grid-x": `${view.x}px`, "--mind-grid-y": `${view.y}px`,
+      } as CSSProperties} />
       <div data-animate-view={animateView} className="mind-world absolute left-1/2 top-1/2 origin-top-left" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}>
         <svg aria-hidden="true" width="1" height="1" className="mind-connections pointer-events-none absolute overflow-visible">
           {shown.map(n => {

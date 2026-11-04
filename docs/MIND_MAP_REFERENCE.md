@@ -60,3 +60,9 @@ Usar como referência de comportamento; não copiar a aparência do Miro por cim
 - A formatação continua sendo **do bloco inteiro**: não há estilos diferentes por palavra no mesmo título. HTML externo usa o estilo da primeira frase visível, limitado aos atributos já suportados. Não armazena/executa HTML do clipboard; links só http/https. Limite de 160 caracteres continua; ultrapassá-lo não descarta silenciosamente o restante.
 - Paleta com 12 cores, padrão/sem destaque e cor personalizada, inclusive em seleção múltipla e lápis. Popover usa o tema local do mapa e funciona em tela cheia. Esc fecha a paleta sem perder a seleção.
 - Canvas usa grade discreta clara/escura; o fundo do aplicativo permanece pontilhado. Esta escolha substitui a preferência anterior por pontos dentro do mapa.
+
+## Fundo adaptativo — 04/11/2026
+
+Ajuste solicitado com prints do Miro em 49%, 23% e 8%: fundo claro cinza neutro (sem amarelo), grade de linhas principais/secundárias com baixo contraste. `src/lib/mind-grid.ts` mantém a célula menor entre 16–64 px de tela, com níveis em potências de quatro. As linhas menores somem progressivamente antes da troca de nível; a grade acompanha o deslocamento e o zoom no mesmo sistema de coordenadas dos itens. O tema escuro conserva o fundo escuro e linhas discretas. Escopo somente no canvas, sem modificar o fundo geral, ferramentas, dados ou interações do mapa.
+
+Validação: teste puro de densidade/continuidade/ancoragem nas trocas de nível, testes existentes, TypeScript, ESLint e build. Chrome local em 375/1440 px, temas claro/escuro, zoom de 5% a 250%, pan direito, seleção/edição por mouse e toque, tela cheia e movimento reduzido. Publicação depende de novo pedido explícito.

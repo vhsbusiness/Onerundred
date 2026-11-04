@@ -617,17 +617,36 @@ body {
 .mind-map {
   --mind-panel: var(--color-surface);
   --mind-accent: var(--color-blue);
-  --mind-grid: color-mix(in srgb, var(--color-ink) 8%, transparent);
+  --mind-grid: color-mix(in srgb, var(--color-ink) 6%, transparent);
 }
-.mind-canvas {
-  background-color: var(--color-bg);
+.mind-canvas { background-color: var(--color-bg); }
+.mind-canvas-light .mind-canvas, :root[data-theme="light"] .mind-canvas {
+  background-color: color-mix(in srgb, var(--color-surface) 94%, var(--color-ink));
+  --mind-grid: color-mix(in srgb, var(--color-ink) 7%, transparent);
+}
+/* A quiet, two-level grid follows the world without becoming dense on zoom-out. */
+.mind-grid, .mind-grid::before, .mind-grid::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.mind-grid::before, .mind-grid::after {
+  content: "";
   background-image: linear-gradient(to right, var(--mind-grid) 1px, transparent 1px),
     linear-gradient(to bottom, var(--mind-grid) 1px, transparent 1px);
-  background-size: 20px 20px;
 }
-.mind-canvas-light .mind-canvas, :root[data-theme="light"] .mind-canvas {
-  background-color: var(--color-surface);
-  --mind-grid: color-mix(in srgb, var(--color-ink) 9%, transparent);
+.mind-grid::before {
+  background-size: var(--mind-grid-step) var(--mind-grid-step);
+  /* Percentage positioning subtracts half a tile: compensate to align world 0. */
+  background-position: calc(50% + var(--mind-grid-x) + var(--mind-grid-step) / 2)
+    calc(50% + var(--mind-grid-y) + var(--mind-grid-step) / 2);
+  opacity: var(--mind-grid-fade);
+}
+.mind-grid::after {
+  background-size: var(--mind-grid-major-step) var(--mind-grid-major-step);
+  background-position: calc(50% + var(--mind-grid-x) + var(--mind-grid-major-step) / 2)
+    calc(50% + var(--mind-grid-y) + var(--mind-grid-major-step) / 2);
+  opacity: calc(1 - var(--mind-grid-fade));
 }
 .mind-tools {
   display: flex;
