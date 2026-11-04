@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useEffectEvent, useRef, useState, type PointerEvent } from "react";
-import { Focus, Minus, Maximize, Minimize, Moon, Sun, Plus, Undo2, ExternalLink, MousePointer2, Hand, ImagePlus, GitBranchPlus, Sparkles, Type, Square } from "lucide-react";
+import { useEffect, useEffectEvent, useRef, useState, useMemo, type PointerEvent } from "react";
+import { Focus, Minus, Maximize, Minimize, Moon, Sun, Plus, Undo2, ExternalLink, MousePointer2, Hand, ImagePlus, GitBranchPlus, Sparkles, Type, Square, Pencil } from "lucide-react";
 import { http } from "@/lib/client";
 import type { MindNodeDTO } from "@/lib/types";
-import { type ColorField } from "./MindColors";
+import { MindColors, type ColorField } from "./MindColors";
 import { imagesFromClipboard } from "@/lib/images";
 import { prepareMindImage } from "@/lib/mind-image-client";
+import { parseDrawing, normalizeDrawing, inkPath } from "@/lib/mind-drawing";
+import { fadeMindItems } from "./mind-motion";
 import { MindFormat } from "./MindFormat";
 import { notify } from "@/components/ui/ConfirmProvider";
 
@@ -20,9 +22,11 @@ type Point = { x: number; y: number };
 type HitBox = { id: string; rect: DOMRect };
 type Gesture = {
   pointer: number; start: Point; origin: Point; moved: boolean;
-  mode: "click" | "pan" | "box" | "move"; ids: string[]; boxes: HitBox[];
+  mode: "click" | "pan" | "box" | "move" | "draw";
+  ink?: Point[]; color?: string; strokeWidth?: number; ids: string[]; boxes: HitBox[];
   node?: string; secondary: boolean;
 };
+type Ink = { points: Point[]; color: string; width: number };
 type Paint = { ids: Set<string>; value: string };
 function selectionBox(start: Point, end: Point) {
   return { left: Math.min(start.x, end.x), top: Math.min(start.y, end.y), width: Math.abs(end.x - start.x), height: Math.abs(end.y - start.y) };
@@ -38,7 +42,16 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
     setGroupIds([]);
     setSelectedId(id);
   }
-  const [tool, setTool] = useState<"select" | "hand" | "text" | "card">("select");
+  const [tool, setTool] = useState<"select" | "hand" | "text" | "draw">("select");
+  const [penColor, setPenColor] = useState("blue");
+  const [penWidth, setPenWidth] = useState(3);
+  const [ink, setInk] = useState<Ink | null>(null);
+  const [pendingInk, setPendingInk] = useState<(Ink & { key: number })[]>([]);
+  const strokeKey = useRef(0);
+  const gesture = useRef<Gesture | null>(null);
+  const drawings = useMemo(() => new Map(nodes.filter(n => n.drawing).map(n => [n.id, parseDrawing(n.drawing)])), [nodes]);
+  const widthOf = (n: MindNodeDTO) => drawings.get(n.id)?.width ?? nodeWidth(n);
+  const [animateView, setAnimateView] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const [box, setBox] = useState<ReturnType<typeof selectionBox> | null>(null);
   const [grabbing, setGrabbing] = useState(false);
@@ -63,6 +76,8 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
     if (!element) return;
     function wheel(e: WheelEvent) {
       e.preventDefault();
+      if (gesture.current?.mode === "draw") return;
+      setAnimateView(false);
       const rect = element!.getBoundingClientRect();
       const px = e.clientX - rect.left - rect.width / 2, py = e.clientY - rect.top - rect.height / 2;
       const delta = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? rect.height : 1);
@@ -89,7 +104,6 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
   const queue = useRef(Promise.resolve());
   const pending = useRef(0);
   const undoQueued = useRef(false);
-  const gesture = useRef<Gesture | null>(null);
   const canvas = useRef<HTMLDivElement>(null);
   const url = `/api/boards/${boardId}/mapa`;
   const visible = nodes.map(node => {
@@ -139,9 +153,11 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
     return queue.current;
   }
   function focus(point: Point, zoom: number) {
+    setAnimateView(true);
     setView({ x: -point.x * zoom, y: -point.y * zoom, zoom });
   }
   function scale(factor: number) {
+    setAnimateView(true);
     const zoom = Math.max(0.05, Math.min(2.5, view.zoom * factor));
     setView({ zoom, x: view.x * zoom / view.zoom, y: view.y * zoom / view.zoom });
   }
@@ -149,8 +165,8 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
     if (!canvas.current || !nodes.length) return;
     const xs = shown.map(n => n.x), ys = shown.map(n => n.y);
     const left = Math.min(...xs), right = Math.max(...xs), top = Math.min(...ys), bottom = Math.max(...ys);
-    const margin = Math.max(320, ...shown.map(n => nodeWidth(n) + 80));
-    const height = Math.max(160, ...shown.map(n => n.imageData ? n.imageHeight + 80 : 160));
+    const margin = Math.max(320, ...shown.map(n => widthOf(n) + 80));
+    const height = Math.max(160, ...shown.map(n => (drawings.get(n.id)?.height ?? (n.imageData ? n.imageHeight : 80)) + 80));
     const zoom = Math.max(0.05, Math.min(1, canvas.current.clientWidth / (right - left + margin), canvas.current.clientHeight / (bottom - top + height)));
     focus({ x: (left + right) / 2, y: (top + bottom) / 2 }, zoom);
   }
@@ -168,13 +184,15 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
     const mouse = e.pointerType === "mouse";
     const secondary = mouse && (e.button === 2 || (e.button === 0 && e.ctrlKey));
     const pan = mouse && e.button === 1;
-    if (gesture.current || (!secondary && !pan && e.button !== 0) ||
+    if (!e.isPrimary || gesture.current || (!secondary && !pan && e.button !== 0) ||
         element.closest("button,a,input:not([data-mind-title]),textarea")) return;
+    setAnimateView(false);
     const target = element.closest<HTMLElement>("[data-node]");
     const node = target && byId.get(target.dataset.node!);
     let mode: Gesture["mode"] = "click";
     if (secondary || pan || tool === "hand") mode = "pan";
-    else if (!node && (tool === "text" || tool === "card")) mode = "click";
+    else if (tool === "draw" && onChanged) mode = "draw";
+    else if (!node && tool === "text") mode = "click";
     else if (!node && (mouse || tool === "select")) mode = "box";
     else if (node && onChanged && !node.locked) mode = "move";
     else if (!mouse) mode = "pan";
@@ -183,14 +201,19 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
       e.preventDefault();
       setGrabbing(true);
     }
-    if (mode === "box" && editor) commitTitle();
+    if ((mode === "box" || mode === "draw") && editor) commitTitle();
+    if (mode === "draw") {
+      e.preventDefault(); select(undefined);
+      setInk({ points: [canvasPoint(e.clientX, e.clientY)], color: penColor, width: penWidth });
+    }
     setMenu(null);
     suppressedClick.current = false;
     gesture.current = {
+      ...(mode === "draw" && { ink: [canvasPoint(e.clientX, e.clientY)], color: penColor, strokeWidth: penWidth }),
       pointer: e.pointerId, start: { x: e.clientX, y: e.clientY }, origin: view, moved: false, ids, mode, secondary, node: node?.id,
       boxes: mode === "box" ? Array.from(e.currentTarget.querySelectorAll<HTMLElement>("[data-node]"), el => ({ id: el.dataset.node!, rect: el.getBoundingClientRect() })) : [],
     };
-    (target ?? e.currentTarget).setPointerCapture(e.pointerId);
+    (mode === "draw" ? e.currentTarget : target ?? e.currentTarget).setPointerCapture(e.pointerId);
   }
   function selectArea(g: Gesture, end: Point) {
     const area = selectionBox(g.start, end);
@@ -204,6 +227,18 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
   function move(e: PointerEvent<HTMLDivElement>) {
     const g = gesture.current;
     if (!g || g.pointer !== e.pointerId) return;
+    if (g.mode === "draw" && g.ink) {
+      const events = e.nativeEvent.getCoalescedEvents?.() ?? [];
+      for (const event of events.length ? events : [e.nativeEvent]) {
+        const point = canvasPoint(event.clientX, event.clientY), last = g.ink[g.ink.length - 1];
+        if (Math.hypot(point.x - last.x, point.y - last.y) * view.zoom < 1.5) continue;
+        if (g.ink.length >= 4096) g.ink = g.ink.filter((_, i) => i % 2 === 0);
+        g.ink.push(point);
+      }
+      g.moved = true;
+      setInk({ points: [...g.ink], color: g.color!, width: g.strokeWidth! });
+      return;
+    }
     const dx = e.clientX - g.start.x, dy = e.clientY - g.start.y;
     if (!g.moved && Math.hypot(dx, dy) < 4) return;
     if (!g.moved && g.mode === "move") {
@@ -220,10 +255,22 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
     const g = gesture.current;
     if (!g || g.pointer !== e.pointerId) return;
     gesture.current = null;
-    suppressedClick.current = g.moved || g.secondary;
+    suppressedClick.current = g.moved || g.secondary || g.mode === "draw";
     setGrabbing(false);
     setBox(null);
-    if (e.type === "pointercancel" || e.type === "lostpointercapture") { setDrag(null); return; }
+    if (e.type === "pointercancel" || e.type === "lostpointercapture") { setDrag(null); setInk(null); return; }
+    if (g.mode === "draw" && g.ink) {
+      const normalized = normalizeDrawing(g.ink);
+      setInk(null);
+      if (!parseDrawing(normalized.drawing)) { notify("Faça um traço menor para salvar o desenho.", "error"); return; }
+      const key = ++strokeKey.current;
+      const pendingStroke = { key, points: g.ink, color: g.color!, width: g.strokeWidth! };
+      setPendingInk(previous => [...previous, pendingStroke]);
+      void save(async () => {
+        await http.post(url, { detached: true, title: "Desenho", ...normalized, color: g.color, strokeWidth: g.strokeWidth });
+      }).finally(() => setPendingInk(previous => previous.filter(stroke => stroke.key !== key)));
+      return;
+    }
     if (!g.moved) {
       if (g.secondary && !g.node) openCreateMenu({ x: e.clientX, y: e.clientY });
       return;
@@ -237,7 +284,7 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
   }
   function rename(n: MindNodeDTO) {
     select(n.id);
-    if (onChanged && !n.imageData) {
+    if (onChanged && !n.imageData && !n.drawing) {
       if (view.zoom < 0.7 && canvas.current && canvas.current.clientWidth < 640) focus(n, 1);
       edit({ id: n.id, title: n.title });
     }
@@ -253,6 +300,7 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
     const { point, shape = "plain", direction } = options;
     if (!onChanged) return;
     const draft = editor;
+    setTool("select");
     setMenu(null);
     if (parentId && folded.has(parentId)) toggleFold(parentId);
     skipBlur.current = true;
@@ -304,7 +352,7 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
     return () => document.removeEventListener("paste", listener);
   }, []);
   function shortcut(e: React.KeyboardEvent, id: string) {
-    if (!onChanged || byId.get(id)?.imageData || e.nativeEvent.isComposing || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!onChanged || byId.get(id)?.imageData || byId.get(id)?.drawing || e.nativeEvent.isComposing || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === "Tab" || e.key === "Enter") {
       e.preventDefault(); e.stopPropagation();
       if (!e.repeat && !busy) {
@@ -337,12 +385,14 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
   function remove() {
     const ids = colorIds.filter(id => byId.get(id)?.parentId || byId.get(id)?.detached);
     if (!ids.length || !onChanged) return;
-    edit(null);
-    select(undefined);
+    edit(null); select(undefined);
+    const animation = fadeMindItems(section.current, new Set(ids.flatMap(id => [id, ...descendants(id)])));
     void save(async () => {
-      if (ids.length === 1) await http.del(url, { id: ids[0] });
-      else await http.post(url + "/selecao", { action: "delete", ids });
-    });
+      await Promise.all([
+        ids.length === 1 ? http.del(url, { id: ids[0] }) : http.post(url + "/selecao", { action: "delete", ids }),
+        animation.finished,
+      ]);
+    }).finally(animation.cancel);
   }
   function undo() {
     const waitForSave = pending.current > 0;
@@ -374,7 +424,10 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
     if (event.defaultPrevented || event.isComposing || document.querySelector('[aria-modal="true"]')) return;
     const target = event.target as HTMLElement;
     if (target !== document.body && !section.current?.contains(target)) return;
-    if (event.key === "Escape") { dismiss(); return; }
+    if (event.key === "Escape") {
+      if (gesture.current?.mode === "draw") { gesture.current = null; setInk(null); suppressedClick.current = true; }
+      setTool("select"); dismiss(); return;
+    }
     if (onChanged && event.key === "Enter" && !event.repeat && !busy && !selectedId && !groupIds.length &&
         !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey && !target.closest("input,textarea,select,button,a,[contenteditable=true]")) {
       event.preventDefault(); addBranch(null, { point: freePoint() }); return;
@@ -392,6 +445,7 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
     if (event.defaultPrevented || event.isComposing || event.altKey || event.shiftKey ||
         !(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "z" || !onChanged) return;
     const target = event.target as HTMLElement;
+    if (gesture.current?.mode === "draw") { event.preventDefault(); gesture.current = null; setInk(null); suppressedClick.current = true; return; }
     if (document.querySelector('[aria-modal="true"]') ||
         (target !== document.body && !section.current?.contains(target))) return;
     if (target.closest("input,textarea,select,[contenteditable=true]")) {
@@ -417,49 +471,53 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
   const anchor = selected && byId.get(selected.id);
   const groupNodes = groupIds.flatMap(id => byId.has(id) ? [byId.get(id)!] : []);
   const groupAnchor = groupNodes.find(n => !n.imageData) ?? groupNodes[0];
-  const mixed = groupAnchor ? (["shape", "fontSize", "bold", "locked", "link"] as const).filter(key => groupNodes.some(n => n[key] !== groupAnchor[key])) : [];
-  return <section ref={section} aria-label="Mapa mental" className={`card mind-map relative isolate min-h-64 flex-1 overflow-hidden bg-surface text-ink ${light ? "mind-canvas-light" : ""} ${full ? "!fixed inset-0 !z-[100] !rounded-none" : ""}`}>
+  const mixed = groupAnchor ? (["shape", "fontSize", "bold", "locked", "link", "strokeWidth"] as const).filter(key => groupNodes.some(n => n[key] !== groupAnchor[key])) : [];
+  return <section ref={section} data-interacting={!!drag || grabbing || !!ink} aria-label="Mapa mental" className={`card mind-map relative isolate min-h-64 flex-1 overflow-hidden bg-surface text-ink ${light ? "mind-canvas-light" : ""} ${full ? "!fixed inset-0 !z-[100] !rounded-none" : ""}`}>
     <div ref={canvas} data-mind-canvas tabIndex={0} aria-label="Área do mapa" onPointerDown={start} onPointerMove={move} onPointerUp={finish} onPointerCancel={finish} onLostPointerCapture={finish} data-grabbing={grabbing}
       onContextMenu={event => event.preventDefault()}
       onClick={event => {
         if (suppressedClick.current || (event.target as Element).closest("[data-node],button,a,input")) return;
-        if (onChanged && (tool === "text" || tool === "card")) {
-          addBranch(null, { point: canvasPoint(event.clientX, event.clientY), shape: tool === "card" ? "rounded" : "plain" });
+        if (onChanged && tool === "text") {
+          addBranch(null, { point: canvasPoint(event.clientX, event.clientY), shape: "plain" });
           setTool("select");
         } else { dismiss(); event.currentTarget.focus({ preventScroll: true }); }
       }} data-tool={tool}
       className="mind-canvas absolute inset-0 touch-none select-none overflow-hidden">
-      <div className="absolute left-1/2 top-1/2 origin-top-left" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}>
-        <svg aria-hidden="true" width="1" height="1" className="pointer-events-none absolute overflow-visible">
+      <div data-animate-view={animateView} className="mind-world absolute left-1/2 top-1/2 origin-top-left" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}>
+        <svg aria-hidden="true" width="1" height="1" className="mind-connections pointer-events-none absolute overflow-visible">
           {shown.map(n => {
             const parent = n.parentId && byId.get(n.parentId);
             if (!parent) return null;
             const side = n.x >= parent.x ? 1 : -1;
-            const start = parent.x + side * nodeWidth(parent) / 2;
-            const end = n.x - side * nodeWidth(n) / 2;
+            const start = parent.x + side * widthOf(parent) / 2;
+            const end = n.x - side * widthOf(n) / 2;
             const mid = (start + end) / 2;
-            return <path key={n.id} d={`M ${start} ${parent.y} C ${mid} ${parent.y}, ${mid} ${n.y}, ${end} ${n.y}`} fill="none" stroke={branchColor(n.color)} strokeWidth={2} strokeLinecap="round" />;
+            return <path key={n.id} data-edge={n.id} d={`M ${start} ${parent.y} C ${mid} ${parent.y}, ${mid} ${n.y}, ${end} ${n.y}`} fill="none" stroke={branchColor(n.color)} strokeWidth={2} strokeLinecap="round" />;
           })}
         </svg>
         {shown.map(n => {
           const active = selectedId === n.id;
           const marked = active || group.has(n.id);
-          const width = nodeWidth(n);
+          const drawing = drawings.get(n.id);
+          const width = widthOf(n);
           const isLeft = !!root && n.x < root.x;
           const central = !n.parentId && !n.detached;
           const hasChildren = children.has(n.id);
-          return <div key={n.id} className="absolute" style={{ left: n.x, top: n.y }}>
+          return <div key={n.id} className="mind-object absolute" style={{ left: n.x, top: n.y }}>
             <div data-node={n.id} role="button" tabIndex={0} aria-pressed={marked} title={n.title}
-              onClick={() => { if (tool !== "hand" && !suppressedClick.current && editor?.id !== n.id) rename(n); }}
+              onClick={() => { if (tool !== "hand" && tool !== "draw" && !suppressedClick.current && editor?.id !== n.id) rename(n); }}
               onKeyDown={e => {
                 if (e.key === "Escape") { dismiss(); return; }
                 if (e.target !== e.currentTarget) return;
                 if (!active && (e.key === " " || e.key === "Enter")) { e.preventDefault(); rename(n); }
                 else if (active) shortcut(e, n.id);
               }}
-              className="mind-node" data-shape={n.shape} data-root={central} data-image={!!n.imageData}
-              style={{ width, borderColor: branchColor(n.color), textDecoration: central && n.shape === "plain" && n.color.startsWith("#") ? "underline" : undefined, textDecorationColor: branchColor(n.color), color: n.textColor || undefined, fontSize: n.fontSize, fontWeight: n.bold ? 700 : undefined }}>
-              {n.imageData
+              className="mind-node" data-shape={n.shape} data-root={central} data-image={!!n.imageData} data-drawing={!!drawing}
+              style={{ width, height: drawing?.height, borderColor: branchColor(n.color), textDecoration: central && n.shape === "plain" && n.color.startsWith("#") ? "underline" : undefined, textDecorationColor: branchColor(n.color), color: n.textColor || undefined, fontSize: n.fontSize, fontWeight: n.bold ? 700 : undefined }}>
+              {drawing ? <svg width={drawing.width} height={drawing.height} className="mind-ink" aria-label="Desenho livre">
+                <path d={inkPath(drawing.points)} stroke={branchColor(n.color)} strokeWidth={n.strokeWidth} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                <path className="mind-ink-hit" d={inkPath(drawing.points)} stroke="transparent" strokeWidth={Math.max(n.strokeWidth + 8, 12 / view.zoom)} strokeLinecap="round" fill="none" />
+              </svg> : n.imageData
                 // Images are authenticated board data, not remote optimization sources.
                 // eslint-disable-next-line @next/next/no-img-element
                 ? <img src={n.imageData} alt={n.title} draggable={false} style={{ width: n.imageWidth, height: n.imageHeight, objectFit: "contain" }} />
@@ -471,12 +529,16 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
                 : <span className="line-clamp-3 [overflow-wrap:anywhere]" style={{ backgroundColor: n.highlight || undefined }}>{n.title}</span>}
             </div>
             {active && central && onChanged && <div className="mind-handles" style={{ right: width / 2 + 6 }}><button className="mind-handle" aria-label="Adicionar ramo à esquerda" title="Adicionar ramo à esquerda" disabled={busy} onClick={() => addBranch(n.id, { direction: "left" })}><Plus size={14} /></button></div>}
-            {!n.imageData && (active || folded.has(n.id)) && <div className="mind-handles" style={isLeft && !central ? { right: width / 2 + 4 } : { left: width / 2 + 4 }}>
+            {!n.imageData && !n.drawing && (active || folded.has(n.id)) && <div className="mind-handles" style={isLeft && !central ? { right: width / 2 + 4 } : { left: width / 2 + 4 }}>
               {active && onChanged && <button className="mind-handle" aria-label={central ? "Adicionar ramo à direita" : "Adicionar ramo"} title="Adicionar sub-ramo (Tab)" disabled={busy} onClick={() => addBranch(n.id, { direction: "right" })}><Plus size={14} /></button>}
               {hasChildren && <button className="mind-handle" aria-label={folded.has(n.id) ? "Expandir ramo" : "Recolher ramo"} title={folded.has(n.id) ? "Expandir ramo" : "Recolher ramo"} onClick={() => toggleFold(n.id)}>{folded.has(n.id) ? descendants(n.id).length : <Minus size={12} />}</button>}
             </div>}
           </div>;
         })}
+        <svg aria-hidden="true" width="1" height="1" className="mind-ink-preview pointer-events-none absolute overflow-visible">
+          {pendingInk.map(stroke => <path key={stroke.key} d={inkPath(stroke.points.map(p => [p.x, p.y]))} fill="none" stroke={branchColor(stroke.color)} strokeWidth={stroke.width} strokeLinecap="round" strokeLinejoin="round" />)}
+          {ink && <path d={inkPath(ink.points.map(p => [p.x, p.y]))} fill="none" stroke={branchColor(ink.color)} strokeWidth={ink.width} strokeLinecap="round" strokeLinejoin="round" />}
+        </svg>
       </div>
     </div>
     {box && <div aria-hidden="true" className="mind-marquee" style={box} />}
@@ -484,20 +546,25 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
       <button className="mind-tool" onClick={() => addBranch(null, { point: menu.at })}><Type size={15} /> Criar texto</button>
       <button className="mind-tool" onClick={() => addBranch(null, { point: menu.at, shape: "rounded" })}><Square size={15} /> Criar cartão</button>
       <button className="mind-tool" onClick={() => fileInput.current?.click()}><ImagePlus size={15} /> Inserir imagem</button>
-      {selected && !selected.imageData && <button className="mind-tool" onClick={() => addBranch(selected.id, { point: menu.at })}><Plus size={15} /> Ramo da seleção</button>}
+      {selected && !selected.imageData && !selected.drawing && <button className="mind-tool" onClick={() => addBranch(selected.id, { point: menu.at })}><Plus size={15} /> Ramo da seleção</button>}
     </div>}
-    {anchor && onChanged && !drag && !box && !menu && <div className="mind-context" style={{
+    {anchor && onChanged && tool !== "draw" && !drag && !box && !menu && <div className="mind-context" style={{
       "--mind-x": `${view.x + anchor.x * view.zoom}px`,
       "--mind-y": `${view.y + anchor.y * view.zoom}px`,
     } as React.CSSProperties}>
-      <MindFormat key={anchor.id} node={anchor} imageOnly={!!anchor.imageData} busy={busy} preview={previewColor} commit={commitColor}
+      <MindFormat key={anchor.id} node={anchor} imageOnly={!!anchor.imageData} drawingOnly={!!anchor.drawing} busy={busy} preview={previewColor} commit={commitColor}
         change={patch => void save(async () => { await http.patch(url, { id: anchor.id, ...patch }); })} remove={remove} />
     </div>}
     {group.size > 1 && groupAnchor && !box && !drag && !menu && <div className="mind-group" aria-label="Seleção de ramos">
-      {onChanged ? <MindFormat key={groupIds.join(":")} node={groupAnchor} count={group.size} mixed={mixed} imageOnly={groupNodes.every(n => !!n.imageData)} busy={busy}
+      {onChanged ? <MindFormat key={groupIds.join(":")} node={groupAnchor} count={group.size} mixed={mixed} imageOnly={groupNodes.every(n => !!n.imageData)} drawingOnly={groupNodes.every(n => !!n.drawing)} busy={busy}
         preview={previewColor} commit={commitColor} remove={remove}
         change={patch => void save(async () => { await http.post(url + "/selecao", { action: "format", ids: groupIds, patch }); })} />
         : <span className="mind-tools p-2 text-xs">{group.size} selecionados</span>}
+    </div>}
+    {tool === "draw" && onChanged && <div className="mind-tools mind-pen-controls" role="group" aria-label="Opções do lápis">
+      <Pencil size={15} /><span className="text-xs">Lápis</span>
+      <MindColors node={{ color: penColor, textColor: "", highlight: "" }} fields={["color"]} colorLabel="Cor do lápis" preview={(_, value) => setPenColor(value)} commit={(_, value) => setPenColor(value)} />
+      <select aria-label="Espessura do lápis" value={penWidth} onChange={e => setPenWidth(Number(e.target.value))}>{[1, 2, 3, 5, 8, 12].map(width => <option value={width} key={width}>{width} px</option>)}</select>
     </div>}
     <input ref={fileInput} type="file" accept="image/*" multiple hidden aria-label="Arquivo de imagem" onChange={e => { insertImages(Array.from(e.target.files ?? [])); e.target.value = ""; }} />
     <div className="mind-tools mind-sidebar" role="toolbar" aria-label="Ferramentas do mapa">
@@ -506,9 +573,9 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
       {onChanged && <>
         <span className="mind-divider" />
         <button className="mind-tool" title="Criar texto: escolha um lugar no mapa" aria-label="Criar texto" aria-pressed={tool === "text"} onClick={() => { commitTitle(); select(undefined); setTool("text"); }}><Type size={18} /></button>
-        <button className="mind-tool" title="Criar cartão: escolha um lugar no mapa" aria-label="Criar cartão" aria-pressed={tool === "card"} onClick={() => { commitTitle(); select(undefined); setTool("card"); }}><Square size={18} /></button>
+        <button className="mind-tool" title="Lápis: desenhar livremente" aria-label="Lápis" aria-pressed={tool === "draw"} onClick={() => { commitTitle(); select(undefined); setTool("draw"); }}><Pencil size={18} /></button>
         <button className="mind-tool" title="Inserir imagem (ou cole com Ctrl+V / ⌘V)" aria-label="Inserir imagem" onClick={() => fileInput.current?.click()}><ImagePlus size={18} /></button>
-        <button className="mind-tool" title="Adicionar ramo à seleção (Tab)" aria-label="Novo ramo" disabled={busy || !selected || !!selected.imageData} onClick={() => selected && addBranch(selected.id, { direction: "right" })}><GitBranchPlus size={18} /></button>
+        <button className="mind-tool" title="Adicionar ramo à seleção (Tab)" aria-label="Novo ramo" disabled={busy || !selected || !!selected.imageData || !!selected.drawing} onClick={() => selected && addBranch(selected.id, { direction: "right" })}><GitBranchPlus size={18} /></button>
         {onImport && <button className="mind-tool" title="Importar prints com IA" aria-label="Importar prints com IA" onClick={onImport}><Sparkles size={18} /></button>}
         <span className="mind-divider" />
         <button className="mind-tool" aria-label="Desfazer" title="Desfazer (Ctrl+Z ou ⌘Z)" disabled={busy || !undoId} onClick={undo}><Undo2 size={17} /></button>
@@ -525,7 +592,7 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
       <button className="mind-tool" aria-label="Enquadrar mapa" title="Enquadrar mapa" onClick={fit}><Focus size={16} /></button>
     </div>
     <div className="pointer-events-none absolute bottom-4 left-4 hidden items-center gap-1 text-xs text-ink-2 sm:flex">
-      <span aria-live="polite">{busy ? "Salvando…" : onChanged ? "Esquerdo seleciona e move blocos · Direito move o mapa" : "Somente leitura"}</span>
+      <span aria-live="polite">{busy ? "Salvando…" : onChanged ? tool === "draw" ? "Arraste para desenhar · Direito move o mapa · Esc sai do lápis" : "Esquerdo seleciona e move blocos · Direito move o mapa" : "Somente leitura"}</span>
       {selected?.link && <a className="pointer-events-auto inline-flex items-center gap-1 text-blue" href={selected.link} target="_blank" rel="noopener noreferrer"><ExternalLink size={12} /> Abrir link</a>}
     </div>
     {!onChanged && selected?.link && <a className="mind-tools absolute bottom-16 left-3 p-2 text-xs sm:hidden" href={selected.link} target="_blank" rel="noopener noreferrer">Abrir link</a>}

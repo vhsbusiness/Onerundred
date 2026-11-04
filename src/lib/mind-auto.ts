@@ -28,7 +28,7 @@ export function arrangeMindMap(nodes: MindNode[]) {
     if (node.locked || (node.parentId && frozen.has(node.parentId))) frozen.add(node.id);
   }
   const bounds = (n: MindNode, point = n) => ({ left: point.x - width(n) / 2 - 20, right: point.x + width(n) / 2 + 20, top: point.y - height(n) / 2 - 16, bottom: point.y + height(n) / 2 + 16 });
-  const occupied = nodes.filter(n => n.id === root.id || n.detached || frozen.has(n.id)).map(n => bounds(n));
+  const occupied = nodes.filter(n => n.id === root.id || (!n.drawing && (n.detached || frozen.has(n.id)))).map(n => bounds(n));
   for (const parent of order) {
     const list = children.get(parent.id) ?? [];
     const point = positions.get(parent.id) ?? parent;

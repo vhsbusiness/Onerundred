@@ -1,4 +1,5 @@
 import { ApiError, json, readBody, requireString, withUser } from "@/lib/api";
+import { parseDrawing } from "@/lib/mind-drawing";
 import { positionBranch } from "@/lib/mind-layout";
 import { parseMindStyle } from "@/lib/mind-style";
 import { remember, subtree, writeMap, type NodePatch } from "@/lib/mind-undo";
@@ -36,6 +37,9 @@ export const POST = withUser(async (user, req: Request, ctx: Context) => {
   const shape = body.shape ?? "plain";
   if (shape !== "plain" && shape !== "rounded") throw new ApiError(400, "Forma inválida.");
   const image = picture(body);
+  const drawing = body.drawing === undefined ? null : parseDrawing(body.drawing);
+  if (body.drawing !== undefined && (!drawing || !detached || image.imageData)) throw new ApiError(400, "Desenho inválido.");
+  const ink = drawing ? { drawing: JSON.stringify(drawing), ...parseMindStyle({ color: body.color, strokeWidth: body.strokeWidth }) } : {};
   if (image.imageData && !detached) throw new ApiError(400, "Cole a imagem como um objeto no mapa.");
   let point: { x: number; y: number } | undefined;
   if (body.x !== undefined || body.y !== undefined) {
@@ -44,12 +48,12 @@ export const POST = withUser(async (user, req: Request, ctx: Context) => {
   }
   const node = await writeMap(boardId, user.id, async tx => {
     const parent = parentId ? await tx.mindNode.findFirst({ where: { id: parentId, boardId } }) : null;
-    if (!detached && (!parent || parent.imageData)) throw new ApiError(404, "Ideia indisponível.");
+    if (!detached && (!parent || parent.imageData || parent.drawing)) throw new ApiError(404, "Ideia indisponível.");
     const nodes = await tx.mindNode.findMany({ where: { boardId } });
     if (image.imageData && nodes.filter(n => n.imageData).length >= 50) throw new ApiError(400, "Este mapa já tem 50 imagens.");
     const branch = parent ? positionBranch(parent, nodes, direction) : { x: 0, y: 0, color: "blue" };
     if (!point && (!coordinate(branch.x) || !coordinate(branch.y))) throw new ApiError(400, "Limite de posição do mapa atingido.");
-    const node = await tx.mindNode.create({ data: { boardId, parentId, detached, title, shape, ...branch, ...point, ...image } });
+    const node = await tx.mindNode.create({ data: { boardId, parentId, detached, title, shape, ...branch, ...point, ...image, ...ink } });
     await remember(tx, boardId, user.id, { kind: "create", nodes: [node] });
     return tx.mindNode.findUniqueOrThrow({ where: { id: node.id } });
   });

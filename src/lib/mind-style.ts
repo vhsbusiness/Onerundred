@@ -1,6 +1,6 @@
 import { ApiError } from "./errors";
 
-export type MindStyle = Partial<{ bold: boolean; locked: boolean; textColor: string; highlight: string; color: string; shape: string; fontSize: number; link: string }>;
+export type MindStyle = Partial<{ strokeWidth: number; bold: boolean; locked: boolean; textColor: string; highlight: string; color: string; shape: string; fontSize: number; link: string }>;
 export function parseMindStyle(body: Record<string, unknown>): MindStyle {
   const data: MindStyle = {};
   for (const key of ["bold", "locked"] as const) {
@@ -17,6 +17,10 @@ export function parseMindStyle(body: Record<string, unknown>): MindStyle {
   if (body.shape !== undefined) {
     if (typeof body.shape !== "string" || !["rounded", "pill", "plain", "rectangle"].includes(body.shape)) throw new ApiError(400, "Forma inválida.");
     data.shape = body.shape;
+  }
+  if (body.strokeWidth !== undefined) {
+    if (typeof body.strokeWidth !== "number" || !Number.isInteger(body.strokeWidth) || body.strokeWidth < 1 || body.strokeWidth > 12) throw new ApiError(400, "Use uma espessura entre 1 e 12.");
+    data.strokeWidth = body.strokeWidth;
   }
   if (body.fontSize !== undefined) {
     if (typeof body.fontSize !== "number" || !Number.isInteger(body.fontSize) || body.fontSize < 8 || body.fontSize > 72) throw new ApiError(400, "Use um tamanho entre 8 e 72.");

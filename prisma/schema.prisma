@@ -89,6 +89,8 @@ model MindUndo {
 }
 
 model MindNode {
+  drawing String @default("")
+  strokeWidth Int @default(3)
   detached Boolean @default(false)
   imageData String @default("")
   imageWidth Int @default(240)

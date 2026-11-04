@@ -617,7 +617,7 @@ body {
 .mind-map {
   --mind-panel: var(--color-surface);
   --mind-accent: var(--color-blue);
-  --mind-dots: color-mix(in srgb, var(--color-ink) 40%, transparent);
+  --mind-dots: color-mix(in srgb, var(--color-ink) 22%, transparent);
 }
 .mind-canvas {
   background-color: var(--color-bg);
@@ -626,7 +626,7 @@ body {
 }
 .mind-canvas-light .mind-canvas, :root[data-theme="light"] .mind-canvas {
   background-color: var(--color-surface);
-  --mind-dots: color-mix(in srgb, var(--color-ink) 24%, transparent);
+  --mind-dots: color-mix(in srgb, var(--color-ink) 18%, transparent);
 }
 .mind-tools {
   display: flex;
@@ -742,4 +742,27 @@ body {
 }
 @media (prefers-reduced-transparency: reduce) {
   .mind-tools { background: var(--mind-panel); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+
+/* Small, purposeful motion; direct pointer gestures never wait for a transition. */
+.mind-object { animation: mind-object-in 160ms ease-out both; transition: left 180ms ease-out, top 180ms ease-out; }
+.mind-connections path { animation: mind-edge-in 180ms ease-out both; transition: d 180ms ease-out, stroke 140ms ease-out; }
+.mind-node { transition: background-color 140ms ease-out, border-color 140ms ease-out, outline-color 140ms ease-out; }
+.mind-tool, .mind-handle { transition: background-color 140ms ease-out, color 140ms ease-out, opacity 140ms ease-out; }
+.mind-context > .mind-tools, .mind-group > .mind-tools, .mind-create-menu, .mind-pen-controls { animation: mind-tools-in 150ms ease-out both; }
+.mind-world[data-animate-view="true"] { transition: transform 200ms cubic-bezier(.2,.8,.2,1); }
+.mind-map[data-interacting="true"] .mind-object,
+.mind-map[data-interacting="true"] .mind-connections path,
+.mind-map[data-interacting="true"] .mind-world { transition: none; }
+.mind-node[data-drawing="true"] { padding: 0; border: 0; background: transparent; pointer-events: none; line-height: 0; }
+.mind-node[data-drawing="true"][aria-pressed="true"] { pointer-events: auto; }
+.mind-ink { overflow: visible; pointer-events: none; }
+.mind-ink-hit { pointer-events: stroke; cursor: move; }
+.mind-canvas[data-tool="draw"], .mind-canvas[data-tool="draw"] .mind-node, .mind-canvas[data-tool="draw"] .mind-ink-hit { cursor: crosshair; }
+.mind-pen-controls { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 3; gap: 7px; padding-inline: 10px; }
+@keyframes mind-object-in { from { opacity: 0; scale: .97; } to { opacity: 1; scale: 1; } }
+@keyframes mind-edge-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mind-tools-in { from { opacity: 0; translate: 0 4px; } to { opacity: 1; translate: 0 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .mind-map *, .mind-map *::before, .mind-map *::after { animation: none !important; transition: none !important; }
 }

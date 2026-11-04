@@ -73,6 +73,8 @@ export interface UserBrief {
 }
 
 export interface MindNodeDTO {
+  drawing: string;
+  strokeWidth: number;
   detached: boolean;
   imageData: string;
   imageWidth: number;
