@@ -1,32 +1,38 @@
 "use client";
 
 import { useEffect, useEffectEvent, useRef, useState, useMemo, type PointerEvent } from "react";
-import { Focus, Minus, Maximize, Minimize, Moon, Sun, Plus, Undo2, ExternalLink, MousePointer2, Hand, ImagePlus, GitBranchPlus, Sparkles, Type, Square, Pencil, ClipboardPaste } from "lucide-react";
+import { Focus, Minus, Maximize, Minimize, Moon, Sun, Plus, Undo2, ExternalLink, MousePointer2, Hand, ImagePlus, GitBranchPlus, Sparkles, Type, Square, Pencil, ClipboardPaste, Spline, Slash, Redo2, Search, X, ChevronUp, ChevronDown, ChevronsDownUp, Download } from "lucide-react";
 import { http } from "@/lib/client";
 import type { MindNodeDTO } from "@/lib/types";
 import { MindColors, type ColorField } from "./MindColors";
 import { imagesFromClipboard } from "@/lib/images";
 import { prepareMindImage } from "@/lib/mind-image-client";
 import { copyMindSelection, readMindClipboard, MIND_CLIPBOARD_MIME, MIND_CLIPBOARD_PREFIX, type MindClipboard } from "@/lib/mind-clipboard";
+import { textBlockSize } from "@/lib/mind-size";
+import { mindBranchIds } from "@/lib/mind-tree";
 import { isMindRoot } from "@/lib/mind-root";
 import { parseDrawing, normalizeDrawing, inkPath } from "@/lib/mind-drawing";
 import { fadeMindItems } from "./mind-motion";
+import { exportMindMap } from "@/lib/mind-export";
+import { MindConnect } from "./MindConnect";
 import { MindFormat } from "./MindFormat";
 import { notify } from "@/components/ui/ConfirmProvider";
 
 const branchColor = (value: string) => value.startsWith("#") ? value : `var(--color-${value})`;
 function nodeWidth(node: MindNodeDTO) {
   if (node.imageData) return node.imageWidth;
-  return Math.min(320, Math.max(node.parentId || node.detached ? 72 : 120, Math.ceil(node.title.length * node.fontSize * 0.59 + 28)));
+  return textBlockSize(node).width;
 }
 
 type Point = { x: number; y: number };
 type HitBox = { id: string; rect: DOMRect };
 type Gesture = {
   pointer: number; start: Point; origin: Point; moved: boolean;
-  mode: "click" | "pan" | "box" | "move" | "draw";
+  mode: "click" | "pan" | "box" | "move" | "draw" | "resize";
+  size?: { width: number; height: number };
+  draft?: { id: string; title: string };
   ink?: Point[]; color?: string; strokeWidth?: number; ids: string[]; boxes: HitBox[];
-  node?: string; secondary: boolean;
+  node?: string; roots: string[]; secondary: boolean;
 };
 type Ink = { points: Point[]; color: string; width: number };
 type PendingInk = Ink & { key: string; nodeId?: string; failed?: boolean };
@@ -35,8 +41,8 @@ type Paint = { ids: Set<string>; value: string };
 function selectionBox(start: Point, end: Point) {
   return { left: Math.min(start.x, end.x), top: Math.min(start.y, end.y), width: Math.abs(end.x - start.x), height: Math.abs(end.y - start.y) };
 }
-export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: {
-  boardId: string; nodes: MindNodeDTO[]; undoId?: number | null; onChanged?: () => Promise<void>; onImport?: () => void;
+export function MindMap({ boardId, nodes, undoId = null, redoId = null, onChanged, onImport }: {
+  boardId: string; nodes: MindNodeDTO[]; undoId?: number | null; redoId?: number | null; onChanged?: () => Promise<void>; onImport?: () => void;
 }) {
   const root = nodes.find(isMindRoot);
   const [selectedId, setSelectedId] = useState<string>();
@@ -70,15 +76,37 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
   const selected = nodes.find(n => n.id === selectedId);
   const [view, setView] = useState({ x: -(root?.x ?? 0), y: -(root?.y ?? 0), zoom: 1 });
   const [drag, setDrag] = useState<(Point & { ids: Set<string> }) | null>(null);
+  const [resize, setResize] = useState<{ id: string; textWidth: number; textHeight: number } | null>(null);
   const [editor, edit] = useState<{id: string; title: string} | null>(null);
   const [full, setFull] = useState(false);
   const [light, setLight] = useState(false);
+  const [straightLines, setStraightLines] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportMenu, setExportMenu] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [resultIndex, setResultIndex] = useState(0);
+  const matches = query.trim() ? nodes.filter(n => n.title.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())) : [];
+  function reveal(node: MindNodeDTO) {
+    commitTitle(); select(node.id);
+    const ancestors = new Set<string>();
+    let parent = node.parentId;
+    while (parent) { ancestors.add(parent); parent = nodes.find(n => n.id === parent)?.parentId ?? null; }
+    setFolded(old => new Set([...old].filter(id => !ancestors.has(id))));
+    focus(node, Math.max(view.zoom, .8));
+  }
+  function findResult(index: number) {
+    if (!matches.length) return;
+    const next = (index + matches.length) % matches.length;
+    setResultIndex(next); reveal(matches[next]);
+  }
   const section = useRef<HTMLElement>(null);
   const skipBlur = useRef(false);
   const suppressedClick = useRef(false);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLight(localStorage.getItem("mind-light:" + boardId) === "true");
+    setStraightLines(localStorage.getItem("mind-lines:" + boardId) === "straight");
   }, [boardId]);
   useEffect(() => {
     const element = canvas.current;
@@ -116,7 +144,7 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
   const canvas = useRef<HTMLDivElement>(null);
   const url = `/api/boards/${boardId}/mapa`;
   const visible = nodes.map(node => {
-    let next = node;
+    let next = resize?.id === node.id ? { ...node, textWidth: resize.textWidth, textHeight: resize.textHeight } : node;
     if (drag?.ids.has(node.id)) next = { ...node, x: node.x + drag.x, y: node.y + drag.y };
     for (const field of ["color", "textColor", "highlight"] as const) {
       const paint = paints[field];
@@ -175,7 +203,7 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
     const xs = shown.map(n => n.x), ys = shown.map(n => n.y);
     const left = Math.min(...xs), right = Math.max(...xs), top = Math.min(...ys), bottom = Math.max(...ys);
     const margin = Math.max(320, ...shown.map(n => widthOf(n) + 80));
-    const height = Math.max(160, ...shown.map(n => (drawings.get(n.id)?.height ?? (n.imageData ? n.imageHeight : 80)) + 80));
+    const height = Math.max(160, ...shown.map(n => (drawings.get(n.id)?.height ?? (n.imageData ? n.imageHeight : textBlockSize(n).height)) + 80));
     const zoom = Math.max(0.05, Math.min(1, canvas.current.clientWidth / (right - left + margin), canvas.current.clientHeight / (bottom - top + height)));
     focus({ x: (left + right) / 2, y: (top + bottom) / 2 }, zoom);
   }
@@ -192,13 +220,20 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
     const bounds = canvas.current!.getBoundingClientRect();
     return { x: Math.round((x - bounds.left - bounds.width / 2 - view.x) / view.zoom), y: Math.round((y - bounds.top - bounds.height / 2 - view.y) / view.zoom) };
   }
+  function startResize(e: PointerEvent<HTMLButtonElement>, node: MindNodeDTO) {
+    if (!onChanged || e.button !== 0 || gesture.current) return;
+    e.preventDefault(); e.stopPropagation(); commitTitle(); setAnimateView(false);
+    gesture.current = { pointer: e.pointerId, start: { x: e.clientX, y: e.clientY }, origin: view, moved: false,
+      mode: "resize", size: textBlockSize(node), ids: [node.id], roots: [node.id], boxes: [], node: node.id, secondary: false };
+    canvas.current?.setPointerCapture(e.pointerId);
+  }
   function start(e: PointerEvent<HTMLDivElement>) {
     const element = e.target as Element;
     const mouse = e.pointerType === "mouse";
     const secondary = mouse && (e.button === 2 || (e.button === 0 && e.ctrlKey));
     const pan = mouse && e.button === 1;
     if (!e.isPrimary || gesture.current || (!secondary && !pan && e.button !== 0) ||
-        element.closest("button,a,input:not([data-mind-title]),textarea")) return;
+        element.closest("button,a,input:not([data-mind-title]),textarea:not([data-mind-title])")) return;
     setAnimateView(false);
     const target = element.closest<HTMLElement>("[data-node]");
     const node = target && byId.get(target.dataset.node!);
@@ -209,7 +244,12 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
     else if (!node && (mouse || tool === "select")) mode = "box";
     else if (node && onChanged && !node.locked) mode = "move";
     else if (!mouse) mode = "pan";
-    const ids = node && group.has(node.id) ? groupIds.filter(id => byId.has(id) && !byId.get(id)?.locked) : node ? [node.id] : [];
+    const roots = node && group.has(node.id) ? groupIds.filter(id => byId.has(id)) : node ? [node.id] : [];
+    const ids = mode === "move" ? [...mindBranchIds(nodes, roots)] : roots;
+    if (mode === "move" && ids.some(id => byId.get(id)?.locked)) {
+      notify("Este ramo contém itens fixados. Desfixe-os para mover o conjunto.", "info");
+      return;
+    }
     if (secondary || pan) {
       e.preventDefault();
       setGrabbing(true);
@@ -223,7 +263,7 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
     suppressedClick.current = false;
     gesture.current = {
       ...(mode === "draw" && { ink: [canvasPoint(e.clientX, e.clientY)], color: penColor, strokeWidth: penWidth }),
-      pointer: e.pointerId, start: { x: e.clientX, y: e.clientY }, origin: view, moved: false, ids, mode, secondary, node: node?.id,
+      pointer: e.pointerId, start: { x: e.clientX, y: e.clientY }, origin: view, moved: false, ids, roots, mode, secondary, node: node?.id,
       boxes: mode === "box" ? Array.from(e.currentTarget.querySelectorAll<HTMLElement>("[data-node]"), el => ({ id: el.dataset.node!, rect: el.getBoundingClientRect() })) : [],
     };
     (mode === "draw" ? e.currentTarget : target ?? e.currentTarget).setPointerCapture(e.pointerId);
@@ -240,11 +280,17 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
   function move(e: PointerEvent<HTMLDivElement>) {
     const g = gesture.current;
     if (!g || g.pointer !== e.pointerId) return;
+    if (g.mode === "resize" && g.size && g.node) {
+      g.moved = true;
+      setResize({ id: g.node, textWidth: Math.min(1200, Math.max(72, Math.round(g.size.width + (e.clientX - g.start.x) * 2 / view.zoom))),
+        textHeight: Math.min(1200, Math.max(24, Math.round(g.size.height + (e.clientY - g.start.y) * 2 / view.zoom))) });
+      return;
+    }
     if (g.mode === "draw") return; // Document capture keeps drawing even if pointer capture is lost.
     const dx = e.clientX - g.start.x, dy = e.clientY - g.start.y;
     if (!g.moved && Math.hypot(dx, dy) < 4) return;
     if (!g.moved && g.mode === "move") {
-      if (editor) commitTitle();
+      if (editor) { g.draft = editor; skipBlur.current = true; edit(null); }
       if (g.node && !group.has(g.node)) select(g.node);
     }
     g.moved = true;
@@ -272,7 +318,8 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
     suppressedClick.current = g.moved || g.secondary || g.mode === "draw";
     setGrabbing(false);
     setBox(null);
-    if (e.type === "pointercancel" || e.type === "lostpointercapture") { setDrag(null); setInk(null); return; }
+    if (g.draft) skipBlur.current = false;
+    if (e.type === "pointercancel" || e.type === "lostpointercapture") { setDrag(null); setResize(null); setInk(null); if (g.draft) edit(g.draft); return; }
     if (g.mode === "draw" && g.ink) {
       // A quick release can arrive before the browser dispatches its next pointermove.
       // Always include the release position, even for a stroke shorter than the sampling threshold.
@@ -290,6 +337,13 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
       saveStroke(pendingStroke);
       return;
     }
+    if (g.mode === "resize" && g.node && g.size) {
+      const textWidth = Math.min(1200, Math.max(72, Math.round(g.size.width + (e.clientX - g.start.x) * 2 / view.zoom)));
+      const textHeight = Math.min(1200, Math.max(24, Math.round(g.size.height + (e.clientY - g.start.y) * 2 / view.zoom)));
+      if (textWidth === g.size.width && textHeight === g.size.height) { setResize(null); return; }
+      void save(async () => { await http.patch(url, { id: g.node, textWidth, textHeight }); }).finally(() => setResize(null));
+      return;
+    }
     if (!g.moved) {
       if (g.secondary && !g.node) openCreateMenu({ x: e.clientX, y: e.clientY });
       return;
@@ -298,7 +352,8 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
     const dx = Math.round((e.clientX - g.start.x) / view.zoom);
     const dy = Math.round((e.clientY - g.start.y) / view.zoom);
     void save(async () => {
-      await http.post(url + "/selecao", { action: "move", ids: g.ids, dx, dy });
+      const result = await http.post<{ autoDisabled?: number }>(url + "/selecao", { action: "move", ids: g.roots, dx, dy, ...(g.draft?.title.trim() && { titleEdit: g.draft }) });
+      if (result.autoDisabled) notify("Auto desativado nesta árvore para manter a posição escolhida. Você pode reativá-lo no ramo inicial.", "info");
     }).finally(() => setDrag(null));
   }
   const drawPointer = useEffectEvent((e: globalThis.PointerEvent) => {
@@ -323,7 +378,8 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
   function rename(n: MindNodeDTO) {
     select(n.id);
     if (onChanged && !n.imageData && !n.drawing) {
-      if (view.zoom < 0.7 && canvas.current && canvas.current.clientWidth < 640) focus(n, 1);
+      if (canvas.current && canvas.current.clientWidth < 640 && (view.zoom < .7 || widthOf(n) * view.zoom > canvas.current.clientWidth - 60))
+        focus(n, Math.max(.05, Math.min(1, (canvas.current.clientWidth - 60) / widthOf(n))));
       edit({ id: n.id, title: n.title });
     }
   }
@@ -418,7 +474,7 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
   function editingText(target: HTMLElement) {
     if (!target.closest("input,textarea,[contenteditable=true]")) return false;
     // A click selects a node and its unchanged title. Partial selections / typing remain native text editing.
-    if (target instanceof HTMLInputElement && target.matches("[data-mind-title]"))
+    if ((target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) && target.matches("[data-mind-title]"))
       return target.value !== selected?.title || target.selectionStart !== 0 || target.selectionEnd !== target.value.length;
     return true;
   }
@@ -493,19 +549,20 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
       ]);
     }).finally(animation.cancel);
   }
-  function undo() {
+  function history(redo = false) {
+    const expectedId = redo ? redoId : undoId;
     const waitForSave = pending.current > 0;
-    if (undoQueued.current || (!undoId && !waitForSave)) return;
+    if (undoQueued.current || (!expectedId && !waitForSave)) return;
     undoQueued.current = true;
     edit(null);
     setMenu(null);
     void save(async () => {
       try {
         const latest = waitForSave
-          ? (await http.get<{ mindUndoId: number | null }>(`/api/boards/${boardId}`)).mindUndoId
-          : undoId;
-        if (!latest || (waitForSave && latest === undoId)) return;
-        await http.post(url + "/desfazer", { actionId: latest });
+          ? (await http.get<{ mindUndoId: number | null; mindRedoId: number | null }>(`/api/boards/${boardId}`))[redo ? "mindRedoId" : "mindUndoId"]
+          : expectedId;
+        if (!latest) return;
+        await http.post(url + (redo ? "/refazer" : "/desfazer"), { actionId: latest });
         edit(null);
         select(undefined);
       } finally {
@@ -525,7 +582,7 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
     if (target !== document.body && !section.current?.contains(target)) return;
     if (event.key === "Escape") {
       if (gesture.current?.mode === "draw") { gesture.current = null; setInk(null); suppressedClick.current = true; }
-      setTool("select"); dismiss(); return;
+      setTool("select"); setSearchOpen(false); setExportMenu(false); dismiss(); return;
     }
     if (onChanged && event.key === "Enter" && !event.repeat && !busy && !selectedId && !groupIds.length &&
         !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey && !target.closest("input,textarea,select,button,a,[contenteditable=true]")) {
@@ -533,7 +590,7 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
     }
     if (!onChanged || !["Delete", "Backspace"].includes(event.key) || event.altKey || event.ctrlKey || event.metaKey || !colorIds.length) return;
     if (target.closest("input,textarea,select,[contenteditable=true]")) {
-      if (!(target instanceof HTMLInputElement && target.hasAttribute("data-mind-title") && editor?.title === selected?.title &&
+      if (!((target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) && target.hasAttribute("data-mind-title") && editor?.title === selected?.title &&
           target.selectionStart === 0 && target.selectionEnd === target.value.length)) return;
     }
     if (!colorIds.some(id => byId.has(id))) return;
@@ -541,8 +598,8 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
     if (!event.repeat) remove();
   });
   const keyUndo = useEffectEvent((event: KeyboardEvent) => {
-    if (event.defaultPrevented || event.isComposing || event.altKey || event.shiftKey ||
-        !(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "z" || !onChanged) return;
+    if (event.defaultPrevented || event.isComposing || event.altKey ||
+        !(event.ctrlKey || event.metaKey) || !["z", "y"].includes(event.key.toLowerCase()) || !onChanged) return;
     const target = event.target as HTMLElement;
     if (gesture.current?.mode === "draw") { event.preventDefault(); gesture.current = null; setInk(null); suppressedClick.current = true; return; }
     if (document.querySelector('[aria-modal="true"]') ||
@@ -553,25 +610,61 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
         // On macOS the browser only binds native text undo to Command+Z.
         if (event.ctrlKey && /Mac/.test(navigator.platform)) {
           event.preventDefault();
-          document.execCommand("undo");
+          document.execCommand(event.shiftKey || event.key.toLowerCase() === "y" ? "redo" : "undo");
         }
         return;
       }
     }
-    if (!undoId && !pending.current) return;
+    const redo = event.shiftKey || event.key.toLowerCase() === "y";
+    if (!(redo ? redoId : undoId) && !pending.current) return;
     event.preventDefault();
-    if (!event.repeat) undo();
+    if (!event.repeat) history(redo);
+  });
+  const navigationKey = useEffectEvent((event: KeyboardEvent) => {
+    const target = event.target as HTMLElement;
+    if (event.defaultPrevented || event.isComposing || !acceptsClipboard(target)) return;
+    const command = event.ctrlKey || event.metaKey, key = event.key.toLowerCase();
+    if (command && key === "f") { event.preventDefault(); commitTitle(); setSearchOpen(true); return; }
+    if (target.closest("input,textarea,select,button,a,[contenteditable=true]")) return;
+    if (command && key === "a") {
+      event.preventDefault(); setSelectedId(undefined); setGroupIds(shown.map(n => n.id)); return;
+    }
+    if (command && key === "d" && onChanged && colorIds.length) {
+      event.preventDefault();
+      if (!busy && !event.repeat) pasteSelection(copyMindSelection(boardId, nodes, [...mindBranchIds(nodes, colorIds)]));
+      return;
+    }
+    if (command || event.altKey || event.shiftKey) return;
+    if (selected && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) {
+      event.preventDefault();
+      const siblings = shown.filter(n => n.parentId === selected.parentId && !n.drawing && !n.imageData).sort((a, b) => a.y - b.y || a.id.localeCompare(b.id));
+      const i = siblings.findIndex(n => n.id === selected.id);
+      const next = event.key === "ArrowLeft" ? nodes.find(n => n.id === selected.parentId) : event.key === "ArrowRight" ? nodes.find(n => n.parentId === selected.id) : siblings[i + (event.key === "ArrowDown" ? 1 : -1)];
+      if (next) reveal(next);
+      return;
+    }
+    if (selected && event.key === "F2" && onChanged) { event.preventDefault(); rename(selected); return; }
+    if (selected && ["Tab", "Enter"].includes(event.key) && onChanged) {
+      event.preventDefault();
+      const parentId = event.key === "Tab" ? selected.id : selected.parentId;
+      if (parentId && !selected.drawing && !selected.imageData && !busy && !event.repeat) addBranch(parentId, { direction: "right" });
+      return;
+    }
+    if (["v", "h", "t", "p"].includes(key)) {
+      if (!onChanged && ["t", "p"].includes(key)) return;
+      event.preventDefault(); setTool(key === "v" ? "select" : key === "h" ? "hand" : key === "t" ? "text" : "draw");
+    } else if (key === "1") { event.preventDefault(); fit(); }
   });
   useEffect(() => {
-    const listener = (event: KeyboardEvent) => { selectionKey(event); keyUndo(event); };
+    const listener = (event: KeyboardEvent) => { selectionKey(event); keyUndo(event); navigationKey(event); };
     document.addEventListener("keydown", listener);
     return () => document.removeEventListener("keydown", listener);
   }, []);
   const anchor = selected && byId.get(selected.id);
   const groupNodes = groupIds.flatMap(id => byId.has(id) ? [byId.get(id)!] : []);
   const groupAnchor = groupNodes.find(n => !n.imageData) ?? groupNodes[0];
-  const mixed = groupAnchor ? (["shape", "fontSize", "bold", "locked", "link", "strokeWidth"] as const).filter(key => groupNodes.some(n => n[key] !== groupAnchor[key])) : [];
-  return <section ref={section} data-interacting={!!drag || grabbing || !!ink} aria-label="Mapa mental" className={`card mind-map relative isolate min-h-64 flex-1 overflow-hidden bg-surface text-ink ${light ? "mind-canvas-light" : ""} ${full ? "!fixed inset-0 !z-[100] !rounded-none" : ""}`}>
+  const mixed = groupAnchor ? (["shape", "fontSize", "bold", "locked", "link", "strokeWidth", "textWidth", "textHeight"] as const).filter(key => groupNodes.some(n => n[key] !== groupAnchor[key])) : [];
+  return <section ref={section} data-interacting={!!drag || !!resize || grabbing || !!ink} aria-label="Mapa mental" className={`card mind-map relative isolate min-h-64 flex-1 overflow-hidden bg-surface text-ink ${light ? "mind-canvas-light" : ""} ${full ? "!fixed inset-0 !z-[100] !rounded-none" : ""}`}>
     <div ref={canvas} data-mind-canvas tabIndex={0} aria-label="Área do mapa" onPointerDown={start} onPointerMove={move} onPointerUp={finish} onPointerCancel={finish} onLostPointerCapture={e => { if (gesture.current?.mode !== "draw") finish(e); }} data-grabbing={grabbing}
       onContextMenu={event => event.preventDefault()}
       onClick={event => {
@@ -591,7 +684,7 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
             const start = parent.x + side * widthOf(parent) / 2;
             const end = n.x - side * widthOf(n) / 2;
             const mid = (start + end) / 2;
-            return <path key={n.id} data-edge={n.id} d={`M ${start} ${parent.y} C ${mid} ${parent.y}, ${mid} ${n.y}, ${end} ${n.y}`} fill="none" stroke={branchColor(n.color)} strokeWidth={2} strokeLinecap="round" />;
+            return <path key={n.id} data-edge={n.id} d={straightLines ? `M ${start} ${parent.y} L ${end} ${n.y}` : `M ${start} ${parent.y} C ${mid} ${parent.y}, ${mid} ${n.y}, ${end} ${n.y}`} fill="none" stroke={branchColor(n.color)} strokeWidth={2} strokeLinecap="round" />;
           })}
         </svg>
         {shown.map(n => {
@@ -605,15 +698,22 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
           const hasChildren = children.has(n.id);
           return <div key={n.id} data-ink-object={!!drawing} className="mind-object absolute" style={{ left: n.x, top: n.y }}>
             <div data-node={n.id} role="button" tabIndex={0} aria-pressed={marked} title={n.title}
-              onClick={() => { if (tool !== "hand" && tool !== "draw" && !suppressedClick.current && editor?.id !== n.id) rename(n); }}
+              onClick={event => {
+                if (tool === "hand" || tool === "draw" || suppressedClick.current) return;
+                if (event.shiftKey || event.metaKey) {
+                  commitTitle(); const ids = new Set(selectedId ? [selectedId] : groupIds);
+                  if (ids.has(n.id)) ids.delete(n.id); else ids.add(n.id);
+                  setSelectedId(undefined); setGroupIds([...ids]); canvas.current?.focus({ preventScroll: true });
+                } else if (editor?.id !== n.id) rename(n);
+              }}
               onKeyDown={e => {
                 if (e.key === "Escape") { dismiss(); return; }
                 if (e.target !== e.currentTarget) return;
                 if (!active && (e.key === " " || e.key === "Enter")) { e.preventDefault(); rename(n); }
                 else if (active) shortcut(e, n.id);
               }}
-              className="mind-node" data-shape={n.shape} data-root={central && !n.detached} data-image={!!n.imageData} data-drawing={!!drawing}
-              style={{ width, height: drawing?.height, borderColor: branchColor(n.color), textDecoration: central && !n.detached && n.shape === "plain" && n.color.startsWith("#") ? "underline" : undefined, textDecorationColor: branchColor(n.color), color: n.textColor || undefined, fontSize: n.fontSize, fontWeight: n.bold ? 700 : undefined }}>
+              className="mind-node" data-shape={n.shape} data-root={central && !n.detached} data-image={!!n.imageData} data-drawing={!!drawing} data-text-size={!!(n.textWidth || n.textHeight)}
+              style={{ width, height: drawing?.height ?? (n.imageData ? undefined : textBlockSize(n).height), borderColor: branchColor(n.color), textDecoration: central && !n.detached && n.shape === "plain" && n.color.startsWith("#") ? "underline" : undefined, textDecorationColor: branchColor(n.color), color: n.textColor || undefined, fontSize: n.fontSize, fontWeight: n.bold ? 700 : undefined }}>
               {drawing ? <svg width={drawing.width} height={drawing.height} className="mind-ink" aria-label="Desenho livre">
                 <path d={inkPath(drawing.points)} stroke={branchColor(n.color)} strokeWidth={n.strokeWidth} strokeLinecap="round" strokeLinejoin="round" fill="none" />
                 <path className="mind-ink-hit" d={inkPath(drawing.points)} stroke="transparent" strokeWidth={Math.max(n.strokeWidth + 8, 12 / view.zoom)} strokeLinecap="round" fill="none" />
@@ -622,12 +722,21 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
                 // eslint-disable-next-line @next/next/no-img-element
                 ? <img src={n.imageData} alt={n.title} draggable={false} style={{ width: n.imageWidth, height: n.imageHeight, objectFit: "contain" }} />
                 : editor?.id === n.id && onChanged
-                ? <input data-mind-title aria-label="Texto do ramo" autoFocus onFocus={e => e.target.select()} maxLength={160} value={editor.title}
-                    className="w-full min-w-0 select-text bg-transparent text-center outline-none" style={{ backgroundColor: n.highlight || undefined }}
+                ? <textarea rows={1} data-mind-title aria-label="Texto do ramo" autoFocus onFocus={e => e.target.select()} maxLength={160} value={editor.title}
+                    className="w-full min-w-0 resize-none select-text bg-transparent text-center outline-none" style={{ backgroundColor: n.highlight || undefined, height: Math.max(n.fontSize * 1.25, textBlockSize(n).height - (central && !n.detached ? 20 : 14)) }}
                     onChange={e => edit({ id: n.id, title: e.target.value })} onBlur={commitTitle}
                     onKeyDown={e => { if (e.key === "Escape") { commitTitle(); select(undefined); e.stopPropagation(); } else shortcut(e, n.id); }} />
-                : <span className="line-clamp-3 [overflow-wrap:anywhere]" style={{ backgroundColor: n.highlight || undefined }}>{n.title}</span>}
+                : <span className="max-h-full w-full overflow-hidden whitespace-pre-wrap [overflow-wrap:anywhere]" style={{ backgroundColor: n.highlight || undefined }}>{n.title}</span>}
             </div>
+            {active && onChanged && !n.imageData && !n.drawing && <button className="mind-resize" aria-label="Redimensionar bloco" title="Arraste para ajustar o bloco de texto" onPointerDown={e => startResize(e, n)}
+              onKeyDown={e => {
+                if (!["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"].includes(e.key)) return;
+                e.preventDefault(); e.stopPropagation();
+                const size = textBlockSize(n), step = e.shiftKey ? 40 : 10;
+                void save(async () => { await http.patch(url, { id: n.id,
+                  textWidth: Math.min(1200, Math.max(72, size.width + (e.key === "ArrowRight" ? step : e.key === "ArrowLeft" ? -step : 0))),
+                  textHeight: Math.min(1200, Math.max(24, size.height + (e.key === "ArrowDown" ? step : e.key === "ArrowUp" ? -step : 0))) }); });
+              }} style={{ left: width / 2, top: textBlockSize(n).height / 2 }} />}
             {active && central && onChanged && <div className="mind-handles" style={{ right: width / 2 + 6 }}><button className="mind-handle" aria-label="Adicionar ramo à esquerda" title="Adicionar ramo à esquerda" disabled={busy} onClick={() => addBranch(n.id, { direction: "left" })}><Plus size={14} /></button></div>}
             {!n.imageData && !n.drawing && (active || folded.has(n.id)) && <div className="mind-handles" style={isLeft && !central ? { right: width / 2 + 4 } : { left: width / 2 + 4 }}>
               {active && onChanged && <button className="mind-handle" aria-label={central ? "Adicionar ramo à direita" : "Adicionar ramo"} title="Adicionar sub-ramo (Tab)" disabled={busy} onClick={() => addBranch(n.id, { direction: "right" })}><Plus size={14} /></button>}
@@ -650,14 +759,16 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
       <button className="mind-tool" onClick={() => fileInput.current?.click()}><ImagePlus size={15} /> Inserir imagem</button>
       {selected && !selected.imageData && !selected.drawing && <button className="mind-tool" onClick={() => addBranch(selected.id, { point: menu.at })}><Plus size={15} /> Ramo da seleção</button>}
     </div>}
-    {anchor && onChanged && tool !== "draw" && !drag && !box && !menu && <div className="mind-context" style={{
+    {anchor && onChanged && tool !== "draw" && !drag && !box && !menu && !searchOpen && <div className="mind-context" style={{
       "--mind-x": `${view.x + anchor.x * view.zoom}px`,
       "--mind-y": `${view.y + anchor.y * view.zoom}px`,
     } as React.CSSProperties}>
-      <MindFormat key={anchor.id} node={anchor} imageOnly={!!anchor.imageData} drawingOnly={!!anchor.drawing} copy={() => copySelection()} busy={busy} preview={previewColor} commit={commitColor}
+      <MindFormat key={anchor.id} node={anchor}
+        organize={() => void save(async () => { const result = await http.post<{ changed: number }>(url + "/estrutura", { action: "organize", id: anchor.id }); if (!result.changed) notify("Esta árvore já está organizada ou seus itens estão fixados.", "info"); })}
+        structure={!anchor.imageData && !anchor.drawing ? <MindConnect key={anchor.id} node={anchor} nodes={nodes} busy={busy} connect={parentId => { commitTitle(); void save(async () => { await http.post(url + "/estrutura", { action: "connect", id: anchor.id, parentId }); }); }} /> : undefined} imageOnly={!!anchor.imageData} drawingOnly={!!anchor.drawing} copy={() => copySelection()} busy={busy} preview={previewColor} commit={commitColor}
         change={patch => void save(async () => { await http.patch(url, { id: anchor.id, ...patch }); })} remove={remove} />
     </div>}
-    {group.size > 1 && groupAnchor && !box && !drag && !menu && <div className="mind-group" aria-label="Seleção de ramos">
+    {group.size > 1 && groupAnchor && !box && !drag && !menu && !searchOpen && <div className="mind-group" aria-label="Seleção de ramos">
       {onChanged ? <MindFormat key={groupIds.join(":")} node={groupAnchor} copy={() => copySelection()} count={group.size} mixed={mixed} imageOnly={groupNodes.every(n => !!n.imageData)} drawingOnly={groupNodes.every(n => !!n.drawing)} busy={busy}
         preview={previewColor} commit={commitColor} remove={remove}
         change={patch => void save(async () => { await http.post(url + "/selecao", { action: "format", ids: groupIds, patch }); })} />
@@ -669,9 +780,33 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
       <select aria-label="Espessura do lápis" value={penWidth} onChange={e => setPenWidth(Number(e.target.value))}>{[1, 2, 3, 5, 8, 12].map(width => <option value={width} key={width}>{width} px</option>)}</select>
     </div>}
     <input ref={fileInput} type="file" accept="image/*" multiple hidden aria-label="Arquivo de imagem" onChange={e => { insertImages(Array.from(e.target.files ?? [])); e.target.value = ""; }} />
+    {searchOpen && <form className="mind-tools mind-search" role="search" onSubmit={e => { e.preventDefault(); findResult(resultIndex + 1); }}>
+      <Search size={15} /><input autoFocus aria-label="Buscar no mapa" placeholder="Buscar no mapa…" value={query} onChange={e => {
+        setQuery(e.target.value); setResultIndex(0);
+        const match = e.target.value.trim() && nodes.find(n => n.title.toLocaleLowerCase().includes(e.target.value.trim().toLocaleLowerCase()));
+        if (match) reveal(match);
+      }} />
+      <span aria-live="polite">{matches.length ? `${resultIndex + 1}/${matches.length}` : "0"}</span>
+      <button type="button" className="mind-tool" aria-label="Resultado anterior" disabled={!matches.length} onClick={() => findResult(resultIndex - 1)}><ChevronUp size={14} /></button>
+      <button className="mind-tool" aria-label="Próximo resultado" disabled={!matches.length}><ChevronDown size={14} /></button>
+      <button type="button" className="mind-tool" aria-label="Fechar busca" onClick={() => { setSearchOpen(false); canvas.current?.focus(); }}><X size={14} /></button>
+    </form>}
+    {exportMenu && <div className="mind-tools mind-export" role="group" aria-label="Exportar mapa">
+      {(["png", "svg", "txt"] as const).map(format => <button className="mind-tool" key={format} disabled={exporting || busy} onClick={async () => {
+        if (!section.current) return;
+        commitTitle(); await queue.current; setExporting(true);
+        try { const snapshot = onChanged ? (await http.get<{ mindNodes: MindNodeDTO[] }>(`/api/boards/${boardId}`)).mindNodes : nodes; await exportMindMap(snapshot, section.current!, straightLines, format); setExportMenu(false); }
+        catch (e) { notify(e instanceof Error ? e.message : "Não foi possível exportar.", "error"); }
+        finally { setExporting(false); }
+      }}>{format === "txt" ? "Texto com hierarquia" : format === "svg" ? "SVG · sem perder resolução" : "Imagem PNG"}</button>)}
+      <button className="mind-tool" onClick={() => setExportMenu(false)}>Fechar</button>
+    </div>}
     <div className="mind-tools mind-sidebar" role="toolbar" aria-label="Ferramentas do mapa">
       <button className="mind-tool" title="Selecionar e mover blocos" aria-label="Selecionar" aria-pressed={tool === "select"} onClick={() => setTool("select")}><MousePointer2 size={18} /></button>
       <button className="mind-tool" title="Mover a visualização" aria-label="Mover visualização" aria-pressed={tool === "hand"} onClick={() => { commitTitle(); setTool("hand"); }}><Hand size={18} /></button>
+      <button className="mind-tool" aria-label="Buscar no mapa" title="Buscar no mapa (Ctrl+F / ⌘F)" aria-pressed={searchOpen} onClick={() => { commitTitle(); setSearchOpen(!searchOpen); }}><Search size={17} /></button>
+      <button className="mind-tool" aria-label={folded.size ? "Expandir tudo" : "Recolher tudo"} title={folded.size ? "Expandir tudo" : "Recolher até os ramos principais"} onClick={() => { commitTitle(); select(undefined); setFolded(folded.size ? new Set() : new Set(nodes.filter(n => n.parentId && children.has(n.id)).map(n => n.id))); }}><ChevronsDownUp size={17} /></button>
+      <button className="mind-tool" aria-label="Exportar mapa" title="Exportar mapa" aria-expanded={exportMenu} onClick={() => { commitTitle(); setExportMenu(!exportMenu); }}><Download size={17} /></button>
       {onChanged && <>
         <span className="mind-divider" />
         <button className="mind-tool" title="Criar texto: escolha um lugar no mapa" aria-label="Criar texto" aria-pressed={tool === "text"} onClick={() => { commitTitle(); select(undefined); setTool("text"); }}><Type size={18} /></button>
@@ -681,10 +816,15 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
         {onImport && <button className="mind-tool" title="Importar prints com IA" aria-label="Importar prints com IA" onClick={onImport}><Sparkles size={18} /></button>}
         {hasCopy && <button className="mind-tool" aria-label="Colar itens" title="Colar cópia (Ctrl+V / ⌘V)" onClick={() => void pasteCopied()}><ClipboardPaste size={17} /></button>}
         <span className="mind-divider" />
-        <button className="mind-tool" aria-label="Desfazer" title="Desfazer (Ctrl+Z ou ⌘Z)" disabled={busy || !undoId} onClick={undo}><Undo2 size={17} /></button>
+        <button className="mind-tool" aria-label="Desfazer" title="Desfazer (Ctrl+Z ou ⌘Z)" disabled={busy || !undoId} onClick={() => history()}><Undo2 size={17} /></button>
+        <button className="mind-tool" aria-label="Refazer" title="Refazer (Ctrl+Shift+Z / ⌘Shift+Z)" disabled={busy || !redoId} onClick={() => history(true)}><Redo2 size={17} /></button>
       </>}
     </div>
     <div className="mind-tools mind-history">
+      <button className="mind-tool" aria-label="Linhas retas" title={straightLines ? "Voltar às linhas curvas" : "Usar linhas retas"} aria-pressed={straightLines} onClick={() => {
+        setStraightLines(!straightLines);
+        localStorage.setItem("mind-lines:" + boardId, straightLines ? "curved" : "straight");
+      }}>{straightLines ? <Slash size={16} /> : <Spline size={16} />}</button>
       <button className="mind-tool" aria-label="Fundo claro" title="Fundo claro" aria-pressed={light} onClick={() => { setLight(!light); localStorage.setItem("mind-light:" + boardId, String(!light)); }}>{light ? <Moon size={16} /> : <Sun size={16} />}</button>
       <button className="mind-tool" aria-label={full ? "Sair da tela cheia" : "Tela cheia"} title={full ? "Sair da tela cheia" : "Tela cheia"} onClick={toggleFull}>{full ? <Minimize size={16} /> : <Maximize size={16} />}</button>
     </div>

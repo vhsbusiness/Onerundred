@@ -44,9 +44,10 @@ npx next build && node node_modules/next/dist/bin/next start -p 3000   # build d
 - Contas de teste locais são criadas pelo próprio `/api/auth/register` (banco SQLite local). Não há seeds.
 - `.claude/launch.json` é específico do app Claude (previews); pode ser ignorado.
 
-## 4. Verificação (não há testes automatizados)
+## 4. Verificação
 
 ```bash
+npm run test:mind          # testes puros do mapa mental, sem banco/rede
 npx tsc --noEmit -p .      # tipos: deve passar sem erros
 npx eslint src             # lint, incluindo regras do React Compiler: deve passar sem erros
 npx next build             # build: deve compilar
@@ -86,3 +87,7 @@ Observações práticas do histórico:
 - Remoto `origin` por SSH. Branch única `main`. Mensagens de commit em português, com o resumo da mudança no título e detalhes em lista.
 - Não há CI, PRs obrigatórios nem proteção de branch **[não confirmado]**.
 - `AGENTS.md` contém um bloco `nextjs-agent-rules` que o `next dev` reescreve; mantenha-o.
+
+### Histórico SQLite legado
+
+Em 04/11/2026, um teste de instalação vazia encontrou falha preexistente em `20261018222608_drop_areas`: tenta remover `area`, ausente após o conjunto anterior de migrations SQLite. Isso não foi corrigido reescrevendo migrations já existentes. O upgrade da nova migration do mapa foi validado isoladamente a partir do schema anterior em banco temporário. Não aplicar reset/baseline ao banco do usuário para contornar esse problema. O histórico Postgres não foi executado em banco real nesta etapa.

@@ -78,6 +78,8 @@ export interface MindImportTopic {
 }
 
 export interface MindNodeDTO {
+  textWidth: number | null;
+  textHeight: number | null;
   drawing: string;
   strokeWidth: number;
   detached: boolean;
@@ -106,6 +108,7 @@ export interface BoardDTO {
   symbol: string | null;
   mindNodes: MindNodeDTO[];
   mindUndoId: number | null;
+  mindRedoId: number | null;
   type: BoardType;
   id: string;
   name: string;

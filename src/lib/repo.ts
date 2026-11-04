@@ -554,7 +554,7 @@ export async function getBoard(id: string, userId: string): Promise<BoardDTO> {
     where: { id, ...boardAccess(userId) },
     include: {
       mindNodes: true,
-      mindUndos: { where: { userId }, orderBy: { id: "desc" }, take: 1, select: { id: true } },
+      mindUndos: { where: { userId }, orderBy: { id: "desc" }, take: 30, select: { id: true, undone: true } },
       user: { select: { id: true, name: true, username: true, avatar: true } },
       members: { include: { user: { select: { id: true, name: true, username: true, avatar: true } } }, orderBy: { createdAt: "asc" } },
       invites: { where: { status: "pending" }, include: { to: { select: { id: true, name: true, username: true, avatar: true } } } },
@@ -584,7 +584,8 @@ export async function getBoard(id: string, userId: string): Promise<BoardDTO> {
     position: board.position,
     createdAt: board.createdAt.toISOString(),
     mindNodes: board.mindNodes,
-    mindUndoId: board.mindUndos[0]?.id ?? null,
+    mindUndoId: board.mindUndos.find(action => !action.undone)?.id ?? null,
+    mindRedoId: board.mindUndos.filter(action => action.undone).at(-1)?.id ?? null,
     lastUndo: await getLastUndo(userId),
     // Para o reloginho das listas: média usada nas tarefas sem estimativa.
     avgTaskMinutes: averageTaskMinutes(

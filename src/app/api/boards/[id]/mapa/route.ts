@@ -51,7 +51,7 @@ export const POST = withUser(async (user, req: Request, ctx: Context) => {
     if (!detached && (!parent || parent.imageData || parent.drawing)) throw new ApiError(404, "Ideia indisponível.");
     const nodes = await tx.mindNode.findMany({ where: { boardId } });
     if (image.imageData && nodes.filter(n => n.imageData).length >= 50) throw new ApiError(400, "Este mapa já tem 50 imagens.");
-    const branch = parent ? positionBranch(parent, nodes, direction) : { x: 0, y: 0, color: "blue" };
+    const branch = parent ? positionBranch(parent, nodes, direction, title) : { x: 0, y: 0, color: "blue" };
     if (!point && (!coordinate(branch.x) || !coordinate(branch.y))) throw new ApiError(400, "Limite de posição do mapa atingido.");
     const node = await tx.mindNode.create({ data: { ...(typeof inkId === "string" && { id: inkId }), boardId, parentId, detached, title, shape, ...branch, ...point, ...image, ...ink } });
     await remember(tx, boardId, user.id, { kind: "create", nodes: [node] });

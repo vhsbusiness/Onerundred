@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { Bold, Eraser, ExternalLink, Link2, Lock, LockOpen, Trash2, Network, Copy } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { Bold, Eraser, ExternalLink, Link2, Lock, LockOpen, Trash2, Network, Copy, Scaling, ListTree } from "lucide-react";
 import type { MindNodeDTO } from "@/lib/types";
+import { textBlockSize } from "@/lib/mind-size";
 import { isMindRoot } from "@/lib/mind-root";
 import { MindColors, type ColorHandler } from "./MindColors";
 
-export function MindFormat({ node, change, remove, copy, busy, preview, commit, count = 1, mixed = [], imageOnly = false, drawingOnly = false }: {
+export function MindFormat({ node, change, remove, copy, busy, preview, commit, count = 1, mixed = [], imageOnly = false, drawingOnly = false, structure, organize }: {
   node: MindNodeDTO;
+  structure?: ReactNode;
+  organize?: () => void;
   change: (patch: Partial<MindNodeDTO>) => void;
   remove: () => void;
   copy: () => void;
@@ -20,6 +23,7 @@ export function MindFormat({ node, change, remove, copy, busy, preview, commit, 
   drawingOnly?: boolean;
 }) {
   const [editingLink, setEditingLink] = useState(false);
+  const [editingSize, setEditingSize] = useState(false);
   const [link, setLink] = useState("");
   const [size, setSize] = useState<string | null>(null);
   const root = count === 1 && isMindRoot(node);
@@ -40,16 +44,19 @@ export function MindFormat({ node, change, remove, copy, busy, preview, commit, 
       {root && <button className="mind-tool mind-auto" aria-label="Organizar ramos automaticamente" title="Auto: organiza os ramos ao criar, editar ou remover ideias" aria-pressed={node.autoLayout} disabled={busy} onClick={() => change({ autoLayout: !node.autoLayout })}>
         <Network size={15} /><span className="mind-switch" />Auto
       </button>}
+      {root && organize && <button className="mind-tool" aria-label="Organizar agora" title="Reorganizar esta árvore uma vez" disabled={busy} onClick={organize}><ListTree size={16} /></button>}
       <MindColors node={node} preview={preview} commit={commit} />
       <button className="mind-tool" title="Negrito" aria-label="Negrito" aria-pressed={mixed.includes("bold") ? "mixed" : node.bold} onClick={() => change({ bold: mixed.includes("bold") || !node.bold })}><Bold size={16} /></button>
       <input className="mind-font-size" aria-label="Tamanho do texto" title="Tamanho do texto (8 a 72 px)" type="number" min={8} max={72}
         placeholder="—" value={size ?? (mixed.includes("fontSize") ? "" : node.fontSize)}
         onChange={e => setSize(e.target.value)} onBlur={saveSize} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }} />
+      <button className="mind-tool" title="Tamanho do bloco" aria-label="Tamanho do bloco" aria-expanded={editingSize} onClick={() => setEditingSize(!editingSize)}><Scaling size={15} /></button>
       <button className="mind-tool" title="Editar link" aria-label="Editar link" aria-expanded={editingLink} onClick={() => { setLink(mixed.includes("link") ? "" : node.link); setEditingLink(!editingLink); }}><Link2 size={16} /></button>
       {count === 1 && node.link && <a className="mind-tool" title="Abrir link" aria-label="Abrir link" href={node.link} target="_blank" rel="noopener noreferrer"><ExternalLink size={15} /></a>}
     </>}
     {drawingOnly && <>
       <span className="px-2 text-xs">{count === 1 ? "Desenho" : "Desenhos"}</span>
+      {root && organize && <button className="mind-tool" aria-label="Organizar agora" title="Reorganizar esta árvore uma vez" disabled={busy} onClick={organize}><ListTree size={16} /></button>}
       <MindColors node={node} fields={["color"]} colorLabel="Cor do traço" preview={preview} commit={commit} />
       <select aria-label="Espessura do traço" value={mixed.includes("strokeWidth") ? "mixed" : node.strokeWidth} onChange={e => change({ strokeWidth: Number(e.target.value) })}>
         {mixed.includes("strokeWidth") && <option value="mixed" disabled>Várias</option>}
@@ -65,6 +72,13 @@ export function MindFormat({ node, change, remove, copy, busy, preview, commit, 
     {!imageOnly && !drawingOnly && <button className="mind-tool" title="Limpar estilo" aria-label="Limpar estilo" onClick={() => change({ bold: false, textColor: "", highlight: "", shape: "plain", fontSize: 14 })}><Eraser size={15} /></button>}
     <button className="mind-tool" title="Copiar seleção (Ctrl+C / ⌘C)" aria-label="Copiar seleção" onPointerDown={e => e.preventDefault()} onClick={copy}><Copy size={15} /></button>
     <button className="mind-tool" disabled={busy} title={count > 1 ? "Excluir seleção" : "Excluir ramo"} aria-label={count > 1 ? "Excluir seleção" : "Excluir ramo"} onClick={remove}><Trash2 size={15} /></button>
+    {structure}
+    {editingSize && !imageOnly && !drawingOnly && <div className="mind-size-controls" role="group" aria-label="Dimensões do bloco">
+      <span>Bloco de texto</span>
+      <button className="mind-tool" disabled={busy} aria-label="Diminuir bloco" onClick={() => { const size = textBlockSize(node); change({ textWidth: Math.max(72, Math.round(size.width * .8)), textHeight: Math.max(24, Math.round(size.height * .8)) }); }}>−</button>
+      <button className="mind-tool" disabled={busy} aria-label="Aumentar bloco" onClick={() => { const size = textBlockSize(node); change({ textWidth: Math.min(1200, Math.round(size.width * 1.25)), textHeight: Math.min(1200, Math.round(size.height * 1.25)) }); }}>+</button>
+      <button className="mind-tool" disabled={busy} onClick={() => change({ textWidth: null, textHeight: null })}>Tamanho automático</button>
+    </div>}
     {editingLink && <form className="flex w-full gap-1 border-t border-line pt-1" onSubmit={e => { e.preventDefault(); change({ link: link.trim() }); setEditingLink(false); }}>
       <input className="input min-w-0 flex-1" aria-label="Endereço do link" autoFocus type="url" pattern="https?://.+" maxLength={2048} placeholder="https://" value={link} onChange={e => setLink(e.target.value)} />
       <button className="mind-tool">Salvar link</button>

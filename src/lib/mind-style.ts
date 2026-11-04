@@ -1,8 +1,14 @@
 import { ApiError } from "./errors";
 
-export type MindStyle = Partial<{ strokeWidth: number; bold: boolean; locked: boolean; textColor: string; highlight: string; color: string; shape: string; fontSize: number; link: string }>;
+export type MindStyle = Partial<{ textWidth: number | null; textHeight: number | null; strokeWidth: number; bold: boolean; locked: boolean; textColor: string; highlight: string; color: string; shape: string; fontSize: number; link: string }>;
 export function parseMindStyle(body: Record<string, unknown>): MindStyle {
   const data: MindStyle = {};
+  for (const key of ["textWidth", "textHeight"] as const) {
+    const value = body[key];
+    if (value === undefined) continue;
+    if (value !== null && (typeof value !== "number" || !Number.isInteger(value) || value < (key === "textWidth" ? 72 : 24) || value > 1200)) throw new ApiError(400, "Tamanho do bloco inválido.");
+    data[key] = value;
+  }
   for (const key of ["bold", "locked"] as const) {
     if (body[key] === undefined) continue;
     if (typeof body[key] !== "boolean") throw new ApiError(400, "Formato inválido.");

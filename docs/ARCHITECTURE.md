@@ -166,3 +166,13 @@ A raiz agora pode ser removida em `/mapa` e `/mapa/selecao`. `mind-layout.ts` to
 O desfazer da criação valida mudanças concorrentes, desliga pais entre os itens removidos e divide operações em lotes de 300 IDs para respeitar limites de parâmetros SQL e cascata de cadeias profundas no SQLite. Não exclui filhos de outros editores por cascata.
 
 No lápis, listeners de Pointer Events no documento mantêm o gesto mesmo após lostpointercapture. `inkId` é um UUID de requisição restrito a desenhos; repetir a gravação retorna o objeto já salvo no mesmo quadro. A prévia aguarda o ID aparecer no snapshot; falhas mantêm os pontos em memória para retry. `BoardView` conserva o quadro durante falhas de atualização e usa sequência de requisições para descartar respostas antigas.
+
+### Estrutura e ferramentas do mapa — 04/11/2026
+
+`mind-tree.ts` resolve o conjunto de descendentes sem duplicação; `mind-size.ts` concentra dimensões de texto usadas no canvas e no layout; `mind-spacing.ts` mantém espaço das conexões ao mudar o tamanho, incluindo filhos em conjunto e bloqueio se isso exigiria mover um item fixado. `mind-auto.ts` distribui subárvores por bandas verticais e níveis horizontais. `mind-selection.ts` move a subárvore em transação, pausa Auto das raízes afetadas e pode salvar o título em edição na mesma ação. `mind-structure.ts` organiza uma árvore pontualmente ou reconecta/desconecta ramos, validando mesmo quadro e ausência de ciclos.
+
+Rotas novas: `POST /api/boards/[id]/mapa/estrutura` (`organize`/`connect`) e `/refazer` (`actionId`). Ambas usam `writeMap`, com verificação de `boardAccess`. `MindUndo.undone` marca a posição do histórico por usuário; a inversão das ações mantém a validação de conflitos existente. `getBoard` retorna `mindUndoId` e `mindRedoId`. Edições novas descartam somente os itens de refazer do próprio usuário.
+
+`MindNode.textWidth/textHeight` são anuláveis; null usa tamanho automático. UI inclui alça, botões, editor multilinha, busca/navegação e `MindConnect`. `mind-export.ts` serializa um SVG seguro usando APIs DOM, rasteriza PNG com dimensão limitada e exporta texto hierárquico. Não insere HTML de títulos nem carrega mídias externas. Importação de screenshots continua separada.
+
+Migration aditiva `20261104023919_mind_text_size` para Postgres e SQLite: dimensões do texto e marcador de refazer. `npm run test:mind` executa testes puros do layout, tamanho, seleção de subárvore e direção dos filhos, sem banco ou rede. Comparação funcional e limites em [MIND_MAP_REFERENCE.md](MIND_MAP_REFERENCE.md).

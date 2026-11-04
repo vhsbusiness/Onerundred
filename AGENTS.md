@@ -22,7 +22,7 @@ App Next.js 16 + React 19 + Tailwind v4 + Prisma 7 (Postgres em produção, SQLi
 ## Regras curtas
 
 - Node via nvm: `export PATH="$HOME/.nvm/versions/node/v24.22.0/bin:$PATH"` antes de `npm`/`npx`.
-- Antes de entregar: `npx tsc --noEmit -p .`, `npx eslint src`, `npx next build`, e conferir a UI em 375 px e desktop. Não há testes automatizados.
+- Antes de entregar: `npx tsc --noEmit -p .`, `npx eslint src`, `npx next build`, e conferir a UI em 375 px e desktop. Há testes puros do mapa em `npm run test:mind`; execute-os ao alterar mapa/layout.
 - Commits locais; **`git push` só quando o dono mandar publicar** (push em `main` faz deploy no Railway).
 - Regra de negócio fica em `src/lib/repo.ts` (sempre com `userId` + `boardAccess`); rotas em `src/app/api` só validam e chamam o lib; UI em `src/components`.
 - Métricas são funções puras em `src/lib/metrics.ts`/`performance.ts`; mudou número, atualize `SettingsForm.tsx`, README e `docs/BUSINESS_RULES.md`.
