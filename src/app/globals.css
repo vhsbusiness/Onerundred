@@ -839,3 +839,10 @@ body {
 .mind-color-popover .mind-tool { gap: 8px; justify-content: flex-start; width: 100%; font-size: 12px; }
 .mind-node[data-drop-target="true"] { outline: 2px solid var(--mind-accent); outline-offset: 5px; background: color-mix(in srgb, var(--mind-accent) 12%, var(--mind-panel)); }
 .mind-drop-hint { position: absolute; left: 50%; bottom: 58px; transform: translateX(-50%); z-index: 4; max-width: calc(100% - 24px); padding: 8px 12px; font-size: 12px; pointer-events: none; }
+
+/* Personal board shortcuts stay open while traversing their links. */
+.rail-board-favorites { display: none; margin-top: 0.25rem; border-top: 1px solid var(--color-line); padding-top: 0.25rem; }
+.rail-boards-group:hover > .rail-board-favorites,
+.rail-boards-group:focus-within > .rail-board-favorites { display: block; }
+.rail-board-favorites .v2-rail-item { font-size: 0.8rem; }
+.rail-board-favorites svg { flex-shrink: 0; }

@@ -1,6 +1,8 @@
 "use client";
 
 import { Archive, Bell, ChevronsLeft, ChevronsRight, Gamepad2, LayoutDashboard, LogOut, Moon, Settings, ShieldCheck, SquareKanban, Sun, Target, UserRound } from "lucide-react";
+import { useFavoriteBoards } from "@/components/boards/FavoriteBoards";
+import { BoardIcon } from "@/components/boards/BoardIcon";
 import { Avatar } from "@/components/profile/ProfilePage";
 import { InviteBell } from "@/components/InviteBell";
 import Link from "next/link";
@@ -260,6 +262,8 @@ const RAIL_KEY = "onerundred_rail";
  * "collapsed" em <html data-rail> (CSS cuida da largura) e guarda no aparelho.
  */
 function Rail({ tabs: items, isActive, me }: { tabs: Tab[]; isActive: (href: string) => boolean; me: MeDTO | null }) {
+  const { boards: favorites } = useFavoriteBoards();
+  const pathname = usePathname();
   function toggle() {
     const html = document.documentElement;
     const rail = document.querySelector<HTMLElement>(".v2-rail");
@@ -282,11 +286,21 @@ function Rail({ tabs: items, isActive, me }: { tabs: Tab[]; isActive: (href: str
           {items.map((t) => {
             const active = isActive(t.href);
             return (
-              <li key={t.href}>
+              <li key={t.href} className={t.href === "/quadros" ? "rail-boards-group" : undefined}>
                 <Link href={t.href} title={t.label} aria-current={active ? "page" : undefined} className={`v2-rail-item ${active ? "is-active" : ""}`}>
                   <t.icon size={18} strokeWidth={active ? 2.2 : 1.8} />
                   <span className="v2-rail-label">{t.label}</span>
                 </Link>
+                {t.href === "/quadros" && favorites.length > 0 && <ul className="rail-board-favorites" aria-label="Quadros favoritos">
+                  {favorites.map((board) => <li key={board.id}>
+                    <Link href={`/quadros/${board.id}`} title={board.name}
+                      aria-current={pathname === `/quadros/${board.id}` ? "page" : undefined}
+                      className={`v2-rail-item ${pathname === `/quadros/${board.id}` ? "is-active" : ""}`}>
+                      <BoardIcon type={board.type} symbol={board.symbol} size={15} />
+                      <span className="v2-rail-label truncate">{board.name}</span>
+                    </Link>
+                  </li>)}
+                </ul>}
               </li>
             );
           })}

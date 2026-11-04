@@ -107,3 +107,12 @@ O Studio v3 mantém os reflexos suaves e as bordas de vidro mesmo quando o Chrom
 ## Ajustes do mapa mental — 04/11/2026
 
 Reconectar uma subárvore arrastando sobre outro item, com indicação do destino e desfazer/refazer da operação inteira. Colagem em um texto aberto preserva a formatação suportada pelo bloco. Paleta com cores prontas/personalizadas e grade quadrada no canvas, tanto claro quanto escuro. Detalhes e limites em `MIND_MAP_REFERENCE.md`. Alterações locais, sem publicar nesta etapa.
+
+
+## Bullets e quadros favoritos — 04/11/2026
+
+Na descrição das tarefas, `-` ou `.` seguido de espaço no início do parágrafo cria a mesma lista de bullets do botão do editor. A formatação continua salva em Markdown.
+
+Cada conta pode favoritar até três quadros, inclusive compartilhados, usando a estrela na grade ou no cabeçalho do quadro. Os atalhos aparecem abaixo de Quadros na barra lateral enquanto o mouse está sobre o grupo; também ficam acessíveis pelo foco do teclado. A barra recolhida mostra os ícones com os nomes no tooltip. No celular, as estrelas continuam acessíveis na grade e no quadro.
+
+Favoritos usam `Setting.favoriteBoardIds`, sem migration, com limite e acesso validados na API `GET/PUT /api/boards/favoritos`. Quadros excluídos ou sem acesso são filtrados e deixam de ocupar vagas na próxima leitura. Falhas ao salvar preservam a seleção confirmada. Alteração local, sem publicação.

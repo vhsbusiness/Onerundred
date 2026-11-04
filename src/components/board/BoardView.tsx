@@ -1,5 +1,6 @@
 "use client";
 
+import { FavoriteBoardButton } from "@/components/boards/FavoriteBoards";
 import { BoardIcon } from "@/components/boards/BoardIcon";
 
 import { BoardFrame, BoardScroller } from "./BoardLayout";
@@ -378,6 +379,7 @@ export function BoardView({ viewerId, boardId, initialBoard }: { viewerId: strin
             {board.name}
           </button>
         )}
+        <FavoriteBoardButton boardId={board.id} />
         <span className="pill"><BoardIcon type={board.type} symbol={board.symbol} size={14} />{isMap ? "Mapa mental" : board.type === "organization" ? "Organização" : "Lista de tarefas"}</span>
         {!isMap && <span className="pill">{openCount} {board.type === "organization" ? "cartões" : "abertas"}</span>}
         {board.type === "tasks" && <span className="pill pill-green">{doneCount} feitas</span>}

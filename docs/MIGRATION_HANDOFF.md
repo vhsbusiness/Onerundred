@@ -179,3 +179,14 @@ Vidro conferido por estilo computado e screenshots, com preferência `prefers-re
 A etapa anterior (`6d40738`) foi publicada com autorização: Railway `49214f24-ce27-4539-b895-e492bc63dedd`, SUCCESS; JS/CSS conferidos por hash. O dono então pediu corrigir o fundo usando os prints do Miro, inclusive seu efeito ao mudar o zoom. Esta alteração permanece local: canvas cinza neutro, duas intensidades de grade, densidade adaptativa e linhas ancoradas ao mapa durante o movimento. Não altera schema, dados ou regras de negócio.
 
 Oito testes puros do mapa, TypeScript, ESLint e build passaram. Chrome local em 375/1440 px, claro/escuro, zoom 5–250%, movimento, seleção/toque, tela cheia e movimento reduzido conferidos; apenas SQLite de QA. Roteiro temporário: `/private/tmp/onerundred-adaptive-grid-qa.cjs`. Detalhes em `MIND_MAP_REFERENCE.md`. Sem push/deploy desta etapa.
+
+
+## Bullets e quadros favoritos — 04/11/2026
+
+Na descrição das tarefas, `-` ou `.` seguido de espaço no início do parágrafo cria a mesma lista de bullets do botão do editor. A formatação continua salva em Markdown.
+
+Cada conta pode favoritar até três quadros, inclusive compartilhados, usando a estrela na grade ou no cabeçalho do quadro. Os atalhos aparecem abaixo de Quadros na barra lateral enquanto o mouse está sobre o grupo; também ficam acessíveis pelo foco do teclado. A barra recolhida mostra os ícones com os nomes no tooltip. No celular, as estrelas continuam acessíveis na grade e no quadro.
+
+Favoritos usam `Setting.favoriteBoardIds`, sem migration, com limite e acesso validados na API `GET/PUT /api/boards/favoritos`. Quadros excluídos ou sem acesso são filtrados e deixam de ocupar vagas na próxima leitura. Falhas ao salvar preservam a seleção confirmada. Alteração local, sem publicação.
+
+Validação: TypeScript, ESLint e build aprovados; Chrome em 375/1440 px confirmou atalhos reais, persistência após recarga, favoritos com um/dois/três itens, hover e travessia dos links, barra recolhida, remoção, limite na UI/API e isolamento entre contas. QA usa banco SQLite temporário, sem dados de produção. Roteiro: `/private/tmp/onerundred-favorites-qa.cjs`.

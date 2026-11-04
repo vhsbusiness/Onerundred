@@ -458,6 +458,35 @@ export async function lastBoardId(userId: string): Promise<string | null> {
   return board?.id ?? null;
 }
 
+const FAVORITE_BOARDS_KEY = "favoriteBoardIds";
+
+export async function listFavoriteBoards(userId: string) {
+  const row = await prisma.setting.findUnique({ where: { userId_key: { userId, key: FAVORITE_BOARDS_KEY } } });
+  let ids: string[] = [];
+  try {
+    const value: unknown = JSON.parse(row?.value ?? "[]");
+    if (Array.isArray(value)) ids = [...new Set(value.filter((id): id is string => typeof id === "string"))].slice(0, 3);
+  } catch { /* Invalid saved setting behaves as an empty list. */ }
+  const boards = await prisma.board.findMany({
+    where: { id: { in: ids }, ...boardAccess(userId) },
+    select: { id: true, name: true, type: true, symbol: true },
+  });
+  return ids.flatMap((id) => boards.filter((board) => board.id === id));
+}
+
+export async function setFavoriteBoards(userId: string, ids: string[]) {
+  if (ids.length > 3) throw new ApiError(400, "Você pode favoritar até três quadros. Remova um favorito para adicionar outro.");
+  const unique = [...new Set(ids)];
+  const count = await prisma.board.count({ where: { id: { in: unique }, ...boardAccess(userId) } });
+  if (count !== unique.length) throw new ApiError(404, "Quadro não encontrado");
+  await prisma.setting.upsert({
+    where: { userId_key: { userId, key: FAVORITE_BOARDS_KEY } },
+    create: { userId, key: FAVORITE_BOARDS_KEY, value: JSON.stringify(unique) },
+    update: { value: JSON.stringify(unique) },
+  });
+  return listFavoriteBoards(userId);
+}
+
 /** Quadros acessíveis com as listas, para mover tarefas e listas entre quadros. */
 export async function listBoardLists(userId: string): Promise<BoardListsDTO[]> {
   const boards = await prisma.board.findMany({

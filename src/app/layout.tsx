@@ -4,6 +4,7 @@ import { Bricolage_Grotesque, Geist, Geist_Mono, Instrument_Sans, JetBrains_Mono
 import "./globals.css";
 import { getCurrentUser } from "@/lib/current-user";
 import { getSettings } from "@/lib/repo";
+import { FavoriteBoardsProvider } from "@/components/boards/FavoriteBoards";
 import { Nav } from "@/components/Nav";
 import { ConfirmProvider } from "@/components/ui/ConfirmProvider";
 import { DEFAULT_DESIGN, DEFAULT_THEME, isTheme, THEME_COOKIE, themeColorFor, type Design, type Theme } from "@/lib/theme";
@@ -79,8 +80,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
         <div id="app" className="mx-auto flex min-h-dvh w-full max-w-[1480px] flex-col px-4 pb-24 sm:px-6 md:pb-10"
           style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
-          <Nav />
-          <main className="flex-1">{children}</main>
+          <FavoriteBoardsProvider>
+            <Nav />
+            <main className="flex-1">{children}</main>
+          </FavoriteBoardsProvider>
         </div>
         <ConfirmProvider />
       </body>

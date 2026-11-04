@@ -3,8 +3,16 @@
 import { Bold, Italic, List, Strikethrough } from "lucide-react";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { BulletList } from "@tiptap/extension-list";
+import { wrappingInputRule } from "@tiptap/core";
 import { Markdown } from "@tiptap/markdown";
 import { useState } from "react";
+
+const DescriptionBulletList = BulletList.extend({
+  addInputRules() {
+    return [wrappingInputRule({ find: /^\s*([-+*.])\s$/, type: this.type })];
+  },
+});
 
 function safeLink(url: string) {
   try { return ["http:", "https:"].includes(new URL(url).protocol); }
@@ -26,13 +34,14 @@ export function DescriptionEditor({ value, onChange, onSave, readOnly }: { value
     editable: !readOnly,
     extensions: [
       StarterKit.configure({
-        heading: false, codeBlock: false, horizontalRule: false, underline: false,
+        bulletList: false, heading: false, codeBlock: false, horizontalRule: false, underline: false,
         link: {
           openOnClick: true, autolink: true, linkOnPaste: true, defaultProtocol: "https",
           isAllowedUri: safeLink,
           HTMLAttributes: { target: "_blank", rel: "noopener noreferrer" },
         },
       }),
+      DescriptionBulletList,
       Markdown.configure({ markedOptions: { gfm: true, breaks: true } }),
     ],
     content: initialContent,

@@ -235,3 +235,12 @@ seguido de `npm run dev` (volte para `file:` e gere de novo ao terminar).
 ### Tipos de quadro
 
 **Lista de tarefas** é o padrão e participa da produtividade. **Organização** serve para informações, links e checklists, sem cronômetros, atrasos ou influência nas notas. Escolha ao criar ou, sendo dono, em Opções do quadro → Tipo do quadro. Trocar o tipo preserva os cartões; converter para Organização encerra cronômetros de tarefa em andamento.
+
+
+## Bullets e quadros favoritos — 04/11/2026
+
+Na descrição das tarefas, `-` ou `.` seguido de espaço no início do parágrafo cria a mesma lista de bullets do botão do editor. A formatação continua salva em Markdown.
+
+Cada conta pode favoritar até três quadros, inclusive compartilhados, usando a estrela na grade ou no cabeçalho do quadro. Os atalhos aparecem abaixo de Quadros na barra lateral enquanto o mouse está sobre o grupo; também ficam acessíveis pelo foco do teclado. A barra recolhida mostra os ícones com os nomes no tooltip. No celular, as estrelas continuam acessíveis na grade e no quadro.
+
+Favoritos usam `Setting.favoriteBoardIds`, sem migration, com limite e acesso validados na API `GET/PUT /api/boards/favoritos`. Quadros excluídos ou sem acesso são filtrados e deixam de ocupar vagas na próxima leitura. Falhas ao salvar preservam a seleção confirmada. Alteração local, sem publicação.

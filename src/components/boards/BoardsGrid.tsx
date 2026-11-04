@@ -1,8 +1,9 @@
 "use client";
 
+import { FavoriteBoardButton } from "./FavoriteBoards";
 import { BoardIcon } from "@/components/boards/BoardIcon";
 
-import { ArrowUpRight, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -75,27 +76,28 @@ export function BoardsGrid() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {boards.map(b => (
-            <Link
-              key={b.id}
-              href={`/quadros/${b.id}`}
-              className="card board-tile group flex min-h-40 flex-col p-5 transition hover:border-line-2"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <BoardIcon type={b.type} symbol={b.symbol} size={18} />
-                  <h2 className="min-w-0 break-words text-lg font-semibold tracking-tight">{b.name}</h2>
+            <div key={b.id} className="relative">
+              <div className="absolute right-3 top-3 z-10"><FavoriteBoardButton boardId={b.id} /></div>
+              <Link
+                href={`/quadros/${b.id}`}
+                className="card board-tile group flex h-full min-h-40 flex-col p-5 transition hover:border-line-2"
+              >
+                <div className="flex items-start justify-between gap-3 pr-8">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <BoardIcon type={b.type} symbol={b.symbol} size={18} />
+                    <h2 className="min-w-0 break-words text-lg font-semibold tracking-tight">{b.name}</h2>
+                  </div>
                 </div>
-                <ArrowUpRight size={14} className="text-ink-3 transition group-hover:text-ink" />
-              </div>
-              <div className="mt-auto flex flex-wrap items-center gap-2 pt-6">
-                <span className="pill">{BOARD_LABEL[b.type]}</span>
-                {b.type === "tasks" && <span className="pill">hoje {formatPercent(b.todayScore)}</span>}
-                {b.type !== "mindmap" && <span className="pill">{b.openCount} {b.type === "organization" ? "cartões" : "abertas"}</span>}
-                {b.type === "tasks" && <span className="pill">{b.doneTodayCount} feitas hoje</span>}
-                {b.type !== "mindmap" && <span className="pill">{b.listCount} listas</span>}
-                {b.sharedBy ? <span className="pill">compartilhado por @{b.sharedBy}</span> : b.memberCount > 0 ? <span className="pill">{b.memberCount + 1} participantes</span> : null}
-              </div>
-            </Link>
+                <div className="mt-auto flex flex-wrap items-center gap-2 pt-6">
+                  <span className="pill">{BOARD_LABEL[b.type]}</span>
+                  {b.type === "tasks" && <span className="pill">hoje {formatPercent(b.todayScore)}</span>}
+                  {b.type !== "mindmap" && <span className="pill">{b.openCount} {b.type === "organization" ? "cartões" : "abertas"}</span>}
+                  {b.type === "tasks" && <span className="pill">{b.doneTodayCount} feitas hoje</span>}
+                  {b.type !== "mindmap" && <span className="pill">{b.listCount} listas</span>}
+                  {b.sharedBy ? <span className="pill">compartilhado por @{b.sharedBy}</span> : b.memberCount > 0 ? <span className="pill">{b.memberCount + 1} participantes</span> : null}
+                </div>
+              </Link>
+            </div>
           ))}
         </div>
       )}
