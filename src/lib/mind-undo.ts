@@ -27,11 +27,26 @@ export function writeMap<T>(boardId: string, userId: string, mutate: (tx: Transa
   });
 }
 
-export async function remember(tx: Transaction, boardId: string, userId: string, action: Action) {
+function affectedIds(action: Action): string[] {
+  if (action.kind === "compound") return action.actions.flatMap(affectedIds);
+  if (action.kind === "create" || action.kind === "delete") return action.nodes.flatMap(n => [n.id, ...(n.parentId ? [n.parentId] : [])]);
+  if (action.kind === "edit") return [action.id];
+  if (action.kind === "batch") return action.edits.map(e => e.id);
+  if (action.kind === "move") return action.positions.map(n => n.id);
+  if (action.kind === "paint") return action.previous.map(n => n.id);
+  return [];
+}
+export async function remember(tx: Transaction, boardId: string, userId: string, action: Action, layout = true) {
   const nodes = await tx.mindNode.findMany({ where: { boardId } });
   const byId = new Map(nodes.map(n => [n.id, n]));
   const edits: { id: string; before: NodePatch; after: NodePatch }[] = [];
-  for (const { id, x, y } of arrangeMindMap(nodes)) {
+  const roots = new Set<string>();
+  for (const id of affectedIds(action)) {
+    let node = byId.get(id);
+    while (node?.parentId) node = byId.get(node.parentId);
+    if (node) roots.add(node.id);
+  }
+  for (const { id, x, y } of layout ? arrangeMindMap(nodes, roots) : []) {
     const previous = byId.get(id)!;
     await tx.mindNode.update({ where: { id }, data: { x, y } });
     edits.push({ id, before: { x: previous.x, y: previous.y }, after: { x, y } });
@@ -103,19 +118,19 @@ async function applyUndo(tx: Transaction, boardId: string, action: Action) {
     if (!result.count) throw conflict;
   } else if (action.kind === "create") {
     const ids = action.nodes.map(n => n.id);
-    const current = await tx.mindNode.findMany({ where: { boardId, id: { in: ids } } });
+    const current = await tx.mindNode.findMany({ where: { boardId } });
     const byId = new Map(current.map(n => [n.id, n]));
     for (const node of action.nodes) {
       const now = byId.get(node.id);
       if (!now || (Object.keys(node) as (keyof MindNode)[]).some(key => node[key] !== now[key])) throw conflict;
     }
     // A later child added by someone else must not disappear through the cascade.
-    if (await tx.mindNode.count({ where: { boardId, parentId: { in: ids }, id: { notIn: ids } } })) throw conflict;
-    await tx.mindNode.deleteMany({ where: { boardId, id: { in: ids } } });
+    const selected = new Set(ids);
+    if (current.some(n => n.parentId && selected.has(n.parentId) && !selected.has(n.id))) throw conflict;
+    // Bound SQL parameters and avoid recursive cascade limits for long pasted chains.
+    for (let i = 0; i < ids.length; i += 300) await tx.mindNode.updateMany({ where: { boardId, id: { in: ids.slice(i, i + 300) } }, data: { parentId: null } });
+    for (let i = 0; i < ids.length; i += 300) await tx.mindNode.deleteMany({ where: { boardId, id: { in: ids.slice(i, i + 300) } } });
   } else {
-    // Another editor may have imported a new central idea after this one was deleted.
-    if (action.nodes.some(n => !n.parentId && !n.detached) &&
-        await tx.mindNode.count({ where: { boardId, parentId: null, detached: false } })) throw conflict;
     const restored = new Set(action.nodes.map(n => n.id));
     const parents = [...new Set(action.nodes.flatMap(n => n.parentId && !restored.has(n.parentId) ? [n.parentId] : []))];
     if (await tx.mindNode.count({ where: { boardId, id: { in: parents } } }) !== parents.length) throw conflict;

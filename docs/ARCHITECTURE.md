@@ -156,3 +156,13 @@ A rota autenticada `/api/boards/[id]/mapa` só cria desenhos independentes; usa 
 Para o Miro, o upload mantém PNG, limitado a 2560 px na maior dimensão e ao limite existente de 6 MiB de data URL; se necessário usa JPEG com qualidade 0,95. O fluxo de imagem do Trello permanece em JPEG com largura máxima de 1600 px e qualidade 0,88. O modelo e a contagem de uso de IA continuam os mesmos.
 
 A raiz agora pode ser removida em `/mapa` e `/mapa/selecao`. `mind-layout.ts` tolera ausência de raiz para novos ramos de textos soltos; o menu de criação também funciona em mapa vazio. A aplicação de importação cria uma nova central quando necessário. `mind-undo.ts` impede restaurar uma central apagada por cima de outra criada por um colaborador.
+
+### Clipboard do mapa e múltiplas raízes (03/11/2026)
+
+`mind-root.ts` define uma raiz por ausência de pai e de mídia. `mind-auto.ts` organiza cada árvore elegível; `mind-undo.ts` determina as raízes afetadas pela ação. A propriedade legada `detached` continua preservada, mas não impede que um texto independente tenha Auto. A colagem passa `layout=false` ao histórico para manter a geometria exata.
+
+`mind-clipboard.ts` serializa a seleção como `ONERUNDRED_MAP_V1` com JSON versionado. `MindMap` integra eventos copy/paste, botões de toque e memória temporária. `POST /api/boards/[id]/mapa/colar` limita o corpo a 8 MiB e encaminha para `mind-copy.ts`, que valida campos, posições, mídias e hierarquia sem ciclos, gera novos IDs e grava tudo pela transação `writeMap`. Validação de imagens compartilhada em `mind-picture.ts`; nenhuma URL externa é buscada. A escrita é restrita ao quadro autorizado e ao mapa de origem do snapshot. Não há mudança de schema.
+
+O desfazer da criação valida mudanças concorrentes, desliga pais entre os itens removidos e divide operações em lotes de 300 IDs para respeitar limites de parâmetros SQL e cascata de cadeias profundas no SQLite. Não exclui filhos de outros editores por cascata.
+
+No lápis, listeners de Pointer Events no documento mantêm o gesto mesmo após lostpointercapture. `inkId` é um UUID de requisição restrito a desenhos; repetir a gravação retorna o objeto já salvo no mesmo quadro. A prévia aguarda o ID aparecer no snapshot; falhas mantêm os pontos em memória para retry. `BoardView` conserva o quadro durante falhas de atualização e usa sequência de requisições para descartar respostas antigas.

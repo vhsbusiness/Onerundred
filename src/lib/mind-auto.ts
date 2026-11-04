@@ -1,12 +1,22 @@
+import { isMindRoot } from "./mind-root";
 import type { MindNode } from "@/generated/prisma/client";
 
 /** Reserve a vertical band for each subtree; keep each branch on its chosen side. */
-export function arrangeMindMap(nodes: MindNode[]) {
-  const root = nodes.find(n => !n.parentId && !n.detached);
-  if (!root?.autoLayout) return [];
+export function arrangeMindMap(nodes: MindNode[], rootIds?: Set<string>) {
+  const current = new Map(nodes.map(n => [n.id, n]));
+  const changes: { id: string; x: number; y: number }[] = [];
+  for (const root of nodes.filter(n => isMindRoot(n) && n.autoLayout && (!rootIds || rootIds.has(n.id)))) {
+    for (const change of arrangeTree([...current.values()], root)) {
+      changes.push(change);
+      current.set(change.id, { ...current.get(change.id)!, ...change });
+    }
+  }
+  return changes;
+}
+function arrangeTree(nodes: MindNode[], root: MindNode) {
   const children = new Map<string, MindNode[]>();
   for (const node of nodes) {
-    if (!node.parentId || node.detached) continue;
+    if (!node.parentId) continue;
     const list = children.get(node.parentId) ?? [];
     list.push(node); children.set(node.parentId, list);
   }
@@ -28,7 +38,8 @@ export function arrangeMindMap(nodes: MindNode[]) {
     if (node.locked || (node.parentId && frozen.has(node.parentId))) frozen.add(node.id);
   }
   const bounds = (n: MindNode, point = n) => ({ left: point.x - width(n) / 2 - 20, right: point.x + width(n) / 2 + 20, top: point.y - height(n) / 2 - 16, bottom: point.y + height(n) / 2 + 16 });
-  const occupied = nodes.filter(n => n.id === root.id || (!n.drawing && (n.detached || frozen.has(n.id)))).map(n => bounds(n));
+  const treeIds = new Set(order.map(n => n.id));
+  const occupied = nodes.filter(n => !n.drawing && (n.id === root.id || !treeIds.has(n.id) || frozen.has(n.id))).map(n => bounds(n));
   for (const parent of order) {
     const list = children.get(parent.id) ?? [];
     const point = positions.get(parent.id) ?? parent;

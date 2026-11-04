@@ -78,14 +78,17 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
     return () => document.removeEventListener("mousedown", onDoc);
   }, [boardMenu]);
 
+  const loadSequence = useRef(0);
   const load = useCallback(async () => {
+    const request = ++loadSequence.current;
     try {
       const b = await http.get<BoardDTO>(`/api/boards/${boardId}`);
+      if (request !== loadSequence.current) return;
       setBoard(b);
       setBoardName(b.name);
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro ao carregar");
+      if (request === loadSequence.current) setError(e instanceof Error ? e.message : "Erro ao carregar");
     }
   }, [boardId]);
 
@@ -316,7 +319,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
     router.push("/quadros?lista=1");
   }
 
-  if (error) {
+  if (error && !board) {
     return (
       <div className="card p-6 text-sm text-red">
         {error} ·{" "}
@@ -342,6 +345,10 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
 
   return (
     <BoardFrame>
+      {error && <div role="alert" className="mb-3 flex flex-wrap items-center gap-2 text-sm text-red">
+        <span>Não foi possível atualizar o quadro. {error}</span>
+        <button className="btn btn-ghost" onClick={() => void load()}>Tentar novamente</button>
+      </div>}
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Link href="/quadros?lista=1" className="btn btn-ghost h-8 px-2" aria-label="Todos os quadros" title="Todos os quadros">
           <ArrowLeft size={16} />

@@ -754,6 +754,8 @@ body {
 .mind-map[data-interacting="true"] .mind-object,
 .mind-map[data-interacting="true"] .mind-connections path,
 .mind-map[data-interacting="true"] .mind-world { transition: none; }
+/* A saved stroke replaces its live preview without fading out first. */
+.mind-object[data-ink-object="true"] { animation: none; }
 .mind-node[data-drawing="true"] { padding: 0; border: 0; background: transparent; pointer-events: none; line-height: 0; }
 .mind-node[data-drawing="true"][aria-pressed="true"] { pointer-events: auto; }
 .mind-ink { overflow: visible; pointer-events: none; }

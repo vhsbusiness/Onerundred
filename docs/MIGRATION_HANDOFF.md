@@ -125,3 +125,17 @@ Esta etapa corrige três pedidos posteriores, ainda sem publicar: fim de traços
 Reprodução do lápis: um pointerdown seguido de pointerup em outro ponto, antes de pointermove, salvava somente um ponto. Agora inclui a posição final. Testes locais cobriram traços de 1 px, clique, dez traços rápidos com rede lenta e recarga; exclusão/undo da raiz, filhos e seleção múltipla; mapa vazio, textos soltos e importação; bloqueio de escrita por leitor e conflito de nova raiz criada por outro membro. Prévia do Miro e exclusão verificadas em 375/1440 px; API com emojis compostos, negrito, todos os filhos à direita, caminhos repetidos, compatibilidade com strings, validação e desfazer atômico. Tipos, lint e build passaram.
 
 A extração de IA foi simulada no teste de interface para não consumir créditos; o salvamento da prévia e a geração dos nós usaram a API e o SQLite temporário reais. A leitura dos prints reais do usuário pelo modelo não foi reexecutada nesta etapa. Nenhuma credencial nem conta de produção usada nos testes. Publicar somente após novo pedido explícito.
+
+### Cópia fiel, todas as raízes e continuidade do lápis — 03/11/2026, local
+
+A etapa anterior foi publicada a pedido do dono: commit `01a9e3ba53214ad2fa347ebfe30095cb778c279f`, deployment Railway `25e127d0-e5e7-436e-9211-3caad1ecaf6b` SUCCESS, sem migration nova. Login e artefato JS foram conferidos em produção.
+
+Pedidos atuais: copiar vários itens ligados como uma cópia idêntica **dentro do mesmo mapa** (o dono esclareceu que não pediu clipboard do Miro); considerar os dois textos principais como raízes independentes; resolver rabiscos rápidos que ainda sumiam. Implementação local, sem push/deploy e sem migration. Preserva os gestos do mouse e os atalhos Enter/Tab.
+
+A reprodução com captura perdida antes de soltar o mouse salvava zero desenhos. Após a correção, salva um desenho, inclusive ao soltar fora do canvas. Testes também cobrem resposta perdida depois do POST gravado (retry sem duplicação), GET seguinte com erro (prévia/mapa permanecem montados), cancelamento real, traços rápidos com rede lenta, persistência e toque.
+
+Cópia validada com clipboard real do navegador, estilos/emojis/ligações de duas árvores, colagem repetida, Undo único, edição nativa de texto, imagens/desenhos, 1.000 itens conectados, rejeição de ciclo/URL insegura, bloqueio de usuário sem acesso e colaborador somente leitura, conflito de outro editor e restauração de raiz junto de outra árvore. Auto de uma raiz independente não movimenta a outra árvore. Interface conferida em 375/1440 px. Testes usam SQLite temporário e contas apenas locais. Não foi executado teste em Postgres real; não há alteração de schema.
+
+Limites: até 1.000 itens/8 MiB por cópia, 50 imagens por mapa; clipboard interno usa snapshot e não sincroniza mudanças posteriores do original. Prévia de desenho pendente está em memória até salvar (não garante recuperação após fechar/recarregar a página offline). Publicar somente após novo pedido explícito.
+
+Verificações finais: `npx tsc --noEmit -p .`, `npx eslint src`, `npx next build` e `git diff --check` aprovados. Cópia de título ainda em edição e aparência de um filho copiado como nova raiz conferidas em 375/1440 px. O teste inicial de 1.000 itens revelou o limite de parâmetros do SQLite no desfazer; corrigido com validação em memória e operações por lotes, e o cenário completo passou. A perda de resposta/atualização de rede e a soltura fora do canvas também passaram após a correção.
