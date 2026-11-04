@@ -94,3 +94,7 @@ Observações práticas do histórico:
 Em 04/11/2026, um teste de instalação vazia encontrou falha preexistente em `20261018222608_drop_areas`: tenta remover `area`, ausente após o conjunto anterior de migrations SQLite. Isso não foi corrigido reescrevendo migrations já existentes. O upgrade da nova migration do mapa foi validado isoladamente a partir do schema anterior em banco temporário. Não aplicar reset/baseline ao banco do usuário para contornar esse problema. O histórico Postgres não foi executado em banco real nesta etapa.
 
 O teste `test:recurring` cria seu próprio banco em uma pasta temporária e usa o backend real. Requer o client Prisma gerado para SQLite (fluxo local padrão); não usa o banco de desenvolvimento nem chama a IA. Cobre virada do dia, pausa/retomada, encerramento manual/automático, isolamento entre usuários e contexto histórico da análise.
+
+### Cache de compilação — 04/11/2026
+
+`turbopackFileSystemCacheForBuild: false` em `next.config.ts`: compila os artefatos de produção sem restaurar o cache persistido do Turbopack. Em um deploy da paleta, o container tinha o código/CSS-fonte novo, mas o CSS compilado era idêntico ao deploy anterior; por isso o sucesso do Railway sozinho não basta. Conferir o CSS referenciado pelo HTML e a presença das alterações, além dos hashes quando coincidem com o build local. Cache de desenvolvimento permanece habilitado. Nenhuma mudança de banco, variáveis secretas ou cache de dados do aplicativo.
