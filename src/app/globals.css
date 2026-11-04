@@ -713,9 +713,16 @@ body {
   background: var(--mind-panel);
   text-align: center;
   line-height: 1.25;
+  font-weight: 500;
   cursor: text;
 }
-.mind-node[data-root="true"] { padding-block: 10px; font-weight: 650; }
+.mind-node[data-root="true"] { padding-block: 10px; font-weight: 700; }
+.mind-node[data-bold="true"] {
+  font-weight: 700;
+  /* Instrument Sans tops out at 700; a subtle stroke gives bold extra weight
+     without replacing the app font or relying on an unavailable 800 face. */
+  -webkit-text-stroke: 0.18px currentColor;
+}
 .mind-node[data-shape="pill"] { border-radius: 999px; }
 .mind-node[data-shape="rectangle"] { border-radius: 0; }
 .mind-node[data-shape="plain"] { border-width: 0; background: transparent; }

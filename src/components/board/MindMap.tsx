@@ -768,8 +768,8 @@ export function MindMap({ boardId, nodes, undoId = null, redoId = null, onChange
                 if (!active && (e.key === " " || e.key === "Enter")) { e.preventDefault(); rename(n); }
                 else if (active) shortcut(e, n.id);
               }}
-              className="mind-node" data-shape={n.shape} data-root={central && !n.detached} data-image={!!n.imageData} data-drawing={!!drawing} data-text-size={!!(n.textWidth || n.textHeight)}
-              style={{ width, height: drawing?.height ?? (n.imageData ? undefined : textBlockSize(n).height), borderColor: branchColor(n.color), textDecoration: central && !n.detached && n.shape === "plain" && n.color.startsWith("#") ? "underline" : undefined, textDecorationColor: branchColor(n.color), color: n.textColor || undefined, fontSize: n.fontSize, fontWeight: n.bold ? 700 : undefined }}>
+              className="mind-node" data-bold={n.bold} data-shape={n.shape} data-root={central && !n.detached} data-image={!!n.imageData} data-drawing={!!drawing} data-text-size={!!(n.textWidth || n.textHeight)}
+              style={{ width, height: drawing?.height ?? (n.imageData ? undefined : textBlockSize(n).height), borderColor: branchColor(n.color), textDecoration: central && !n.detached && n.shape === "plain" && n.color.startsWith("#") ? "underline" : undefined, textDecorationColor: branchColor(n.color), color: n.textColor || undefined, fontSize: n.fontSize }}>
               {drawing ? <svg width={drawing.width} height={drawing.height} className="mind-ink" aria-label="Desenho livre">
                 <path d={inkPath(drawing.points)} stroke={branchColor(n.color)} strokeWidth={n.strokeWidth} strokeLinecap="round" strokeLinejoin="round" fill="none" />
                 <path className="mind-ink-hit" d={inkPath(drawing.points)} stroke="transparent" strokeWidth={Math.max(n.strokeWidth + 8, 12 / view.zoom)} strokeLinecap="round" fill="none" />

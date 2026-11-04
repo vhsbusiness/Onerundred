@@ -70,3 +70,9 @@ Validação: teste puro de densidade/continuidade/ancoragem nas trocas de nível
 ## Paleta de texto mais forte — 04/11/2026
 
 As mesmas opções de cor de texto agora usam tons mais escuros/saturados, definidos em `--mind-text-*` no CSS global. O popover resolve esses tokens ao abrir e salva o hexadecimal escolhido; cores já gravadas não são convertidas. Branco/preto, reset e personalização continuam disponíveis. Cores de ramo, marca-texto e lápis mantêm suas paletas próprias. Validado em 375/1440 px, claro/escuro, aplicação, seleção da cor e persistência após recarregar; TypeScript, lint, oito testes do mapa e build aprovados. O dono autorizou o deploy após a conferência.
+
+## Texto mais encorpado — 04/11/2026
+
+A apresentação dos textos do mapa mantém Instrument Sans e passa a usar peso 500 no texto normal e 700 nas raízes. O negrito usa 700 com contorno da própria cor de 0,18 px, pois a fonte carregada oferece pesos até 700. O editor herda a mesma aparência. Nenhum texto ou estilo salvo foi convertido.
+
+Validado no Chrome local em 375/1440 px, claro/escuro, edição, alternância de negrito e recarga; TypeScript, ESLint, oito testes do mapa e build aprovados. Alteração local; publicação somente após pedido explícito.
