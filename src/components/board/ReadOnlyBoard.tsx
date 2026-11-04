@@ -16,8 +16,8 @@ import { BoardFrame, BoardScroller, columnClass, KIND_LABEL } from "./BoardLayou
 import { MindMap } from "./MindMap";
 import { CardBody } from "./CardItem";
 
-export function ReadOnlyBoard({ name, symbol, organization, lists, mindNodes, collaborationId, boardId, pending, today }: {
-  symbol?: string | null; name: string; organization: boolean; lists: ListDTO[]; collaborationId: string;
+export function ReadOnlyBoard({ viewerId, name, symbol, organization, lists, mindNodes, collaborationId, boardId, pending, today }: {
+  viewerId: string; symbol?: string | null; name: string; organization: boolean; lists: ListDTO[]; collaborationId: string;
   mindNodes?: MindNodeDTO[];
   boardId: string; pending: boolean; today: string;
 }) {
@@ -31,7 +31,7 @@ export function ReadOnlyBoard({ name, symbol, organization, lists, mindNodes, co
       <span className="pill"><LockKeyhole size={12} /> Somente leitura</span>
       <div className="sm:ml-auto"><BoardEditButton collaborationId={collaborationId} boardId={boardId} pending={pending} /></div>
     </header>
-    {mindNodes ? <MindMap boardId={boardId} nodes={mindNodes} /> : <BoardScroller>
+    {mindNodes ? <MindMap key={boardId} viewerId={viewerId} boardId={boardId} nodes={mindNodes} /> : <BoardScroller>
       {lists.map(list => {
         const priority = priorityUi(list.priority);
         const count = organization || list.kind === "done" ? list.cards.length : list.cards.filter(card => !card.completedAt).length;

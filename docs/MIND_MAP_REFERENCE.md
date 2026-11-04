@@ -19,14 +19,14 @@ Usar como referência de comportamento; não copiar a aparência do Miro por cim
 | Mouse | Esquerdo seleciona, desenha retângulo de seleção ou move o bloco; direito move a visualização com cursor de mão. Clique direito sem arrastar no fundo abre criação. |
 | Movimento | Arrastar um ramo leva todos os descendentes, inclusive recolhidos. Selecionar pai e filho não duplica o deslocamento. Item fixado no conjunto impede o movimento inteiro. |
 | Auto | Calcula altura das subárvores, alinha níveis, separa grupos e considera dimensões de texto. Raízes e posições fixadas são preservadas. Arraste manual desativa Auto apenas nas árvores afetadas e explica isso na interface. |
-| Organização pontual | “Organizar agora” reorganiza uma árvore sem mudar sua preferência de Auto. |
+| Organização pontual | “Organizar agora” reorganiza uma árvore; “Organizar” no menu do fundo reorganiza todas em uma única ação com desfazer. Não muda a preferência de Auto. |
 | Conexões | Alternância curvas/retas sem mover itens. Preferência local por quadro. Arrastar sobre outro texto destaca o destino e reconecta a subárvore; o menu “Conectar a outro ramo” também permite escolher o pai ou tornar o ramo independente. Ciclos e conexões entre quadros são rejeitados. |
 | Bloco de texto | Alça no canto, aumentar/diminuir, voltar ao tamanho automático. Dimensões persistidas e independentes do tamanho da fonte. Shift+Enter insere quebra de linha. |
 | Formatação | Moldura, paleta de cores prontas/personalizadas, destaque, negrito, fonte, link e posição fixa. Seleção múltipla permite alterar estilos em lote. |
 | Seleção | Retângulo, Shift/⌘+clique para alternar itens, Ctrl/⌘+A fora do editor para selecionar os itens visíveis. |
 | Navegação | Setas entre pai/filho/irmãos fora do campo de texto, F2 para editar, V/H/T/P para selecionar/mover/criar texto/desenhar. Tecla 1 enquadra o mapa. |
 | Busca | Ctrl/⌘+F ou botão. Busca títulos, percorre resultados e expande os ancestrais de um item recolhido. |
-| Recolhimento | Recolher/expandir um ramo com contagem de descendentes; controle para recolher até os ramos principais ou expandir tudo. Só muda esta visualização. |
+| Recolhimento | Recolher/expandir um ramo com contagem de descendentes; controle para recolher até os ramos principais ou expandir tudo. Salvo por conta/quadro neste navegador, inclusive ramos aninhados. |
 | Cópia | Clipboard interno fiel para os itens selecionados; Ctrl/⌘+D duplica as subárvores selecionadas. Formatação, ligações internas, mídia e dimensões preservadas. |
 | Histórico | Desfazer e refazer, botões e Ctrl/⌘+Z, Ctrl/⌘+Shift+Z ou Ctrl+Y. Até 30 ações por usuário/quadro. Nova edição invalida o refazer somente desse usuário; conflitos com outro editor são rejeitados. |
 | Mídia | Imagens coladas/anexadas, lápis, espessura/cor e recuperação de traços com resposta perdida. |
@@ -76,3 +76,13 @@ As mesmas opções de cor de texto agora usam tons mais escuros/saturados, defin
 A apresentação dos textos do mapa mantém Instrument Sans e passa a usar peso 500 no texto normal e 700 nas raízes. O negrito usa 700 com contorno da própria cor de 0,18 px, pois a fonte carregada oferece pesos até 700. O editor herda a mesma aparência. Nenhum texto ou estilo salvo foi convertido.
 
 Validado no Chrome local em 375/1440 px, claro/escuro, edição, alternância de negrito e recarga; TypeScript, ESLint, oito testes do mapa e build aprovados. Alteração local; publicação somente após pedido explícito.
+
+## Recolhimento persistente e Organizar no menu — 04/11/2026
+
+- `useMindFolds` salva os IDs recolhidos de forma síncrona no evento, em `localStorage` com chave `onerundred:mind-folds:v1:<viewerId>:<boardId>`. Recarregar ou sair imediatamente não depende de debounce/rede. `useSyncExternalStore` hidrata sem divergência de HTML e sincroniza abas da mesma conta. Dono, membro e colaborador de leitura têm preferências separadas; as páginas passam o ID do usuário autenticado.
+- Abrir um pai preserva filhos que também estavam recolhidos. IDs removidos são ignorados visualmente, mas retidos para desfazer/refazer. Preferências inválidas não impedem abrir o mapa. Se o navegador bloquear a gravação, a interface continua funcionando e avisa que a escolha ficará somente em memória. A preferência é deste navegador: não sincroniza entre dispositivos e pode ser removida ao limpar os dados do site.
+- Busca/navegação para um resultado e criação/reconexão em um ramo continuam revelando o alvo quando o usuário solicita essas ações. Atualizar a página ou carregar dados do quadro não expande os ramos.
+- O menu do botão direito no fundo inclui **Organizar**. Organiza todas as árvores uma vez, preserva raízes, itens fixados e preferências de Auto; não expande ramos. `POST /api/boards/:id/mapa/estrutura` com `action: "organize"` aceita ausência de `id` para todas as árvores; com `id` continua organizando só aquela raiz. Acesso de edição continua obrigatório. Uma transação e uma entrada no histórico cobrem o mapa inteiro; não há migration.
+- O menu considera a altura da nova opção para caber no canvas. Usa os mesmos controles de vidro e ícones do app.
+
+Validação local: TypeScript, ESLint, oito testes puros e build. Chrome 375/1440 px em claro/escuro: recarga imediata, retorno entre quadros, reinício com armazenamento preservado, recolhimento aninhado/em lote, sincronização entre abas e isolamento de contas; leitura de colaborador, armazenamento inválido/bloqueado e itens intactos. Organizar verificado com duas árvores, itens fixados, raízes preservadas, desfazer/refazer completo, compatibilidade da organização de uma única árvore, mapa vazio e rejeição de acesso sem permissão. Sem push/deploy nesta etapa.

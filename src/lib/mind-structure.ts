@@ -5,13 +5,14 @@ import { textBlockSize } from "./mind-size";
 import { arrangeMindMap } from "./mind-auto";
 import { remember, writeMap, type NodePatch } from "./mind-undo";
 
-export function organizeMindTree(boardId: string, userId: string, id: string) {
+/** Without an id, organize all trees in one undoable action; keep roots and Auto preferences. */
+export function organizeMindTree(boardId: string, userId: string, id?: string) {
   return writeMap(boardId, userId, async tx => {
     const nodes = await tx.mindNode.findMany({ where: { boardId } });
-    const root = nodes.find(n => n.id === id);
-    if (!root || !isMindRoot(root)) throw new ApiError(400, "Selecione um ramo inicial.");
+    const roots = new Set(nodes.filter(n => isMindRoot(n) && (id === undefined || n.id === id)).map(n => n.id));
+    if (id !== undefined && !roots.has(id)) throw new ApiError(400, "Selecione um ramo inicial.");
     const byId = new Map(nodes.map(n => [n.id, n]));
-    const changes = arrangeMindMap(nodes.map(n => n.id === id ? { ...n, autoLayout: true } : n), new Set([id]));
+    const changes = arrangeMindMap(nodes.map(n => roots.has(n.id) ? { ...n, autoLayout: true } : n), roots);
     const edits = changes.map(n => ({ id: n.id, before: { x: byId.get(n.id)!.x, y: byId.get(n.id)!.y }, after: { x: n.x, y: n.y } }));
     for (const e of edits) await tx.mindNode.update({ where: { id: e.id }, data: e.after });
     if (edits.length) await remember(tx, boardId, userId, { kind: "batch", edits }, false);

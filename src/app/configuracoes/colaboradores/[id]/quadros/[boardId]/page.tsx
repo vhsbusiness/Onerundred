@@ -22,6 +22,6 @@ export default async function ReadBoard({ params }: { params: Promise<{ id: stri
   if (!board) notFound();
   if (board.members.length) redirect(`/quadros/${boardId}`);
   const lists = board.lists.map(list => ({ ...list, kind: list.kind as ListKind, cards: list.cards.map(serializeCard) }));
-  return <ReadOnlyBoard symbol={board.symbol} name={board.name} organization={board.type === "organization"} lists={lists} mindNodes={board.type === "mindmap" ? board.mindNodes : undefined}
+  return <ReadOnlyBoard viewerId={manager.id} symbol={board.symbol} name={board.name} organization={board.type === "organization"} lists={lists} mindNodes={board.type === "mindmap" ? board.mindNodes : undefined}
     collaborationId={id} boardId={boardId} pending={board.editRequests.length > 0} today={todayKey()} />;
 }

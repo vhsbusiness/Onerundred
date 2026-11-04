@@ -19,5 +19,5 @@ export default async function QuadroPage({ params }: { params: Promise<{ id: str
   const user = await requireUserPage(`/quadros/${id}`);
   const board = await loadBoard(id, user.id);
   if (!board) notFound();
-  return <BoardView boardId={id} initialBoard={board} />;
+  return <BoardView viewerId={user.id} boardId={id} initialBoard={board} />;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useEffectEvent, useRef, useState, useMemo, type PointerEvent, type CSSProperties } from "react";
-import { Focus, Minus, Maximize, Minimize, Moon, Sun, Plus, Undo2, ExternalLink, MousePointer2, Hand, ImagePlus, GitBranchPlus, Sparkles, Type, Square, Pencil, ClipboardPaste, Spline, Slash, Redo2, Search, X, ChevronUp, ChevronDown, ChevronsDownUp, Download } from "lucide-react";
+import { Focus, Minus, Maximize, Minimize, Moon, Sun, Plus, Undo2, ExternalLink, MousePointer2, Hand, ImagePlus, GitBranchPlus, Sparkles, Type, Square, Pencil, ClipboardPaste, Spline, Slash, Redo2, Search, X, ChevronUp, ChevronDown, ChevronsDownUp, Download, ListTree } from "lucide-react";
 import { http } from "@/lib/client";
 import type { MindNodeDTO } from "@/lib/types";
 import { MindColors, type ColorField } from "./MindColors";
@@ -12,6 +12,7 @@ import { textBlockSize } from "@/lib/mind-size";
 import { mindBranchIds } from "@/lib/mind-tree";
 import { mindDropTarget } from "@/lib/mind-drop";
 import { mindGrid } from "@/lib/mind-grid";
+import { useMindFolds } from "./useMindFolds";
 import { readMindText, writeMindText, safeMindTextStyle } from "@/lib/mind-text-clipboard";
 import { isMindRoot } from "@/lib/mind-root";
 import { parseDrawing, normalizeDrawing, inkPath } from "@/lib/mind-drawing";
@@ -45,8 +46,8 @@ type Paint = { ids: Set<string>; value: string };
 function selectionBox(start: Point, end: Point) {
   return { left: Math.min(start.x, end.x), top: Math.min(start.y, end.y), width: Math.abs(end.x - start.x), height: Math.abs(end.y - start.y) };
 }
-export function MindMap({ boardId, nodes, undoId = null, redoId = null, onChanged, onImport }: {
-  boardId: string; nodes: MindNodeDTO[]; undoId?: number | null; redoId?: number | null; onChanged?: () => Promise<void>; onImport?: () => void;
+export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null, onChanged, onImport }: {
+  viewerId: string; boardId: string; nodes: MindNodeDTO[]; undoId?: number | null; redoId?: number | null; onChanged?: () => Promise<void>; onImport?: () => void;
 }) {
   const root = nodes.find(isMindRoot);
   const [selectedId, setSelectedId] = useState<string>();
@@ -158,7 +159,9 @@ export function MindMap({ boardId, nodes, undoId = null, redoId = null, onChange
     }
     return next;
   });
-  const [folded, setFolded] = useState<Set<string>>(new Set());
+  const [savedFolds, setFolded] = useMindFolds(viewerId, boardId);
+  // Ignore deleted nodes in the view; retain their preference for undo/redo.
+  const folded = new Set(nodes.filter(n => savedFolds.has(n.id)).map(n => n.id));
   const children = new Map<string, string[]>();
   for (const node of nodes) {
     if (!node.parentId) continue;
@@ -195,6 +198,14 @@ export function MindMap({ boardId, nodes, undoId = null, redoId = null, onChange
     });
     return queue.current;
   }
+  function organize(id?: string) {
+    setMenu(null);
+    commitTitle();
+    void save(async () => {
+      const result = await http.post<{ changed: number }>(url + "/estrutura", { action: "organize", id });
+      if (!result.changed) notify(id ? "Esta árvore já está organizada ou seus itens estão fixados." : "O mapa já está organizado ou seus itens estão fixados.", "info");
+    });
+  }
   function focus(point: Point, zoom: number) {
     setAnimateView(true);
     setView({ x: -point.x * zoom, y: -point.y * zoom, zoom });
@@ -217,8 +228,9 @@ export function MindMap({ boardId, nodes, undoId = null, redoId = null, onChange
     if (!onChanged || !canvas.current) return;
     const bounds = canvas.current.getBoundingClientRect();
     const x = client.x - bounds.left, y = client.y - bounds.top;
+    const menuHeight = (selected && !selected.imageData && !selected.drawing ? 6 : 5) * 36 + 12;
     setMenu({
-      screen: { x: Math.max(4, Math.min(x, bounds.width - 196)), y: Math.max(4, Math.min(y, bounds.height - 196)) },
+      screen: { x: Math.max(4, Math.min(x, bounds.width - 196)), y: Math.max(4, Math.min(y, bounds.height - menuHeight)) },
       at: { x: Math.round((x - bounds.width / 2 - view.x) / view.zoom), y: Math.round((y - bounds.height / 2 - view.y) / view.zoom) },
     });
   }
@@ -814,6 +826,7 @@ export function MindMap({ boardId, nodes, undoId = null, redoId = null, onChange
       <button className="mind-tool" onClick={() => addBranch(null, { point: menu.at })}><Type size={15} /> Criar texto</button>
       <button className="mind-tool" onClick={() => addBranch(null, { point: menu.at, shape: "rounded" })}><Square size={15} /> Criar cartão</button>
       <button className="mind-tool" onClick={() => fileInput.current?.click()}><ImagePlus size={15} /> Inserir imagem</button>
+      <button className="mind-tool" title="Organizar todos os ramos uma vez" disabled={busy || !nodes.some(n => n.parentId)} onClick={() => organize()}><ListTree size={15} /> Organizar</button>
       {selected && !selected.imageData && !selected.drawing && <button className="mind-tool" onClick={() => addBranch(selected.id, { point: menu.at })}><Plus size={15} /> Ramo da seleção</button>}
     </div>}
     {anchor && onChanged && tool !== "draw" && !drag && !box && !menu && !searchOpen && <div className="mind-context" style={{
@@ -821,7 +834,7 @@ export function MindMap({ boardId, nodes, undoId = null, redoId = null, onChange
       "--mind-y": `${view.y + anchor.y * view.zoom}px`,
     } as React.CSSProperties}>
       <MindFormat key={anchor.id} node={anchor}
-        organize={() => void save(async () => { const result = await http.post<{ changed: number }>(url + "/estrutura", { action: "organize", id: anchor.id }); if (!result.changed) notify("Esta árvore já está organizada ou seus itens estão fixados.", "info"); })}
+        organize={() => organize(anchor.id)}
         structure={!anchor.imageData && !anchor.drawing ? <MindConnect key={anchor.id} node={anchor} nodes={nodes} busy={busy} connect={parentId => { commitTitle(); void save(async () => { await http.post(url + "/estrutura", { action: "connect", id: anchor.id, parentId }); }); }} /> : undefined} imageOnly={!!anchor.imageData} drawingOnly={!!anchor.drawing} copy={() => copySelection()} busy={busy} preview={previewColor} commit={commitColor}
         change={patch => void save(async () => { await http.patch(url, { id: anchor.id, ...patch }); })} remove={remove} />
     </div>}

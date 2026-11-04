@@ -38,7 +38,7 @@ import { Avatar } from "@/components/profile/ProfilePage";
 import { askConfirm, notify } from "@/components/ui/ConfirmProvider";
 import { LIST_SORT_PREFIX, ListColumn } from "./ListColumn";
 
-export function BoardView({ boardId, initialBoard }: { boardId: string; initialBoard?: BoardDTO }) {
+export function BoardView({ viewerId, boardId, initialBoard }: { viewerId: string; boardId: string; initialBoard?: BoardDTO }) {
   const router = useRouter();
   const [board, setBoard] = useState<BoardDTO | null>(initialBoard ?? null);
   const [error, setError] = useState<string | null>(null);
@@ -474,7 +474,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
         </div>
       </div>
 
-      {isMap ? <MindMap key={board.id} boardId={board.id} nodes={board.mindNodes} undoId={board.mindUndoId} redoId={board.mindRedoId} onChanged={load} onImport={() => setImporting(true)} /> : <DndContext
+      {isMap ? <MindMap key={board.id} viewerId={viewerId} boardId={board.id} nodes={board.mindNodes} undoId={board.mindUndoId} redoId={board.mindRedoId} onChanged={load} onImport={() => setImporting(true)} /> : <DndContext
         id={`board-${boardId}`}
         sensors={sensors}
         collisionDetection={collision}
