@@ -5,7 +5,10 @@ import { boardAccess } from "./repo";
 
 type Transaction = Prisma.TransactionClient;
 export type NodePatch = Partial<Omit<MindNode, "id" | "parentId" | "boardId">>;
+export type ColorField = "color" | "textColor" | "highlight";
 type Action =
+  | { kind: "move"; dx: number; dy: number; positions: { id: string; x: number; y: number }[] }
+  | { kind: "paint"; field: ColorField; value: string; previous: { id: string; value: string }[] }
   | { kind: "create" | "delete"; nodes: MindNode[] }
   | { kind: "edit"; id: string; before: NodePatch; after: NodePatch };
 
@@ -47,7 +50,26 @@ export function undoMap(boardId: string, userId: string, expectedId: number) {
     if (entry?.id !== expectedId) throw new ApiError(409, "O histórico mudou. Atualize o quadro e tente novamente.");
     const action: Action = JSON.parse(entry.payload);
     const conflict = new ApiError(409, "Esse ramo mudou desde a sua ação. Atualize o mapa para ver a versão atual.");
-    if (action.kind === "edit") {
+    if (action.kind === "move") {
+      const where = { boardId, id: { in: action.positions.map(p => p.id) }, locked: false };
+      const current = await tx.mindNode.findMany({ where, select: { id: true, x: true, y: true } });
+      const positions = new Map(current.map(p => [p.id, p]));
+      if (action.positions.some(p => positions.get(p.id)?.x !== p.x || positions.get(p.id)?.y !== p.y)) throw conflict;
+      await tx.mindNode.updateMany({ where, data: { x: { decrement: action.dx }, y: { decrement: action.dy } } });
+    } else if (action.kind === "paint") {
+      const groups = new Map<string, string[]>();
+      for (const { id, value } of action.previous) {
+        const ids = groups.get(value) ?? [];
+        ids.push(id);
+        groups.set(value, ids);
+      }
+      for (const [value, ids] of groups) {
+        const result = await tx.mindNode.updateMany({
+          where: { boardId, id: { in: ids }, [action.field]: action.value }, data: { [action.field]: value },
+        });
+        if (result.count !== ids.length) throw conflict;
+      }
+    } else if (action.kind === "edit") {
       const result = await tx.mindNode.updateMany({
         where: { boardId, id: action.id, ...(action.after.x !== undefined && { locked: false }), ...action.after },
         data: action.before,
@@ -65,8 +87,9 @@ export function undoMap(boardId: string, userId: string, expectedId: number) {
       if (await tx.mindNode.count({ where: { boardId, parentId: { in: ids }, id: { notIn: ids } } })) throw conflict;
       await tx.mindNode.deleteMany({ where: { boardId, id: { in: ids } } });
     } else {
-      const parentId = action.nodes[0].parentId;
-      if (!parentId || !await tx.mindNode.count({ where: { boardId, id: parentId } })) throw conflict;
+      const restored = new Set(action.nodes.map(n => n.id));
+      const parents = [...new Set(action.nodes.flatMap(n => n.parentId && !restored.has(n.parentId) ? [n.parentId] : []))];
+      if (!parents.length || await tx.mindNode.count({ where: { boardId, id: { in: parents } } }) !== parents.length) throw conflict;
       await tx.mindNode.createMany({ data: action.nodes });
     }
     await tx.mindUndo.delete({ where: { id: entry.id } });

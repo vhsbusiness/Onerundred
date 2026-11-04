@@ -7,17 +7,10 @@ import { ArrowUpRight, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { formatPercent, http, TONE_PILL } from "@/lib/client";
-import { scoreTone } from "@/lib/metrics";
+import { formatPercent, http } from "@/lib/client";
 import type { BoardSummary, BoardType } from "@/lib/types";
 
 const BOARD_LABEL = { tasks: "Lista de tarefas", organization: "Organização", mindmap: "Mapa mental" };
-
-const BLOBS = [
-  ["rgba(245,176,110,0.6)", "rgba(127,183,245,0.55)"],
-  ["rgba(139,227,166,0.55)", "rgba(245,176,110,0.5)"],
-  ["rgba(127,183,245,0.6)", "rgba(139,227,166,0.5)"],
-];
 
 export function BoardsGrid() {
   const router = useRouter();
@@ -78,40 +71,35 @@ export function BoardsGrid() {
 
       {!boards ? (
         <div className="grid animate-pulse gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="card h-40" />
-          <div className="card h-40" />
-          <div className="card h-40" />
+          <div className="card board-tile h-40" />
+          <div className="card board-tile h-40" />
+          <div className="card board-tile h-40" />
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {boards.map((b, i) => {
-            const [a, c] = BLOBS[i % BLOBS.length];
-            const tone = scoreTone(b.todayScore);
-            return (
-              <Link
-                key={b.id}
-                href={`/quadros/${b.id}`}
-                className="card blob-surface group flex min-h-40 flex-col p-5 transition hover:border-line-2"
-                style={{ "--blob-a": a, "--blob-b": c } as React.CSSProperties}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <BoardIcon type={b.type} symbol={b.symbol} size={38} />
-                    <h2 className="min-w-0 break-words text-lg font-semibold tracking-tight">{b.name}</h2>
-                  </div>
-                  <ArrowUpRight size={18} className="text-ink-3 transition group-hover:text-ink" />
+          {boards.map(b => (
+            <Link
+              key={b.id}
+              href={`/quadros/${b.id}`}
+              className="card board-tile group flex min-h-40 flex-col p-5 transition hover:border-line-2"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <BoardIcon type={b.type} symbol={b.symbol} size={25} />
+                  <h2 className="min-w-0 break-words text-lg font-semibold tracking-tight">{b.name}</h2>
                 </div>
-                <div className="mt-auto flex flex-wrap items-center gap-2 pt-6">
-                  <span className="pill">{BOARD_LABEL[b.type]}</span>
-                  {b.type === "tasks" && <span className={TONE_PILL[tone]}>hoje {formatPercent(b.todayScore)}</span>}
-                  {b.type !== "mindmap" && <span className="pill">{b.openCount} {b.type === "organization" ? "cartões" : "abertas"}</span>}
-                  {b.type === "tasks" && <span className="pill">{b.doneTodayCount} feitas hoje</span>}
-                  {b.type !== "mindmap" && <span className="pill">{b.listCount} listas</span>}
-                  {b.sharedBy ? <span className="pill pill-green">compartilhado por @{b.sharedBy}</span> : b.memberCount > 0 ? <span className="pill pill-green">{b.memberCount + 1} participantes</span> : null}
-                </div>
-              </Link>
-            );
-          })}
+                <ArrowUpRight size={18} className="text-ink-3 transition group-hover:text-ink" />
+              </div>
+              <div className="mt-auto flex flex-wrap items-center gap-2 pt-6">
+                <span className="pill">{BOARD_LABEL[b.type]}</span>
+                {b.type === "tasks" && <span className="pill">hoje {formatPercent(b.todayScore)}</span>}
+                {b.type !== "mindmap" && <span className="pill">{b.openCount} {b.type === "organization" ? "cartões" : "abertas"}</span>}
+                {b.type === "tasks" && <span className="pill">{b.doneTodayCount} feitas hoje</span>}
+                {b.type !== "mindmap" && <span className="pill">{b.listCount} listas</span>}
+                {b.sharedBy ? <span className="pill">compartilhado por @{b.sharedBy}</span> : b.memberCount > 0 ? <span className="pill">{b.memberCount + 1} participantes</span> : null}
+              </div>
+            </Link>
+          ))}
         </div>
       )}
     </div>

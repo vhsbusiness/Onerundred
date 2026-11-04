@@ -4,6 +4,9 @@ import { remember, subtree, writeMap, type NodePatch } from "@/lib/mind-undo";
 
 type Context = { params: Promise<{ id: string }> };
 
+function coordinate(n: unknown): n is number {
+  return typeof n === "number" && Number.isSafeInteger(n) && Math.abs(n) <= 1_000_000;
+}
 
 function topic(value: unknown) {
   const title = requireString(value, "Ideia");
@@ -16,6 +19,13 @@ export const POST = withUser(async (user, req: Request, ctx: Context) => {
   const body = await readBody(req);
   const parentId = requireString(body.parentId, "Ideia principal");
   const title = topic(body.title);
+  const shape = body.shape ?? "plain";
+  if (shape !== "plain" && shape !== "rounded") throw new ApiError(400, "Forma inválida.");
+  let point: { x: number; y: number } | undefined;
+  if (body.x !== undefined || body.y !== undefined) {
+    if (!coordinate(body.x) || !coordinate(body.y)) throw new ApiError(400, "Posição inválida.");
+    point = { x: body.x, y: body.y };
+  }
   const node = await writeMap(boardId, user.id, async tx => {
     const parent = await tx.mindNode.findFirst({
       where: { id: parentId, boardId },
@@ -23,7 +33,7 @@ export const POST = withUser(async (user, req: Request, ctx: Context) => {
     if (!parent) throw new ApiError(404, "Ideia indisponível.");
     const nodes = await tx.mindNode.findMany({ where: { boardId }, select: { id: true, x: true, y: true, parentId: true, color: true } });
     const branch = positionBranch(parent, nodes);
-    const node = await tx.mindNode.create({ data: { boardId, parentId, title, shape: "plain", ...branch } });
+    const node = await tx.mindNode.create({ data: { boardId, parentId, title, shape, ...branch, ...point } });
     await remember(tx, boardId, user.id, { kind: "create", nodes: [node] });
     return node;
   });
@@ -68,7 +78,6 @@ export const PATCH = withUser(async (user, req: Request, ctx: Context) => {
     data.color = body.color;
   }
   if (body.x !== undefined || body.y !== undefined) {
-    const coordinate = (n: unknown): n is number => typeof n === "number" && Number.isSafeInteger(n) && Math.abs(n) <= 1000000;
     if (!coordinate(body.x) || !coordinate(body.y)) throw new ApiError(400, "Posição inválida.");
     data.x = body.x;
     data.y = body.y;
