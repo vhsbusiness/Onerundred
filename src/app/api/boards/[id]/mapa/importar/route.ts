@@ -43,8 +43,8 @@ export const PUT = withUser(async (user, req: Request, ctx: Context) => {
   const { id: boardId } = await ctx.params;
   const paths = pathsFrom((await readBody(req)).paths);
   const count = await writeMap(boardId, user.id, async tx => {
-    const nodes = await tx.mindNode.findMany({ where: { boardId }, select: { id: true, parentId: true, boardId: true, title: true, color: true, x: true, y: true } });
-    const root = nodes.find(n => !n.parentId);
+    const nodes = await tx.mindNode.findMany({ where: { boardId }, select: { detached: true, id: true, parentId: true, boardId: true, title: true, color: true, x: true, y: true } });
+    const root = nodes.find(n => !n.parentId && !n.detached);
     if (!root) throw new ApiError(409, "Ideia central indisponível.");
     const original = nodes.length;
     for (const path of paths) {
@@ -53,7 +53,7 @@ export const PUT = withUser(async (user, req: Request, ctx: Context) => {
         let child = nodes.find(n => n.parentId === parent.id && norm(n.title) === norm(title));
         if (!child) {
           if (nodes.length - original >= 350) throw new ApiError(400, "Importe até 350 ideias por vez.");
-          child = { id: randomUUID(), boardId, parentId: parent.id, title, ...positionBranch(parent, nodes) };
+          child = { detached: false, id: randomUUID(), boardId, parentId: parent.id, title, ...positionBranch(parent, nodes) };
           nodes.push(child);
         }
         parent = child;

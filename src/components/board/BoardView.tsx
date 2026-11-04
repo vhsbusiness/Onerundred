@@ -467,7 +467,7 @@ export function BoardView({ boardId, initialBoard }: { boardId: string; initialB
         </div>
       </div>
 
-      {isMap ? <MindMap key={board.id} boardId={board.id} nodes={board.mindNodes} undoId={board.mindUndoId} onChanged={load} /> : <DndContext
+      {isMap ? <MindMap key={board.id} boardId={board.id} nodes={board.mindNodes} undoId={board.mindUndoId} onChanged={load} onImport={() => setImporting(true)} /> : <DndContext
         id={`board-${boardId}`}
         sensors={sensors}
         collisionDetection={collision}

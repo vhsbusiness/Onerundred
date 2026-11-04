@@ -1,12 +1,12 @@
 import type { MindNodeDTO } from "./types";
 
 export const palette = ["blue", "green", "orange", "red"];
-type Positioned = Pick<MindNodeDTO, "id" | "parentId" | "x" | "y" | "color">;
+type Positioned = Pick<MindNodeDTO, "id" | "parentId" | "x" | "y" | "color"> & { detached?: boolean };
 
-export function positionBranch(parent: Positioned, nodes: Positioned[], direction?: "right") {
+export function positionBranch(parent: Positioned, nodes: Positioned[], direction?: "right" | "left") {
   const siblings = nodes.filter(node => node.parentId === parent.id).length;
-  const root = nodes.find(node => !node.parentId)!;
-  const right = direction === "right" || (parent.parentId ? parent.x >= root.x : siblings % 2 === 0);
+  const root = nodes.find(node => !node.parentId && !node.detached)!;
+  const right = direction ? direction === "right" : parent.parentId ? parent.x >= root.x : siblings % 2 === 0;
   const x = parent.x + (right ? 240 : -240);
   let y = parent.y;
   while (nodes.some(node => Math.abs(node.x - x) < 202 && Math.abs(node.y - y) < 84)) y += 96;

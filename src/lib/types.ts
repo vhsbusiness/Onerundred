@@ -73,6 +73,11 @@ export interface UserBrief {
 }
 
 export interface MindNodeDTO {
+  detached: boolean;
+  imageData: string;
+  imageWidth: number;
+  imageHeight: number;
+  autoLayout: boolean;
   bold: boolean;
   locked: boolean;
   textColor: string;

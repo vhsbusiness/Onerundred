@@ -617,14 +617,16 @@ body {
 .mind-map {
   --mind-panel: var(--color-surface);
   --mind-accent: var(--color-blue);
+  --mind-dots: color-mix(in srgb, var(--color-ink) 40%, transparent);
 }
 .mind-canvas {
   background-color: var(--color-bg);
-  background-image: radial-gradient(circle, var(--color-grid-2) 0.85px, transparent 1px);
+  background-image: radial-gradient(circle, var(--mind-dots) 0.85px, transparent 1px);
   background-size: 20px 20px;
 }
 .mind-canvas-light .mind-canvas, :root[data-theme="light"] .mind-canvas {
-  background-color: var(--color-surface-2);
+  background-color: var(--color-surface);
+  --mind-dots: color-mix(in srgb, var(--color-ink) 24%, transparent);
 }
 .mind-tools {
   display: flex;
@@ -634,8 +636,10 @@ body {
   border: 1px solid var(--color-line-2);
   border-radius: 12px;
   color: var(--color-ink);
-  background: var(--mind-panel);
-  box-shadow: 0 3px 12px color-mix(in srgb, var(--color-ink) 8%, transparent);
+  background: color-mix(in srgb, var(--mind-panel) 92%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-ink) 4%, transparent), 0 3px 12px color-mix(in srgb, var(--color-ink) 8%, transparent);
 }
 .mind-tool, .mind-tools select {
   display: inline-flex;
@@ -658,8 +662,8 @@ body {
 .mind-context {
   position: absolute;
   z-index: 2;
-  width: min(28rem, calc(100% - 20px));
-  left: clamp(min(50%, 14rem + 10px), calc(50% + var(--mind-x)), max(50%, 100% - 14rem - 10px));
+  width: min(40rem, calc(100% - 20px));
+  left: clamp(min(50%, 20rem + 10px), calc(50% + var(--mind-x)), max(50%, 100% - 20rem - 10px));
   top: clamp(86px, calc(50% + var(--mind-y) - 36px), calc(100% - 54px));
   transform: translate(-50%, -100%);
   pointer-events: none;
@@ -707,4 +711,35 @@ body {
 .mind-marquee { position: absolute; pointer-events: none; border: 1px solid var(--mind-accent); background: color-mix(in srgb, var(--mind-accent) 16%, transparent); }
 .mind-create-menu { position: absolute; z-index: 4; width: 190px; flex-direction: column; align-items: stretch; }
 .mind-create-menu .mind-tool { justify-content: flex-start; gap: 8px; padding-inline: 10px; font-size: .83rem; }
-.mind-group { position: absolute; top: 10px; right: 10px; z-index: 2; }
+.mind-group { position: absolute; top: 64px; left: 66px; right: 12px; z-index: 2; }
+
+/* The selected node owns the only focus frame, including while its text is edited. */
+:root[data-design] .mind-node input[data-mind-title],
+:root[data-design] .mind-node input[data-mind-title]:focus-visible,
+:root[data-design] .mind-canvas:focus-visible { outline: none; box-shadow: none; border: 0; }
+:root[data-design] .mind-node[aria-pressed="true"],
+:root[data-design] .mind-node:focus-visible { outline: 2px solid var(--mind-accent); outline-offset: 2px; }
+.mind-node[data-image="true"] { padding: 0; background: transparent; border: 0; line-height: 0; cursor: move; }
+.mind-node[data-image="true"] img { max-width: none; border-radius: 5px; pointer-events: none; }
+.mind-canvas[data-tool="hand"], .mind-canvas[data-tool="hand"] .mind-node { cursor: grab; }
+.mind-canvas[data-tool="text"], .mind-canvas[data-tool="card"] { cursor: crosshair; }
+.mind-sidebar { position: absolute; z-index: 2; left: 12px; top: 50%; transform: translateY(-50%); flex-direction: column; gap: 3px; }
+.mind-sidebar .mind-tool { width: 36px; height: 36px; }
+.mind-divider { display: block; width: 24px; height: 1px; margin: 3px; background: var(--color-line-2); }
+.mind-selection-count { width: 100%; padding: 3px 8px; font-size: 11px; color: var(--color-ink-2); text-align: center; }
+.mind-tools .mind-font-size { width: 52px; min-width: 0; min-height: 32px; padding: 3px; font-size: 12px; border: 1px solid var(--color-line); border-radius: 6px; background: transparent; color: var(--color-ink); }
+.mind-auto { font-size: 11px; gap: 5px; }
+.mind-switch { width: 24px; height: 14px; border-radius: 20px; background: var(--color-fill-3); padding: 2px; }
+.mind-switch::after { content: ""; display: block; width: 10px; height: 10px; border-radius: 50%; background: var(--color-ink-2); transition: transform .15s; }
+.mind-auto[aria-pressed="true"] .mind-switch { background: var(--mind-accent); }
+.mind-auto[aria-pressed="true"] .mind-switch::after { background: var(--color-surface); transform: translateX(10px); }
+@media (max-width: 639px) {
+  .mind-sidebar { flex-direction: row; left: 8px; right: 8px; top: auto; bottom: 56px; transform: none; overflow-x: auto; justify-content: center; gap: 0; }
+  .mind-sidebar .mind-tool { width: 34px; min-width: 30px; height: 36px; flex-shrink: 0; }
+  .mind-sidebar .mind-divider { width: 1px; height: 24px; margin-inline: 2px; flex-shrink: 0; }
+  .mind-group { top: 8px; left: 8px; right: 8px; }
+  .mind-tools .mind-font-size { min-height: 36px; font-size: 16px; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .mind-tools { background: var(--mind-panel); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}

@@ -101,3 +101,9 @@ Observação de teste (31/10/2026): abrir diretamente `/quadros/ID?card=ID` pode
 - Logs de produção confirmaram HTTP 429 do provedor com mensagem de créditos esgotados. Não era falha no cálculo de performance.
 - `src/lib/ai-errors.ts`, chamado pelo wrapper de APIs, converte erros OpenAI em mensagens seguras: quota esgotada (503), rate limit (429), configuração/autorização e indisponibilidade (503). Falhas internas não relacionadas continuam no tratamento anterior.
 - Verificados tipos, lint, build e testes locais de classificação, sem chamadas pagas. O saldo da API precisa ser reposto pelo administrador; não foi alterada cobrança nem chave. A análise anterior permanece armazenada quando a geração falha.
+
+### Mapa mental — 03/11/2026, preparação local
+
+As melhorias desta etapa incluem objetos soltos/imagens, formatação em grupo, Auto na ideia central, botões de ramo dos dois lados e barra de ferramentas adaptada a celular. As regras e módulos estão descritos em BUSINESS_RULES e ARCHITECTURE. A migration aditiva `20261104010211_mind_canvas_objects` deve acompanhar o código no próximo deploy autorizado. Não foi aplicada em produção. A cópia SQLite temporária de QA recebeu a versão SQLite da migration; não houve alteração do banco de desenvolvimento do usuário.
+
+Validação: TypeScript, ESLint e build; navegador em 375/1440 px; mouse e toque; Tab/Enter; imagem por clipboard, persistência, tamanho, exclusão e recuperação; seleção e formatação em lote; Auto com posições fixadas/objetos soltos; desfazer atômico, inclusive conflito com outro membro; consulta por colaborador sem permissão de escrita. O SQL Postgres foi gerado por diff do schema, mas não foi executado contra um Postgres real nesta etapa. Publicar apenas quando o dono pedir.

@@ -89,6 +89,11 @@ model MindUndo {
 }
 
 model MindNode {
+  detached Boolean @default(false)
+  imageData String @default("")
+  imageWidth Int @default(240)
+  imageHeight Int @default(160)
+  autoLayout Boolean @default(false)
   bold Boolean @default(false)
   locked Boolean @default(false)
   textColor String @default("")

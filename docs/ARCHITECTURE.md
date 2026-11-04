@@ -135,3 +135,10 @@ Não há integração de pagamento, e-mail, analytics ou storage externo.
 Por instrução explícita do proprietário, Studio v3 deixa de ser uma prévia privada e passa a ser `DEFAULT_DESIGN` para todas as contas e para o login. Esta decisão substitui as restrições de prévia descritas acima. Contas comuns recebem v3 mesmo com cookies/preferências antigas; admins podem salvar uma escolha de comparação v2/v3 em `Setting.designPreview`, apenas na própria conta. O Atelier v2 e o clássico v1 continuam preservados. Nenhuma alteração de schema ou de dados de produção é necessária.
 
 A tipografia do v3 foi unificada em Instrument Sans: texto, títulos, métricas, etiquetas e cronômetros de trabalho/lazer/tarefa usam a mesma família, mantendo os números tabulares. O cabeçalho com data e hora e o fundo pontilhado permanecem. Implementação preparada localmente; publicar somente mediante pedido explícito.
+
+
+### Objetos e edição em grupo do mapa mental (03/11/2026)
+
+`MindNode.detached` distingue textos/imagens soltos da raiz original (`parentId == null && !detached`). `imageData`, `imageWidth` e `imageHeight` guardam imagens e dimensões; `autoLayout` só pode ser alterado na ideia central. A migration aditiva `20261104010211_mind_canvas_objects` tem versões Postgres e SQLite e mantém os dados anteriores.
+
+`mind-style.ts` valida os campos comuns para edição individual e em grupo. `mind-auto.ts` calcula posições dos ramos conectados. `mind-undo.ts` agrupa a ação original com as mudanças de posição, mantendo o bloqueio transacional do quadro e verificações de conflito. `MindFormat` atende uma seleção única ou múltipla; `MindMap` controla gestos, teclado, imagens e ferramentas. Imagens são retornadas apenas dentro dos dados autenticados do quadro, sem URL pública. `mind-image-client.ts` prepara arquivos/clipboard no navegador.
