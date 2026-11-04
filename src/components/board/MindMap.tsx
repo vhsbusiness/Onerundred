@@ -161,14 +161,14 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged }: {
     const element = e.target as Element;
     const mouse = e.pointerType === "mouse";
     const secondary = mouse && (e.button === 2 || (e.button === 0 && e.ctrlKey));
-    const pan = mouse && (e.button === 1 || (secondary && e.altKey));
+    const pan = mouse && e.button === 1;
     if (gesture.current || (!secondary && !pan && e.button !== 0) ||
         element.closest("button,a") || (!secondary && !pan && element.closest("input,textarea"))) return;
     const target = element.closest<HTMLElement>("[data-node]");
     const node = target && byId.get(target.dataset.node!);
     let mode: Gesture["mode"] = "click";
     if (pan) mode = "pan";
-    else if (!node && (secondary || boxTool)) mode = "box";
+    else if (!node && !secondary && (mouse || boxTool)) mode = "box";
     else if (secondary || !mouse) mode = node && onChanged && !node.locked ? "move" : "pan";
     const ids = node && group.has(node.id) ? groupIds.filter(id => byId.has(id) && !byId.get(id)?.locked) : node ? [node.id] : [];
     if (secondary || pan) {
@@ -260,7 +260,10 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged }: {
     if (!onChanged || e.nativeEvent.isComposing || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === "Tab" || e.key === "Enter") {
       e.preventDefault(); e.stopPropagation();
-      if (!e.repeat && !busy) addBranch(id);
+      if (!e.repeat && !busy) {
+        const parentId = e.key === "Enter" ? byId.get(id)?.parentId ?? id : id;
+        addBranch(parentId);
+      }
     }
   }
   const colorIds = selected ? [selected.id] : groupIds;
@@ -398,7 +401,7 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged }: {
                 : <span className="line-clamp-3 [overflow-wrap:anywhere]" style={{ backgroundColor: n.highlight || undefined }}>{n.title}</span>}
             </div>
             {(active || folded.has(n.id)) && <div className="mind-handles" style={isLeft ? { right: width / 2 + 4 } : { left: width / 2 + 4 }}>
-              {active && onChanged && <button className="mind-handle" aria-label="Adicionar ramo" title="Adicionar ramo (Tab ou Enter)" disabled={busy} onClick={() => addBranch(n.id)}><Plus size={14} /></button>}
+              {active && onChanged && <button className="mind-handle" aria-label="Adicionar ramo" title="Adicionar sub-ramo (Tab)" disabled={busy} onClick={() => addBranch(n.id)}><Plus size={14} /></button>}
               {hasChildren && <button className="mind-handle" aria-label={folded.has(n.id) ? "Expandir ramo" : "Recolher ramo"} title={folded.has(n.id) ? "Expandir ramo" : "Recolher ramo"} onClick={() => toggleFold(n.id)}>{folded.has(n.id) ? descendants(n.id).length : <Minus size={12} />}</button>}
             </div>}
           </div>;
@@ -426,7 +429,7 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged }: {
       </>}
     </div>}
     <div className="mind-tools mind-history">
-      <button className="mind-tool" title="Selecionar área" aria-label="Selecionar área" aria-pressed={boxTool} onClick={() => { setBoxTool(!boxTool); setMenu(null); }}><SquareDashedMousePointer size={16} /></button>
+      <button className="mind-tool [@media(pointer:fine)]:!hidden" title="Selecionar área" aria-label="Selecionar área" aria-pressed={boxTool} onClick={() => { setBoxTool(!boxTool); setMenu(null); }}><SquareDashedMousePointer size={16} /></button>
       {onChanged && <button className="mind-tool sm:!hidden" aria-label="Criar no mapa" onClick={() => {
         const bounds = canvas.current!.getBoundingClientRect();
         openCreateMenu({ x: bounds.left + bounds.width / 2, y: bounds.top + bounds.height / 2 });
@@ -442,7 +445,7 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged }: {
       <button className="mind-tool" aria-label="Enquadrar mapa" title="Enquadrar mapa" onClick={fit}><Focus size={16} /></button>
     </div>
     <div className="pointer-events-none absolute bottom-4 left-4 hidden items-center gap-1 text-xs text-ink-2 sm:flex">
-      <span aria-live="polite">{busy ? "Salvando…" : onChanged ? "Direito no fundo: criar ou selecionar área · Alt + direito: mover mapa" : "Somente leitura"}</span>
+      <span aria-live="polite">{busy ? "Salvando…" : onChanged ? "Esquerdo seleciona · Direito arrasta" : "Somente leitura"}</span>
       {selected?.link && <a className="pointer-events-auto inline-flex items-center gap-1 text-blue" href={selected.link} target="_blank" rel="noopener noreferrer"><ExternalLink size={12} /> Abrir link</a>}
     </div>
     {!onChanged && selected?.link && <a className="mind-tools absolute bottom-16 left-3 p-2 text-xs sm:hidden" href={selected.link} target="_blank" rel="noopener noreferrer">Abrir link</a>}

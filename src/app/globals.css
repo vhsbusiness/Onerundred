@@ -701,20 +701,7 @@ body {
   .mind-handle { min-width: 28px; height: 28px; }
 }
 
-/* Board tiles keep their graphite surface in either app theme. */
-.board-tile {
-  --color-surface: #191919;
-  --color-ink: #ededed;
-  --color-ink-2: #bcbcbc;
-  --color-ink-3: #999;
-  --color-fill: #222;
-  --color-line: #323232;
-  --color-line-2: #414141;
-  --shadow-card: none;
-  color: var(--color-ink);
-}
 .board-tile [data-board-icon] { color: var(--color-ink-2); }
-.board-tile:focus-visible { outline-color: var(--color-ink-2) !important; }
 
 .mind-canvas[data-grabbing="true"], .mind-canvas[data-grabbing="true"] * { cursor: grabbing !important; }
 .mind-marquee { position: absolute; pointer-events: none; border: 1px solid var(--mind-accent); background: color-mix(in srgb, var(--mind-accent) 16%, transparent); }

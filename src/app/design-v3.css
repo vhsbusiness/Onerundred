@@ -159,8 +159,7 @@
    continuam alinhados sem a mudança de fonte do antigo font-mono. */
 :root[data-design="v3"] .font-mono { font-family: var(--font-sans); }
 
-/* Vidro apenas nas superfícies de navegação e nos controles, nunca nos cartões.
-   Expo GlassEffect é nativo de iOS; esta implementação atende o app web/PWA. */
+/* Vidro das superfícies de navegação e controles do app web/PWA. */
 :root[data-design="v3"] {
   --glass-edge: color-mix(in srgb, var(--color-ink) 12%, transparent);
   --glass-shine: color-mix(in srgb, var(--color-ink) 4%, transparent);
@@ -220,8 +219,8 @@
   :root[data-design="v3"] .btn.btn-primary { background-color: var(--color-orange); }
 }
 
-/* Extensão do vidro ao dashboard solicitada pelo usuário. Quadros e modais
-   continuam com suas superfícies originais; blur apenas na camada externa. */
+/* Dashboard e grade de quadros compartilham o vidro sutil na camada externa. */
+:root[data-design="v3"] .board-tile,
 :root[data-design="v3"] .dashboard-layout :is(.dashboard-panel, .work-timer-panel, .performance-panel) {
   background-color: var(--color-surface);
   background-image: linear-gradient(140deg, var(--glass-shine), transparent 48%);
@@ -235,6 +234,7 @@
   box-shadow: inset 0 1px 0 var(--glass-shine);
 }
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root[data-design="v3"] .board-tile,
   :root[data-design="v3"] .dashboard-layout :is(.dashboard-panel, .work-timer-panel, .performance-panel) {
     background-color: var(--glass-bar);
     -webkit-backdrop-filter: blur(16px) saturate(115%);
@@ -242,6 +242,7 @@
   }
 }
 @media (prefers-reduced-transparency: reduce) {
+  :root[data-design="v3"] .board-tile,
   :root[data-design="v3"] .dashboard-layout :is(.dashboard-panel, .work-timer-panel, .performance-panel, .metric-tile, .ai-insight-panel) {
     background-color: var(--color-surface);
     background-image: none;
