@@ -238,7 +238,8 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged }: {
     if (draft.title.trim() && draft.title.trim() !== byId.get(draft.id)?.title)
       void save(async () => { await http.patch(url, {id:draft.id, title:draft.title.trim()}); });
   }
-  function addBranch(parentId: string, point?: Point, shape: "plain" | "rounded" = "plain") {
+  function addBranch(parentId: string, options: { point?: Point; shape?: "plain" | "rounded"; direction?: "right" } = {}) {
+    const { point, shape = "plain", direction } = options;
     if (!onChanged) return;
     const draft = editor;
     setMenu(null);
@@ -249,7 +250,7 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged }: {
       try {
         if (draft?.title.trim() && draft.title.trim() !== byId.get(draft.id)?.title)
           await http.patch(url, {id:draft.id, title:draft.title.trim()});
-        const node = await http.post<MindNodeDTO>(url, { parentId, title: "Nova ideia", shape, ...point });
+        const node = await http.post<MindNodeDTO>(url, { parentId, title: "Nova ideia", shape, direction, ...point });
         select(node.id);
         if (!point) focus(node, view.zoom);
         edit({id:node.id, title:node.title});
@@ -261,8 +262,12 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged }: {
     if (e.key === "Tab" || e.key === "Enter") {
       e.preventDefault(); e.stopPropagation();
       if (!e.repeat && !busy) {
-        const parentId = e.key === "Enter" ? byId.get(id)?.parentId ?? id : id;
-        addBranch(parentId);
+        const parentId = e.key === "Enter" ? byId.get(id)?.parentId : id;
+        if (!parentId) {
+          commitTitle();
+          return;
+        }
+        addBranch(parentId, { direction: e.key === "Tab" ? "right" : undefined });
       }
     }
   }
@@ -401,7 +406,7 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged }: {
                 : <span className="line-clamp-3 [overflow-wrap:anywhere]" style={{ backgroundColor: n.highlight || undefined }}>{n.title}</span>}
             </div>
             {(active || folded.has(n.id)) && <div className="mind-handles" style={isLeft ? { right: width / 2 + 4 } : { left: width / 2 + 4 }}>
-              {active && onChanged && <button className="mind-handle" aria-label="Adicionar ramo" title="Adicionar sub-ramo (Tab)" disabled={busy} onClick={() => addBranch(n.id)}><Plus size={14} /></button>}
+              {active && onChanged && <button className="mind-handle" aria-label="Adicionar ramo" title="Adicionar sub-ramo (Tab)" disabled={busy} onClick={() => addBranch(n.id, { direction: "right" })}><Plus size={14} /></button>}
               {hasChildren && <button className="mind-handle" aria-label={folded.has(n.id) ? "Expandir ramo" : "Recolher ramo"} title={folded.has(n.id) ? "Expandir ramo" : "Recolher ramo"} onClick={() => toggleFold(n.id)}>{folded.has(n.id) ? descendants(n.id).length : <Minus size={12} />}</button>}
             </div>}
           </div>;
@@ -410,9 +415,9 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged }: {
     </div>
     {box && <div aria-hidden="true" className="mind-marquee" style={box} />}
     {menu && root && onChanged && <div className="mind-create-menu mind-tools" role="group" aria-label="Criar no mapa" style={{ left: menu.screen.x, top: menu.screen.y }}>
-      <button className="mind-tool" onClick={() => addBranch(root.id, menu.at)}><Type size={15} /> Criar texto</button>
-      <button className="mind-tool" onClick={() => addBranch(root.id, menu.at, "rounded")}><Square size={15} /> Criar cartão</button>
-      {selected?.parentId && <button className="mind-tool" onClick={() => addBranch(selected.id, menu.at)}><Plus size={15} /> Ramo da seleção</button>}
+      <button className="mind-tool" onClick={() => addBranch(root.id, { point: menu.at })}><Type size={15} /> Criar texto</button>
+      <button className="mind-tool" onClick={() => addBranch(root.id, { point: menu.at, shape: "rounded" })}><Square size={15} /> Criar cartão</button>
+      {selected?.parentId && <button className="mind-tool" onClick={() => addBranch(selected.id, { point: menu.at })}><Plus size={15} /> Ramo da seleção</button>}
     </div>}
     {anchor && onChanged && !drag && !box && !menu && <div className="mind-context" style={{
       "--mind-x": `${view.x + anchor.x * view.zoom}px`,

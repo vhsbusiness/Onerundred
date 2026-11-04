@@ -160,7 +160,7 @@ Em Quadros, o formato Padrão cria listas de tarefas. Mapa mental cria uma ideia
 
 O dono e os membros do quadro podem editar as ideias e suas posições. A consulta pelo relatório de colaboração permite navegar pelo mapa e solicitar edição com as mesmas permissões dos demais quadros.
 
-Um clique edita o texto do ramo. Tab salva o texto e cria um filho do ramo selecionado. Enter salva e cria um ramo irmão ligado ao mesmo pai. Na ideia central, Enter cria um filho. A formatação e o link pertencem à ideia; fixar a posição impede o arraste, mas permite editar o texto. A tela cheia e o zoom são locais; a escolha de fundo claro fica neste navegador para este quadro.
+Um clique edita o texto do ramo. Tab salva o texto e cria um filho sempre à direita do ramo selecionado, inclusive quando o pai está do lado esquerdo do mapa. O botão de adicionar sub-ramo segue essa mesma direção. Enter salva e cria um ramo irmão ligado ao mesmo pai. Na ideia central, Enter apenas salva o texto e não cria nenhum ramo, pois não existe pai. A formatação e o link pertencem à ideia; fixar a posição impede o arraste, mas permite editar o texto. A tela cheia e o zoom são locais; a escolha de fundo claro fica neste navegador para este quadro.
 
 Cada tipo de quadro tem um ícone padrão: checklist para tarefas, pasta para organização e ramificação para mapa mental. O dono e os membros podem escolher outro símbolo ao criar ou pelo menu do quadro. A escolha pertence ao quadro, inclusive para quem o consulta em modo de leitura; restaurar “Ícone do tipo” volta ao padrão sem mudar o tipo nem o conteúdo.
 

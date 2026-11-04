@@ -19,6 +19,8 @@ export const POST = withUser(async (user, req: Request, ctx: Context) => {
   const body = await readBody(req);
   const parentId = requireString(body.parentId, "Ideia principal");
   const title = topic(body.title);
+  const direction = body.direction;
+  if (direction !== undefined && direction !== "right") throw new ApiError(400, "Direção inválida.");
   const shape = body.shape ?? "plain";
   if (shape !== "plain" && shape !== "rounded") throw new ApiError(400, "Forma inválida.");
   let point: { x: number; y: number } | undefined;
@@ -32,7 +34,7 @@ export const POST = withUser(async (user, req: Request, ctx: Context) => {
     });
     if (!parent) throw new ApiError(404, "Ideia indisponível.");
     const nodes = await tx.mindNode.findMany({ where: { boardId }, select: { id: true, x: true, y: true, parentId: true, color: true } });
-    const branch = positionBranch(parent, nodes);
+    const branch = positionBranch(parent, nodes, direction);
     const node = await tx.mindNode.create({ data: { boardId, parentId, title, shape, ...branch, ...point } });
     await remember(tx, boardId, user.id, { kind: "create", nodes: [node] });
     return node;
