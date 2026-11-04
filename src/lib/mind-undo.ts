@@ -113,6 +113,9 @@ async function applyUndo(tx: Transaction, boardId: string, action: Action) {
     if (await tx.mindNode.count({ where: { boardId, parentId: { in: ids }, id: { notIn: ids } } })) throw conflict;
     await tx.mindNode.deleteMany({ where: { boardId, id: { in: ids } } });
   } else {
+    // Another editor may have imported a new central idea after this one was deleted.
+    if (action.nodes.some(n => !n.parentId && !n.detached) &&
+        await tx.mindNode.count({ where: { boardId, parentId: null, detached: false } })) throw conflict;
     const restored = new Set(action.nodes.map(n => n.id));
     const parents = [...new Set(action.nodes.flatMap(n => n.parentId && !restored.has(n.parentId) ? [n.parentId] : []))];
     if (await tx.mindNode.count({ where: { boardId, id: { in: parents } } }) !== parents.length) throw conflict;

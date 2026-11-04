@@ -260,6 +260,13 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
     setBox(null);
     if (e.type === "pointercancel" || e.type === "lostpointercapture") { setDrag(null); setInk(null); return; }
     if (g.mode === "draw" && g.ink) {
+      // A quick release can arrive before the browser dispatches its next pointermove.
+      // Always include the release position, even for a stroke shorter than the sampling threshold.
+      const last = g.ink[g.ink.length - 1], end = canvasPoint(e.clientX, e.clientY);
+      if (last.x !== end.x || last.y !== end.y) {
+        if (g.ink.length >= 4096) g.ink = g.ink.filter((_, i) => i % 2 === 0);
+        g.ink.push(end);
+      }
       const normalized = normalizeDrawing(g.ink);
       setInk(null);
       if (!parseDrawing(normalized.drawing)) { notify("Faça um traço menor para salvar o desenho.", "error"); return; }
@@ -383,7 +390,7 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
     }));
   }
   function remove() {
-    const ids = colorIds.filter(id => byId.get(id)?.parentId || byId.get(id)?.detached);
+    const ids = colorIds.filter(id => byId.has(id));
     if (!ids.length || !onChanged) return;
     edit(null); select(undefined);
     const animation = fadeMindItems(section.current, new Set(ids.flatMap(id => [id, ...descendants(id)])));
@@ -437,7 +444,7 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
       if (!(target instanceof HTMLInputElement && target.hasAttribute("data-mind-title") && editor?.title === selected?.title &&
           target.selectionStart === 0 && target.selectionEnd === target.value.length)) return;
     }
-    if (!colorIds.some(id => byId.get(id)?.parentId || byId.get(id)?.detached)) return;
+    if (!colorIds.some(id => byId.has(id))) return;
     event.preventDefault();
     if (!event.repeat) remove();
   });
@@ -542,7 +549,7 @@ export function MindMap({ boardId, nodes, undoId = null, onChanged, onImport }: 
       </div>
     </div>
     {box && <div aria-hidden="true" className="mind-marquee" style={box} />}
-    {menu && root && onChanged && <div className="mind-create-menu mind-tools" role="group" aria-label="Criar no mapa" style={{ left: menu.screen.x, top: menu.screen.y }}>
+    {menu && onChanged && <div className="mind-create-menu mind-tools" role="group" aria-label="Criar no mapa" style={{ left: menu.screen.x, top: menu.screen.y }}>
       <button className="mind-tool" onClick={() => addBranch(null, { point: menu.at })}><Type size={15} /> Criar texto</button>
       <button className="mind-tool" onClick={() => addBranch(null, { point: menu.at, shape: "rounded" })}><Square size={15} /> Criar cartão</button>
       <button className="mind-tool" onClick={() => fileInput.current?.click()}><ImagePlus size={15} /> Inserir imagem</button>

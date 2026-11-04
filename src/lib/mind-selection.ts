@@ -36,7 +36,6 @@ export function editSelection(boardId: string, userId: string, ids: string[], ed
       await tx.mindNode.updateMany({ where, data: { [field]: value } });
       await remember(tx, boardId, userId, { kind: "paint", field, value, previous });
     } else {
-      if (selected.some(n => !n.parentId && !n.detached)) throw new ApiError(400, "A ideia central não pode ser excluída.");
       const all = await tx.mindNode.findMany({ where: { boardId } });
       const children = new Map<string, typeof selected>();
       for (const node of all) {

@@ -61,7 +61,7 @@ export function MindFormat({ node, change, remove, busy, preview, commit, count 
     </>}
     <button className="mind-tool" title="Fixar posição" aria-label="Fixar posição" aria-pressed={mixed.includes("locked") ? "mixed" : node.locked} onClick={() => change({ locked: mixed.includes("locked") || !node.locked })}>{node.locked ? <Lock size={15} /> : <LockOpen size={15} />}</button>
     {!imageOnly && !drawingOnly && <button className="mind-tool" title="Limpar estilo" aria-label="Limpar estilo" onClick={() => change({ bold: false, textColor: "", highlight: "", shape: "plain", fontSize: 14 })}><Eraser size={15} /></button>}
-    {!root && <button className="mind-tool" disabled={busy} title={count > 1 ? "Excluir seleção" : "Excluir ramo"} aria-label={count > 1 ? "Excluir seleção" : "Excluir ramo"} onClick={remove}><Trash2 size={15} /></button>}
+    <button className="mind-tool" disabled={busy} title={count > 1 ? "Excluir seleção" : "Excluir ramo"} aria-label={count > 1 ? "Excluir seleção" : "Excluir ramo"} onClick={remove}><Trash2 size={15} /></button>
     {editingLink && <form className="flex w-full gap-1 border-t border-line pt-1" onSubmit={e => { e.preventDefault(); change({ link: link.trim() }); setEditingLink(false); }}>
       <input className="input min-w-0 flex-1" aria-label="Endereço do link" autoFocus type="url" pattern="https?://.+" maxLength={2048} placeholder="https://" value={link} onChange={e => setLink(e.target.value)} />
       <button className="mind-tool">Salvar link</button>

@@ -100,7 +100,7 @@ export const DELETE = withUser(async (user, req: Request, ctx: Context) => {
   await writeMap(boardId, user.id, async tx => {
     const nodes = await tx.mindNode.findMany({ where: { boardId } });
     const branch = nodes.find(n => n.id === id);
-    if (!branch || (!branch.parentId && !branch.detached)) throw new ApiError(404, "Ramo indisponível para exclusão.");
+    if (!branch) throw new ApiError(404, "Ramo indisponível para exclusão.");
     const removed = subtree(nodes, branch);
     await tx.mindNode.delete({ where: { id } });
     await remember(tx, boardId, user.id, { kind: "delete", nodes: removed });

@@ -4,20 +4,25 @@ import { Check, ClipboardPaste, ImagePlus, Sparkles, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { http, priorityUi } from "@/lib/client";
 import { Modal } from "@/components/ui/Modal";
-import type { ImportPlan } from "@/lib/types";
+import type { ImportPlan, MindImportTopic } from "@/lib/types";
 
-/** Reduz a imagem para no máximo 1600px de largura (JPEG) antes de enviar. */
-async function toUploadDataUrl(file: File): Promise<string> {
+/** Keep Miro text/emojis sharp; retain the existing Trello upload format. */
+async function toUploadDataUrl(file: File, preserveDetails: boolean): Promise<string> {
   const bitmap = await createImageBitmap(file);
-  const maxW = 1600;
-  const scale = Math.min(1, maxW / bitmap.width);
+  const scale = preserveDetails ? Math.min(1, 2560 / Math.max(bitmap.width, bitmap.height)) : Math.min(1, 1600 / bitmap.width);
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(bitmap.width * scale);
   canvas.height = Math.round(bitmap.height * scale);
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Não foi possível processar a imagem");
   ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL("image/jpeg", 0.88);
+  bitmap.close();
+  if (!preserveDetails) return canvas.toDataURL("image/jpeg", 0.88);
+  const png = canvas.toDataURL("image/png");
+  if (png.length <= 6 * 1024 * 1024) return png;
+  const jpeg = canvas.toDataURL("image/jpeg", 0.95);
+  if (jpeg.length > 6 * 1024 * 1024) throw new Error("Este print é muito grande. Envie um recorte mais próximo das ideias.");
+  return jpeg;
 }
 
 export function ImportModal({
@@ -37,7 +42,7 @@ export function ImportModal({
   const [images, setImages] = useState<string[]>([]);
   const MAX_IMAGES = 8;
   const [plan, setPlan] = useState<ImportPlan | null>(null);
-  const [paths, setPaths] = useState<string[][] | null>(null);
+  const [paths, setPaths] = useState<MindImportTopic[][] | null>(null);
   const [ignored, setIgnored] = useState<number[]>([]);
   const [added, setAdded] = useState<number | null>(null);
   const [includeDone, setIncludeDone] = useState(false);
@@ -69,7 +74,7 @@ export function ImportModal({
     setAdded(null);
     setResult(null);
     try {
-      const urls = await Promise.all(valid.map(toUploadDataUrl));
+      const urls = await Promise.all(valid.map(file => toUploadDataUrl(file, miro)));
       setImages((prev) => {
         const next = [...prev, ...urls];
         if (next.length > MAX_IMAGES) setError(`No máximo ${MAX_IMAGES} prints por vez`);
@@ -78,7 +83,7 @@ export function ImportModal({
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível ler a imagem");
     }
-  }, []);
+  }, [miro]);
 
   function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
@@ -116,7 +121,7 @@ export function ImportModal({
     setBusy("read");
     setError(null);
     try {
-      if (miro) setPaths((await http.post<{ paths: string[][] }>(`/api/boards/${boardId}/mapa/importar`, { images })).paths);
+      if (miro) setPaths((await http.post<{ paths: MindImportTopic[][] }>(`/api/boards/${boardId}/mapa/importar`, { images })).paths);
       else setPlan(await http.post<ImportPlan>(`/api/boards/${boardId}/importar`, { images }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "A IA não conseguiu ler o print");
@@ -231,11 +236,14 @@ export function ImportModal({
           {paths && <div className="space-y-3">
             {paths.length ? <>
               <h3 className="font-semibold">Revisar caminhos</h3>
-              <p className="text-sm text-ink-2">Cada linha mostra as conexões da ideia principal até a ponta do ramo. Novos caminhos serão ligados à ideia central do quadro.</p>
+              <p className="text-sm text-ink-2">Confira os textos, emojis e negrito. Cada linha mostra as conexões da ideia principal até a ponta do ramo. Novos ramos serão criados à direita.</p>
               <div className="max-h-64 space-y-1 overflow-auto">
                 {paths.map((path, i) => <label key={i} className="flex items-start gap-2 rounded-lg bg-well p-2 text-sm">
                   <input type="checkbox" disabled={!!busy} checked={!ignored.includes(i)} onChange={e => setIgnored(e.target.checked ? ignored.filter(n => n !== i) : [...ignored, i])} />
-                  <span className="min-w-0 [overflow-wrap:anywhere]">{path.join(" → ")}</span>
+                  <span className="min-w-0 [overflow-wrap:anywhere]">{path.map((topic, index) => <span key={index}>
+                    {index > 0 && <span aria-hidden="true" className="text-ink-3"> → </span>}
+                    <span className={topic.bold ? "font-bold" : undefined}>{topic.title}</span>
+                  </span>)}</span>
                 </label>)}
               </div>
               <button className="btn btn-primary" disabled={!!busy || ignored.length === paths.length} onClick={apply}>{busy === "apply" ? "Importando…" : "Importar caminhos selecionados"}</button>

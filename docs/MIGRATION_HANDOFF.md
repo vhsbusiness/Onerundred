@@ -115,3 +115,13 @@ O bloco anterior registra a preparação, mas a etapa de objetos/imagens foi pos
 A próxima alteração, ainda local, substitui o botão quadrado da barra pelo lápis, acrescenta animações discretas e reduz a opacidade dos pontos. Não houve push/deploy nesta etapa. A migration `20261104012108_mind_freehand` deve acompanhar o próximo deploy autorizado; foi aplicada somente no SQLite temporário de QA, não no banco de desenvolvimento do usuário nem em produção. O SQL Postgres foi gerado, mas não executado contra Postgres nesta etapa.
 
 Validação local: TypeScript, ESLint e build; desenho real por mouse e toque; persistência, cor, espessura, seleção, movimento, exclusão e Ctrl+Z; cancelamento por Esc/pointercancel; animações e movimento reduzido; telas de 375/1440 px, claro/escuro; geometria inválida rejeitada; consulta de colaborador sem escrita; formatação em grupo e conflito de desfazer com outro membro; Auto sem deslocar ramos ao desenhar; regressão do arraste esquerdo, movimento direito, seleção retangular e atalhos Tab/Enter.
+
+### Traços rápidos, exclusão da raiz e importação — 03/11/2026, local
+
+O lápis/animações da etapa anterior foi publicado a pedido do dono: commit `6f141d61d23f25e8418f6c39f8eeb84d5c73efd7`, deployment `a7446955-2b2c-40ab-9543-65a9709014e4` SUCCESS. Migration `20261104012108_mind_freehand` aplicada em produção; JS/CSS conferidos por hash no domínio público.
+
+Esta etapa corrige três pedidos posteriores, ainda sem publicar: fim de traços rápidos, exclusão da ideia central e importação do Miro preservando negrito/emojis com ramos novos sempre à direita. O dono informou que apagará seu mapa e reenviará os prints depois da correção; o agente não apagou nem reorganizou dados de produção. Não há migration nova.
+
+Reprodução do lápis: um pointerdown seguido de pointerup em outro ponto, antes de pointermove, salvava somente um ponto. Agora inclui a posição final. Testes locais cobriram traços de 1 px, clique, dez traços rápidos com rede lenta e recarga; exclusão/undo da raiz, filhos e seleção múltipla; mapa vazio, textos soltos e importação; bloqueio de escrita por leitor e conflito de nova raiz criada por outro membro. Prévia do Miro e exclusão verificadas em 375/1440 px; API com emojis compostos, negrito, todos os filhos à direita, caminhos repetidos, compatibilidade com strings, validação e desfazer atômico. Tipos, lint e build passaram.
+
+A extração de IA foi simulada no teste de interface para não consumir créditos; o salvamento da prévia e a geração dos nós usaram a API e o SQLite temporário reais. A leitura dos prints reais do usuário pelo modelo não foi reexecutada nesta etapa. Nenhuma credencial nem conta de produção usada nos testes. Publicar somente após novo pedido explícito.

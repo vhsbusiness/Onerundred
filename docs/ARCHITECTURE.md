@@ -148,3 +148,11 @@ A tipografia do v3 foi unificada em Instrument Sans: texto, títulos, métricas,
 `MindNode.drawing` guarda geometria numérica em JSON (dimensões e até 4096 pontos), e `strokeWidth` guarda a espessura. A migration aditiva `20261104012108_mind_freehand` possui versões Postgres/SQLite; os valores padrão preservam todos os nós existentes. `mind-drawing.ts` valida dimensões/pontos, normaliza coordenadas e gera o caminho SVG, sem aceitar SVG ou HTML arbitrário.
 
 A rota autenticada `/api/boards/[id]/mapa` só cria desenhos independentes; usa `writeMap`/`remember` e o mesmo controle de acesso, transação e histórico dos demais objetos. Formatação em lote reutiliza `mind-style.ts` e `/mapa/selecao`. O cliente reúne eventos do ponteiro, mostra o traço imediatamente e salva uma vez ao finalizar; um preview permanece enquanto a operação aguarda a fila. `mind-auto.ts` ignora os desenhos no cálculo de obstáculos. `mind-motion.ts` fornece a saída visual curta; a exclusão continua dependente do resultado do servidor. CSS local ao mapa desativa transições durante gestos e respeita `prefers-reduced-motion`.
+
+### Importação formatada e mapa sem raiz (03/11/2026)
+
+`MindImportTopic` representa `{ title, bold }`. O schema de visão e a prévia em `ImportModal` usam caminhos desses objetos; `PUT /mapa/importar` também aceita os caminhos de strings das versões anteriores. Emojis permanecem no texto Unicode, sem conversão para palavras ou HTML. A criação chama `positionBranch(..., "right")`; novos nós e alterações de negrito existentes entram na mesma transação/histórico. Não foi necessário mudar o banco.
+
+Para o Miro, o upload mantém PNG, limitado a 2560 px na maior dimensão e ao limite existente de 6 MiB de data URL; se necessário usa JPEG com qualidade 0,95. O fluxo de imagem do Trello permanece em JPEG com largura máxima de 1600 px e qualidade 0,88. O modelo e a contagem de uso de IA continuam os mesmos.
+
+A raiz agora pode ser removida em `/mapa` e `/mapa/selecao`. `mind-layout.ts` tolera ausência de raiz para novos ramos de textos soltos; o menu de criação também funciona em mapa vazio. A aplicação de importação cria uma nova central quando necessário. `mind-undo.ts` impede restaurar uma central apagada por cima de outra criada por um colaborador.

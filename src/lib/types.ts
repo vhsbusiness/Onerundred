@@ -72,6 +72,11 @@ export interface UserBrief {
   avatar: string | null;
 }
 
+export interface MindImportTopic {
+  title: string;
+  bold: boolean;
+}
+
 export interface MindNodeDTO {
   drawing: string;
   strokeWidth: number;
