@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, Bell, ChevronsLeft, ChevronsRight, Gamepad2, LayoutDashboard, LogOut, Moon, Settings, ShieldCheck, SquareKanban, Sun, Target, UserRound } from "lucide-react";
+import { Archive, Bell, ChevronDown, ChevronsLeft, ChevronsRight, Gamepad2, LayoutDashboard, LogOut, Moon, Settings, ShieldCheck, SquareKanban, Sun, Target, UserRound } from "lucide-react";
 import { useFavoriteBoards } from "@/components/boards/FavoriteBoards";
 import { BoardIcon } from "@/components/boards/BoardIcon";
 import { Avatar } from "@/components/profile/ProfilePage";
@@ -290,8 +290,9 @@ function Rail({ tabs: items, isActive, me }: { tabs: Tab[]; isActive: (href: str
                 <Link href={t.href} title={t.label} aria-current={active ? "page" : undefined} className={`v2-rail-item ${active ? "is-active" : ""}`}>
                   <t.icon size={18} strokeWidth={active ? 2.2 : 1.8} />
                   <span className="v2-rail-label">{t.label}</span>
+                  {t.href === "/quadros" && favorites.length > 0 && <ChevronDown size={12} className="rail-favorites-chevron" aria-hidden="true" />}
                 </Link>
-                {t.href === "/quadros" && favorites.length > 0 && <ul className="rail-board-favorites" aria-label="Quadros favoritos">
+                {t.href === "/quadros" && favorites.length > 0 && <div className="rail-board-favorites"><div className="rail-board-favorites-clip"><ul className="rail-board-favorites-list" aria-label="Quadros favoritos">
                   {favorites.map((board) => <li key={board.id}>
                     <Link href={`/quadros/${board.id}`} title={board.name}
                       aria-current={pathname === `/quadros/${board.id}` ? "page" : undefined}
@@ -300,7 +301,7 @@ function Rail({ tabs: items, isActive, me }: { tabs: Tab[]; isActive: (href: str
                       <span className="v2-rail-label truncate">{board.name}</span>
                     </Link>
                   </li>)}
-                </ul>}
+                </ul></div></div>}
               </li>
             );
           })}

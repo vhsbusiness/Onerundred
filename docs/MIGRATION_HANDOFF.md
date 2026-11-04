@@ -190,3 +190,10 @@ Cada conta pode favoritar até três quadros, inclusive compartilhados, usando a
 Favoritos usam `Setting.favoriteBoardIds`, sem migration, com limite e acesso validados na API `GET/PUT /api/boards/favoritos`. Quadros excluídos ou sem acesso são filtrados e deixam de ocupar vagas na próxima leitura. Falhas ao salvar preservam a seleção confirmada. Alteração local, sem publicação.
 
 Validação: TypeScript, ESLint e build aprovados; Chrome em 375/1440 px confirmou atalhos reais, persistência após recarga, favoritos com um/dois/três itens, hover e travessia dos links, barra recolhida, remoção, limite na UI/API e isolamento entre contas. QA usa banco SQLite temporário, sem dados de produção. Roteiro: `/private/tmp/onerundred-favorites-qa.cjs`.
+
+
+### Animação e seta dos favoritos — 04/11/2026, local
+
+O submenu de quadros favoritos expande/recolhe com transição de altura e opacidade, mantendo hover e foco de teclado. Quadros ganha uma seta para baixo somente quando existem favoritos; a seta gira ao abrir. Funciona na barra expandida e recolhida e respeita movimento reduzido. Aplica-se aos atalhos de tarefas, organização e mapa mental. Sem alteração de banco.
+
+TypeScript, ESLint, build e diff aprovados. Chrome com banco temporário de QA: altura intermediária da animação, recolhimento completo, rotação da seta, travessia dos links, teclado, movimento reduzido, barra recolhida, 375/1440 px e ausência da seta sem favoritos. Roteiro `/private/tmp/onerundred-favorites-animation-qa.cjs`. Ainda sem push/deploy desta etapa.
