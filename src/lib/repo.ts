@@ -1,3 +1,4 @@
+import { WORK_CYCLE_KEY, unfinishedWorkStart, rememberWorkStart } from "./work-cycle";
 import { parseLabels, readLabels } from "./labels";
 import { subDays } from "date-fns";
 import { prisma } from "./db";
@@ -189,7 +190,15 @@ export async function runMaintenance(): Promise<void> {
   const forgottenBefore = new Date(Date.now() - FORGOTTEN_AFTER_MS);
   const forgottenWork = await prisma.workSession.findMany({ where: { endedAt: null, startedAt: { lt: forgottenBefore } } });
   for (const s of forgottenWork) {
-    await prisma.workSession.update({ where: { id: s.id }, data: { endedAt: new Date(s.startedAt.getTime() + FORGOTTEN_AFTER_MS) } });
+    await prisma.$transaction([
+      prisma.workSession.update({ where: { id: s.id }, data: { endedAt: new Date(s.startedAt.getTime() + FORGOTTEN_AFTER_MS) } }),
+      prisma.setting.deleteMany({ where: { userId: s.userId, key: WORK_CYCLE_KEY } }),
+      prisma.setting.upsert({
+        where: { userId_key: { userId: s.userId, key: "workEndedDay" } },
+        create: { userId: s.userId, key: "workEndedDay", value: today },
+        update: { value: today },
+      }),
+    ]);
   }
   const forgottenTasks = await prisma.taskSession.findMany({ where: { endedAt: null, startedAt: { lt: forgottenBefore } } });
   for (const s of forgottenTasks) {
@@ -233,11 +242,11 @@ export async function runMaintenance(): Promise<void> {
 
 /* ───────────────────────── Tarefas contínuas ───────────────────────── */
 
-/** Gera o card do dia para cada tarefa contínua ativa cujo dia da semana é hoje (uma vez por dia). */
-async function spawnRecurringCards(today: string): Promise<void> {
+/** Gera apenas o dia corrente; uma sessão anterior ainda não encerrada adia a geração. */
+async function spawnRecurringCards(today: string, userId?: string): Promise<void> {
   const weekday = keyToDate(today).getDay();
   const due = await prisma.recurringTask.findMany({
-    where: { active: true, list: { board: { type: "tasks" } }, OR: [{ lastSpawnedKey: null }, { lastSpawnedKey: { not: today } }] },
+    where: { ...(userId ? { userId } : {}), active: true, list: { board: { type: "tasks" } }, OR: [{ lastSpawnedKey: null }, { lastSpawnedKey: { lt: today } }] },
     include: { list: { select: { id: true, kind: true } } },
   });
   for (const r of due) {
@@ -247,31 +256,37 @@ async function spawnRecurringCards(today: string): Promise<void> {
 }
 
 async function spawnRecurringCard(
-  r: { id: string; listId: string; title: string; description: string; priority: number; estimatedMinutes: number | null; list: { kind: string } },
+  r: { id: string; userId: string; listId: string; title: string; description: string; priority: number; estimatedMinutes: number | null; list: { kind: string } },
   today: string,
 ) {
-  // Idempotente: se o card de hoje já existe (ex.: manutenção rodou duas vezes), só registra o dia.
-  const existing = await prisma.card.findFirst({ where: { recurringId: r.id, scheduledFor: r.list.kind === "tomorrow" ? tomorrowKey() : today } });
-  if (existing) {
-    await prisma.recurringTask.update({ where: { id: r.id }, data: { lastSpawnedKey: today } });
-    return;
-  }
-  const max = await prisma.card.aggregate({ where: { listId: r.listId }, _max: { position: true } });
-  await prisma.$transaction([
-    prisma.card.create({
+  await prisma.$transaction(async (tx) => {
+    const workStart = await unfinishedWorkStart(tx, r.userId);
+    if (workStart && workStart < dayRange(today).start) return;
+
+    // A reserva e a criação são atômicas: manutenção e encerramento simultâneos
+    // não podem criar duas ocorrências. Ao adiar, lastSpawnedKey fica intacta.
+    const claimed = await tx.recurringTask.updateMany({
+      where: { id: r.id, active: true, OR: [{ lastSpawnedKey: null }, { lastSpawnedKey: { lt: today } }] },
+      data: { lastSpawnedKey: today },
+    });
+    if (!claimed.count) return;
+    const scheduledFor = r.list.kind === "tomorrow" ? dayKey(dayRange(today).end) : today;
+    const existing = await tx.card.findFirst({ where: { recurringId: r.id, scheduledFor } });
+    if (existing) return;
+    const max = await tx.card.aggregate({ where: { listId: r.listId }, _max: { position: true } });
+    await tx.card.create({
       data: {
         listId: r.listId,
         title: r.title,
         description: r.description,
         priority: r.priority,
         estimatedMinutes: r.estimatedMinutes,
-        scheduledFor: r.list.kind === "tomorrow" ? tomorrowKey() : today,
+        scheduledFor,
         position: (max._max.position ?? -1) + 1,
         recurringId: r.id,
       },
-    }),
-    prisma.recurringTask.update({ where: { id: r.id }, data: { lastSpawnedKey: today } }),
-  ]);
+    });
+  });
 }
 
 /** Cria uma tarefa contínua e, se hoje for um dos dias, já gera o card de hoje. */
@@ -1325,13 +1340,39 @@ async function plannedMinutesForToday(userId: string): Promise<number> {
   return cards.reduce((acc, c) => acc + (c.estimatedMinutes ?? 0), 0);
 }
 
+/** Contexto histórico da sessão: não mistura a meta nem o tempo do dia seguinte. */
+export async function getWorkSessionDayContext(userId: string, session: { startedAt: Date; endedAt: Date }) {
+  const key = dayKey(session.startedAt);
+  const { start, end } = dayRange(key);
+  const [cards, sessions, settings] = await Promise.all([
+    prisma.card.findMany({
+      where: {
+        list: { board: taskBoardAccess(userId) },
+        createdAt: { lte: session.endedAt },
+        scheduledFor: { lte: key },
+        AND: [
+          { OR: [{ archivedAt: null }, { archivedAt: { gte: start } }] },
+          { OR: [{ completedAt: null }, { completedAt: { gte: start } }] },
+        ],
+      }, select: { estimatedMinutes: true },
+    }),
+    prisma.workSession.findMany({ where: { userId, startedAt: { gte: start, lt: end } } }),
+    getSettings(userId),
+  ]);
+  const estimated = cards.reduce((sum, card) => sum + (card.estimatedMinutes ?? 0), 0);
+  return { dayKey: key, plannedMinutes: estimated > 0 ? estimated : settings.dailyGoalMinutes, workedMs: sumSessions(sessions) };
+}
+
 export async function getWorkState(userId: string): Promise<WorkState> {
   const today = todayKey();
   const { start } = dayRange(today);
+  const cycleStart = await unfinishedWorkStart(prisma, userId);
+  // Uma pausa não esconde uma sessão anterior que ainda precisa ser encerrada.
+  const visibleStart = cycleStart && cycleStart < start ? cycleStart : start;
   // Uma sessão conta inteira no dia em que começou (não é dividida pela meia-noite).
   // A que está rodando aparece sempre, para o cronômetro continuar na tela.
   const sessions = await prisma.workSession.findMany({
-    where: { userId, OR: [{ startedAt: { gte: start } }, { endedAt: null }] },
+    where: { userId, OR: [{ startedAt: { gte: visibleStart } }, { endedAt: null }] },
     orderBy: { startedAt: "desc" },
   });
   const running = sessions.find((s) => !s.endedAt) ?? null;
@@ -1352,39 +1393,54 @@ export async function getWorkState(userId: string): Promise<WorkState> {
   };
 }
 
-async function setWorkEnded(userId: string, ended: boolean) {
-  await prisma.setting.upsert({
-    where: { userId_key: { userId, key: "workEndedDay" } },
-    create: { userId, key: "workEndedDay", value: ended ? todayKey() : "" },
-    update: { value: ended ? todayKey() : "" },
+/** Começar ou retomar: a pausa preserva a referência do ciclo ainda não encerrado. */
+export async function startWork(userId: string): Promise<WorkState> {
+  await prisma.$transaction(async (tx) => {
+    const cycleStart = await unfinishedWorkStart(tx, userId);
+    const running = await tx.workSession.findFirst({ where: { userId, endedAt: null } });
+    const session = running ?? await tx.workSession.create({ data: { userId } });
+    await rememberWorkStart(tx, userId, cycleStart ?? session.startedAt);
+    await tx.setting.upsert({
+      where: { userId_key: { userId, key: "workEndedDay" } },
+      create: { userId, key: "workEndedDay", value: "" }, update: { value: "" },
+    });
+  });
+  // Cobre também o primeiro acesso do dia pelo botão de iniciar, sem depender da manutenção.
+  await spawnRecurringCards(todayKey(), userId);
+  return getWorkState(userId);
+}
+
+/** Pausar fecha o segmento e o cronômetro de tarefa; só encerrar libera as recorrências adiadas. */
+export async function pauseWork(userId: string): Promise<WorkState> {
+  await closeWork(userId, false);
+  return getWorkState(userId);
+}
+
+async function closeWork(userId: string, ended: boolean) {
+  const now = new Date();
+  await prisma.$transaction(async (tx) => {
+    if (!ended) {
+      const cycleStart = await unfinishedWorkStart(tx, userId);
+      if (cycleStart) await rememberWorkStart(tx, userId, cycleStart);
+    }
+    await tx.workSession.updateMany({ where: { userId, endedAt: null }, data: { endedAt: now } });
+    await tx.taskSession.updateMany({
+      where: { endedAt: null, card: { list: { board: boardAccess(userId) } } }, data: { endedAt: now },
+    });
+    if (ended) {
+      await tx.setting.deleteMany({ where: { userId, key: WORK_CYCLE_KEY } });
+      await tx.setting.upsert({
+        where: { userId_key: { userId, key: "workEndedDay" } },
+        create: { userId, key: "workEndedDay", value: dayKey(now) }, update: { value: dayKey(now) },
+      });
+    }
   });
 }
 
-/** Começar ou retomar: abre uma sessão (e reabre o dia, se estava encerrado). */
-export async function startWork(userId: string): Promise<WorkState> {
-  const running = await prisma.workSession.findFirst({ where: { userId, endedAt: null } });
-  if (!running) await prisma.workSession.create({ data: { userId } });
-  await setWorkEnded(userId, false);
-  return getWorkState(userId);
-}
-
-/** Pausar: fecha a sessão em andamento (e o cronômetro de tarefa); o dia continua aberto. */
-export async function pauseWork(userId: string): Promise<WorkState> {
-  const now = new Date();
-  await prisma.$transaction([
-    prisma.workSession.updateMany({ where: { userId, endedAt: null }, data: { endedAt: now } }),
-    prisma.taskSession.updateMany({
-      where: { endedAt: null, card: { list: { board: boardAccess(userId) } } },
-      data: { endedAt: now },
-    }),
-  ]);
-  return getWorkState(userId);
-}
-
-/** Encerrar o dia: pausa e marca o dia como encerrado. */
+/** Encerrar libera imediatamente as tarefas do dia, inclusive no encerramento automático. */
 export async function endWork(userId: string): Promise<WorkState> {
-  await pauseWork(userId);
-  await setWorkEnded(userId, true);
+  await closeWork(userId, true);
+  await spawnRecurringCards(todayKey(), userId);
   return getWorkState(userId);
 }
 

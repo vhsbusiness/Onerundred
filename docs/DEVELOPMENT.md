@@ -47,6 +47,7 @@ npx next build && node node_modules/next/dist/bin/next start -p 3000   # build d
 ## 4. Verificação
 
 ```bash
+npm run test:recurring     # integração de recorrências/sessões em SQLite temporário vazio
 npm run test:mind          # testes puros do mapa mental, sem banco/rede
 npx tsc --noEmit -p .      # tipos: deve passar sem erros
 npx eslint src             # lint, incluindo regras do React Compiler: deve passar sem erros
@@ -91,3 +92,5 @@ Observações práticas do histórico:
 ### Histórico SQLite legado
 
 Em 04/11/2026, um teste de instalação vazia encontrou falha preexistente em `20261018222608_drop_areas`: tenta remover `area`, ausente após o conjunto anterior de migrations SQLite. Isso não foi corrigido reescrevendo migrations já existentes. O upgrade da nova migration do mapa foi validado isoladamente a partir do schema anterior em banco temporário. Não aplicar reset/baseline ao banco do usuário para contornar esse problema. O histórico Postgres não foi executado em banco real nesta etapa.
+
+O teste `test:recurring` cria seu próprio banco em uma pasta temporária e usa o backend real. Requer o client Prisma gerado para SQLite (fluxo local padrão); não usa o banco de desenvolvimento nem chama a IA. Cobre virada do dia, pausa/retomada, encerramento manual/automático, isolamento entre usuários e contexto histórico da análise.

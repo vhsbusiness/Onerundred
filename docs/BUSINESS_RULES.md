@@ -40,7 +40,8 @@ Roda em leituras relevantes, no máximo uma vez por minuto por instância e semp
 
 - Só uma `WorkSession` aberta por usuário; só um `TaskSession` aberto por usuário (iniciar outro fecha o anterior).
 - Começar/retomar: abre sessão e limpa `workEndedDay`. Pausar: fecha sessão e cronômetro de tarefa. Encerrar: pausa + `workEndedDay = hoje`.
-- Estado do dia: sessões iniciadas hoje (contam inteiras no dia em que começaram) mais a que estiver rodando.
+- Estado do dia: sessões iniciadas hoje (contam inteiras no dia em que começaram) mais a que estiver rodando. Um ciclo anterior ainda não encerrado mantém seus segmentos visíveis durante pausas/retomadas, para permitir encerrá-lo. `Setting.workCycleStartedAt` guarda o início do ciclo; encerrar remove essa referência.
+- A visão da IA da sessão usa a data de início para o tempo trabalhado e o planejamento; não usa o estado ao vivo de hoje. Tarefas agendadas para o dia seguinte ou criadas depois do encerramento não entram na meta dessa análise.
 - Planejado do dia = soma das estimativas das tarefas abertas de hoje; se 0, `dailyGoalMinutes` (padrão 480).
 - Iniciar o cronômetro de uma tarefa com a sessão pausada/encerrada reabre a sessão (`startTaskTimer`).
 - Marcar o último item do checklist como feito inicia a tarefa (`updateChecklistItem`).
@@ -59,7 +60,9 @@ Roda em leituras relevantes, no máximo uma vez por minuto por instância e semp
 ## 6. Tarefas contínuas (`RecurringTask`, `src/lib/repo.ts`, `/api/recorrentes`)
 
 - `weekdays` "0..6" (0 = domingo), padrão seg–sex. Ativa por padrão.
-- Criar já gera o card de hoje se hoje é um dos dias. A manutenção gera um card por dia (idempotente: `lastSpawnedKey` + verificação de card existente). Lista Amanhã agenda o card para amanhã.
+- Criar gera o card de hoje se hoje é um dos dias, **exceto quando há um ciclo de trabalho iniciado antes de hoje e ainda não encerrado**. A mesma trava vale para a manutenção; pausas e retomadas não liberam as tarefas do dia seguinte. Sem sessão anterior pendente, inclusive com sessão iniciada hoje, a geração continua normal.
+- Encerrar manualmente ou ao concluir a última tarefa libera imediatamente as recorrências do dia corrente, sem esperar o limite de um minuto da manutenção. Começar uma sessão também verifica as ocorrências. O fechamento de timers esquecidos (>16 h) libera a trava.
+- Adiar não consome o dia: `lastSpawnedKey` só avança na geração. Reserva do dia e criação do card ocorrem na mesma transação; chamadas repetidas/concorrentes não duplicam cards. Dias da semana e `active` continuam respeitados. Lista Amanhã agenda para amanhã. Não há preenchimento retroativo de dias perdidos nem remoção de cards já gerados antes desta correção.
 - Pausar (`active=false`) não apaga nada; parar (DELETE) apaga a regra e os cards existentes ficam (`recurringId` → null).
 
 ## 7. Metas › Projetos (`src/lib/projects.ts`)

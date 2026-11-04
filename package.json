@@ -12,7 +12,8 @@
     "db:migrate": "prisma migrate dev",
     "db:pg-migration": "node scripts/pg-migration.mjs",
     "db:studio": "prisma studio",
-    "test:mind": "node --test scripts/test-mind-map.cjs"
+    "test:mind": "node --test scripts/test-mind-map.cjs",
+    "test:recurring": "node --test scripts/test-recurring-work.cjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

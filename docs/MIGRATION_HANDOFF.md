@@ -155,3 +155,13 @@ Migration nova: `20261104023919_mind_text_size` (Postgres/SQLite) acrescenta `Mi
 Validações locais: cinco testes puros (`npm run test:mind`), TypeScript, ESLint e build. Navegador em 375 px com toque e 1440 px: arraste com título em edição/Auto, filhos acompanhando, redimensionamento pela alça, controles por toque, reconexão, busca, teclado, duplicação, exportação de arquivos reais e histórico. APIs cobrem itens fixados, ciclos, limites de tamanho, organização pontual, desfazer/refazer composto, rejeição de quem não tem acesso/tem só leitura e conflito com outro membro. Mil nós copiados/desfeitos/refeitos preservaram relações e dimensões. Regressão do lápis com resposta perdida/erro no GET/soltura fora do canvas passou; gestos esquerdo/direito e Enter/Tab também. Houve ajuste dos seletores do teste temporário de input para o editor textarea.
 
 Os testes usam SQLite e contas temporárias locais, sem chamadas de IA, sem alterar dados de produção. Os testes puros ficam versionados; os roteiros de navegador usados nesta sessão estão em `/private/tmp/onerundred-*` e podem desaparecer após reinício. Limites de exportação/cópia e diferenças em relação ao Miro estão descritos na referência. Nenhum push ou deploy nesta etapa.
+
+
+## Atualização local de 04/11/2026 — recorrências e sessão atravessando o dia
+
+- Ocorrências do novo dia aguardam o encerramento de um ciclo de trabalho iniciado antes de hoje. Pausar/retomar não libera; encerrar manual ou automaticamente libera imediatamente. Sem sessão anterior pendente, mantém a geração normal.
+- `Setting.workCycleStartedAt` persiste o início do ciclo sem mudar o schema. Sessões antigas usam o último segmento e `workEndedDay` como compatibilidade. A geração reserva `lastSpawnedKey` na mesma transação da criação para evitar duplicação.
+- A análise de sessão usa `getWorkSessionDayContext` com o dia de início, sem buscar a meta/tempo ao vivo do dia seguinte. Não reescreve análises já salvas nem exclui ocorrências existentes.
+- `npm run test:recurring`: nove testes com backend real e SQLite temporário vazio. Tipos, lint, build e fluxo no Chrome em 1440/375 px passaram. UI confirma pausa após recarregar e aparecimento imediato ao encerrar. Não houve chamada paga de IA nem teste de dados em produção.
+- Esta correção ficou local, sem push/deploy. O deploy autorizado anterior do mapa mental (`d2e3cb6`) foi confirmado no Railway: migration `20261104023919_mind_text_size` aplicada em Postgres, status SUCCESS, login HTTP 200 e chunk idêntico ao build local.
+- Aviso observado na CLI Railway: config-as-code (`railway.json`) segue funcionando até 01/12/2026; planejar migração para Infrastructure as Code separadamente, sem alterar a infraestrutura nesta correção.

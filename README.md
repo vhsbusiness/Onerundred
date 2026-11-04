@@ -30,7 +30,8 @@ source ~/.nvm/nvm.sh
   lista das tarefas de hoje com cronômetro e botão de concluir.
 - **Sessão de trabalho**: começar, pausar, retomar e encerrar o dia no dashboard. Compara o tempo
   trabalhado com a soma das estimativas das tarefas do dia (ou com a meta diária
-  das configurações) e dá um veredito.
+  das configurações) e dá um veredito. Tarefas recorrentes do novo dia aguardam o encerramento
+  se a sessão começou no dia anterior; pausas não liberam essas tarefas.
 - **Quadros** (`/quadros`): abre direto no último quadro visto (`?lista=1` mostra todos); vários quadros; cada quadro tem listas com prioridade
   (Alta / Média / Baixa) e tipo (Normal, Amanhã, Feitas). Tarefas têm prioridade,
   estimativa em minutos, descrição, dia agendado e cronômetro. Arrastar e soltar

@@ -136,7 +136,7 @@ Ids são `cuid()`. Exclusões em cascata seguem a hierarquia (apagar o usuário 
 - **User**: `email` e `username` únicos (minúsculas), `name`, `passwordHash` (scrypt, formato `scrypt$salt$hex`), `role` `user|admin`, `active`, `avatar` (data URL JPEG pequeno, ≤ 300 KB), `createdAt`, `lastLoginAt`.
 - **AuthSession**: `id` é o token do cookie `onerundred_session` (httpOnly, 30 dias), `expiresAt`, `userAgent`. Expiradas são apagadas na manutenção.
 - **AppSetting** (global, chave/valor): `allowRegistration` (padrão aberto), `aiMinDaysTasks` 3, `aiMinDaysWork` 3, `aiMinNightsSleep` 7, `aiMinDaysLeisure` 7.
-- **Setting** (por usuário, `@@id([userId,key])`): `dailyGoalMinutes` (padrão 480), `theme` (`dark|light`), `design` (`v2|v1`), `sleepTargetMinutes`, `bedtimeTarget` (HH:MM), `wakeTarget`, `leisureTargetMinutes`, `performanceTarget` (0–100), `lastBoardId`, `workEndedDay` (yyyy-MM-dd do dia encerrado), `workAutoEndedAt` (ISO de quando a sessão encerrou sozinha).
+- **Setting** (por usuário, `@@id([userId,key])`): `dailyGoalMinutes` (padrão 480), `theme` (`dark|light`), `design` (`v2|v1`), `sleepTargetMinutes`, `bedtimeTarget` (HH:MM), `wakeTarget`, `leisureTargetMinutes`, `performanceTarget` (0–100), `lastBoardId`, `workEndedDay` (yyyy-MM-dd do dia encerrado), `workAutoEndedAt` (ISO de quando a sessão encerrou sozinha), `workCycleStartedAt` (ISO do início do ciclo ainda não encerrado; preservado em pausas para adiar recorrências após a virada).
 
 ### Quadros e tarefas
 - **Board**: `userId` (dono), `name`, `position`. Primeiro quadro criado automaticamente: "Meu dia" com listas Hoje (today, prioridade Alta), Esta semana (normal), Amanhã (tomorrow), Feitas (done).

@@ -3,7 +3,7 @@ import { subDays } from "date-fns";
 import { prisma } from "./db";
 import { ApiError } from "./errors";
 import { PRIORITY_LABEL, asPriority, isOverdue } from "./metrics";
-import { taskBoardAccess, getDashboard, getDayReview, getSettings, getWorkState, reorderListCards } from "./repo";
+import { taskBoardAccess, getDashboard, getDayReview, getSettings, getWorkSessionDayContext, reorderListCards } from "./repo";
 import { computeStats, listSleep } from "./sleep";
 import { listProjects } from "./projects";
 import { computeLeisureStats, listLeisure } from "./leisure";
@@ -477,7 +477,7 @@ export async function analyzeWorkSession(userId: string, sessionId: string): Pro
       select: { id: true, title: true, priority: true, estimatedMinutes: true },
     }),
     prisma.workSession.findMany({ where: { userId, startedAt: { gte: startDay.start, lt: startDay.end } }, orderBy: { startedAt: "asc" } }),
-    getWorkState(userId),
+    getWorkSessionDayContext(userId, { startedAt: start, endedAt: end }),
   ]);
 
   const byCard = new Map<string, { title: string; minutes: number; done: boolean; priority: number; estimatedMinutes: number | null; list: string }>();
@@ -496,13 +496,13 @@ export async function analyzeWorkSession(userId: string, sessionId: string): Pro
     d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
   const payload = {
-    sessao: { inicio: fmt(start), fim: fmt(end), atravessouMeiaNoite: dayKey(start) !== dayKey(end), duracaoMin: durationMin, numeroNoDia: idx + 1, totalSessoesNoDia: daySessions.length },
+    sessao: { diaDeReferencia: work.dayKey, inicio: fmt(start), fim: fmt(end), atravessouMeiaNoite: dayKey(start) !== dayKey(end), duracaoMin: durationMin, numeroNoDia: idx + 1, totalSessoesNoDia: daySessions.length },
     minutosComCronometroDeTarefa: focusedMin,
     tarefasComCronometro: tasks.map((t) => ({ titulo: t.title, lista: t.list, minutos: t.minutes, prioridade: PRIORITY_LABEL[asPriority(t.priority)], estimativaMin: t.estimatedMinutes, concluida: t.done })),
     tarefasConcluidasNaSessao: completed.map((c) => ({ titulo: c.title, prioridade: PRIORITY_LABEL[asPriority(c.priority)], estimativaMin: c.estimatedMinutes })),
     outrasSessoesDoDia: daySessions.filter((s) => s.id !== session.id).map((s) => ({ inicio: fmt(s.startedAt), fim: s.endedAt ? fmt(s.endedAt) : "em andamento", duracaoMin: Math.round(((s.endedAt ?? new Date()).getTime() - s.startedAt.getTime()) / 60000) })),
     metaDoDiaMin: work.plannedMinutes,
-    trabalhadoNoDiaMin: Math.round(work.todayMs / 60000),
+    trabalhadoNoDiaMin: Math.round(work.workedMs / 60000),
   };
 
   const model = modelName();

@@ -166,7 +166,11 @@ export function Dashboard({ initialData, initialAi, initialPerf }: { initialData
     );
   }
 
-  const onWork = (w: WorkState) => setData((d) => (d ? { ...d, work: w } : d));
+  const onWork = (w: WorkState) => {
+    setData((d) => (d ? { ...d, work: w } : d));
+    // Encerrar uma sessão anterior pode liberar as tarefas recorrentes de hoje.
+    void load();
+  };
   const hintOf = (s: PeriodScore) =>
     `${s.doneCount} feitas · ${s.openCount - s.postponedCount} abertas${s.postponedCount > 0 ? ` · ${s.postponedCount} ${s.postponedCount === 1 ? "realocada" : "realocadas"}` : ""}`;
 

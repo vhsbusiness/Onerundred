@@ -52,6 +52,7 @@ src/components/sleep/, leisure/, reminders/, archive/, profile/, settings/, admi
 src/components/ui/                    Modal, ConfirmProvider (askConfirm/notify), Tip, DateField + CalendarPopover, TimeField
 
 src/lib/repo.ts           regra de negócio e acesso ao banco: quadros, listas, tarefas, cronômetros, sessão de trabalho, settings, dashboard, revisão do dia, arquivadas, tarefas contínuas, undo, manutenção diária
+src/lib/work-cycle.ts     início persistido do ciclo de trabalho, inclusive pausas, para adiar recorrências na virada
 src/lib/metrics.ts        funções puras: peso, nota do período, atraso, tom, veredito de trabalho
 src/lib/performance.ts    performance diária, constância, revisão de período
 src/lib/ai.ts             análise do dia, observação, visão de sessão, organizar lista, reset
