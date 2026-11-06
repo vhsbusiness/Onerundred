@@ -147,4 +147,109 @@ test('an existing occurrence is kept; starting today generates without waiting f
   await repo.startWork(fresh.userId); assert.equal(await count(next), 1);
 });
 
+
+// Editing work history shares the same real repository/cycle machinery.
+const iso = value => new Date(value).toISOString();
+async function closed(f, start = '2026-11-03T09:00:00-03:00', end = '2026-11-03T18:00:00-03:00') {
+  return prisma.workSession.create({ data: { userId: f.userId, startedAt: new Date(start), endedAt: new Date(end) } });
+}
+function correction(session, start, end) {
+  return { startedAt: iso(start ?? session.startedAt), endedAt: iso(end ?? session.endedAt),
+    previousStartedAt: iso(session.startedAt), previousEndedAt: iso(session.endedAt) };
+}
+const fails = status => err => err.status === status;
+
+test('correcting yesterday updates day totals and session analysis; task timers and AI history are retained', async () => {
+  const f = await fixture(); const session = await closed(f);
+  const card = await prisma.card.create({ data: { listId: f.list.id, title: 'Tarefa', scheduledFor: yesterday, position: 0 } });
+  const timer = await prisma.taskSession.create({ data: { cardId: card.id, startedAt: session.startedAt, endedAt: session.endedAt } });
+  await prisma.setting.create({ data: { userId: f.userId, key: 'workEndedDay', value: yesterday } });
+  const insight = await prisma.aiInsight.create({ data: { userId: f.userId, dayKey: yesterday, model: 'test-no-provider', content: '{}' } });
+  await repo.updateWorkSession(f.userId, session.id, correction(session, undefined, '2026-11-03T12:00:00-03:00'));
+  const review = await repo.getDayReview(f.userId, yesterday);
+  assert.equal(review.workMs, 3 * 3600000);
+  assert.equal(review.workSessions[0].ms, 3 * 3600000);
+  const saved = await prisma.workSession.findUnique({ where: { id: session.id } });
+  assert.equal((await repo.getWorkSessionDayContext(f.userId, saved)).workedMs, 3 * 3600000);
+  assert.deepEqual(await prisma.taskSession.findUnique({ where: { id: timer.id } }), timer);
+  assert.deepEqual(await prisma.aiInsight.findUnique({ where: { id: insight.id } }), insight);
+  assert.equal(await prisma.setting.count({ where: { userId: f.userId, key: 'workCycleStartedAt' } }), 0);
+  assert.equal(await prisma.workSession.count({ where: { userId: f.userId, endedAt: null } }), 0);
+});
+
+test('overnight correction stays on start day; moving the start date transfers its whole total', async () => {
+  const f = await fixture(); const session = await closed(f, '2026-11-03T22:00:00-03:00', '2026-11-04T00:55:00-03:00');
+  const saved = await repo.updateWorkSession(f.userId, session.id, correction(session, undefined, '2026-11-04T00:30:00-03:00'));
+  assert.equal((await repo.getDayReview(f.userId, yesterday)).workMs, 150 * 60000);
+  assert.equal((await repo.getDayReview(f.userId, today)).workMs, 0);
+  await repo.updateWorkSession(f.userId, session.id, correction(saved, '2026-11-04T00:05:00-03:00'));
+  assert.equal((await repo.getDayReview(f.userId, yesterday)).workMs, 0);
+  assert.equal((await repo.getDayReview(f.userId, today)).workMs, 25 * 60000);
+  assert.equal((await repo.getWorkState(f.userId)).todayMs, 25 * 60000);
+});
+
+test('work editing requires ownership and a paused/closed segment', async () => {
+  const f = await fixture(), other = await fixture(); const session = await closed(f);
+  const input = correction(session, undefined, '2026-11-03T12:00:00-03:00');
+  await assert.rejects(repo.updateWorkSession(other.userId, session.id, input), fails(404));
+  await assert.rejects(repo.updateWorkSession(f.userId, 'missing', input), fails(404));
+  const active = await running(f);
+  await assert.rejects(repo.updateWorkSession(f.userId, active.id, {
+    ...input, previousStartedAt: iso(active.startedAt), previousEndedAt: iso(new Date())
+  }), fails(409));
+  assert.equal((await prisma.workSession.findUnique({ where: { id: active.id } })).endedAt, null);
+  assert.deepEqual(await prisma.workSession.findUnique({ where: { id: session.id } }), session);
+});
+
+test('invalid, reversed, zero-duration and future hours are rejected without changing history', async () => {
+  const f = await fixture(); const session = await closed(f);
+  const input = correction(session);
+  for (const changed of [
+    { startedAt: 'not-a-date' }, { endedAt: '2026-02-31T12:00:00.000Z' },
+    { startedAt: input.endedAt }, { endedAt: input.startedAt },
+    { startedAt: iso('2026-11-03T19:00:00-03:00') },
+    { endedAt: iso(new Date(Date.now() + 60000)) }, { previousEndedAt: '' },
+  ]) await assert.rejects(repo.updateWorkSession(f.userId, session.id, { ...input, ...changed }), fails(400));
+  assert.deepEqual(await prisma.workSession.findUnique({ where: { id: session.id } }), session);
+});
+
+test('overlap is blocked for closed and running sessions, adjacent endpoints and other users are allowed', async () => {
+  const f = await fixture(), other = await fixture();
+  const session = await closed(f, '2026-11-03T09:00:00-03:00', '2026-11-03T12:00:00-03:00');
+  await closed(f, '2026-11-03T13:00:00-03:00', '2026-11-03T14:00:00-03:00');
+  await closed(other);
+  await assert.rejects(repo.updateWorkSession(f.userId, session.id, correction(session, undefined, '2026-11-03T13:01:00-03:00')), fails(400));
+  const adjacent = await repo.updateWorkSession(f.userId, session.id, correction(session, undefined, '2026-11-03T13:00:00-03:00'));
+  const active = await running(f, new Date('2026-11-03T08:00:00-03:00'));
+  await assert.rejects(repo.updateWorkSession(f.userId, session.id, correction(adjacent, '2026-11-03T08:30:00-03:00')), fails(400));
+  assert.equal((await prisma.workSession.findUnique({ where: { id: active.id } })).endedAt, null);
+});
+
+test('retries are idempotent; an outdated editor cannot overwrite a newer correction', async () => {
+  const f = await fixture(); const session = await closed(f);
+  const first = correction(session, undefined, '2026-11-03T12:00:00-03:00');
+  const saved = await repo.updateWorkSession(f.userId, session.id, first);
+  assert.deepEqual(await repo.updateWorkSession(f.userId, session.id, first), saved);
+  await assert.rejects(repo.updateWorkSession(f.userId, session.id, correction(session, undefined, '2026-11-03T13:00:00-03:00')), fails(409));
+  assert.equal((await prisma.workSession.findUnique({ where: { id: session.id } })).endedAt.toISOString(), first.endedAt);
+});
+
+test('editing a paused overnight cycle preserves its anchor, remaining segments and recurring hold', async () => {
+  const f = await fixture(); const first = await running(f); const r = await recurrence(f);
+  await repo.pauseWork(f.userId);
+  const segment = await prisma.workSession.findUnique({ where: { id: first.id } });
+  await repo.updateWorkSession(f.userId, first.id, correction(segment, '2026-11-03T21:00:00-03:00', '2026-11-04T00:30:00-03:00'));
+  await repo.startWork(f.userId);
+  const active = (await repo.getWorkState(f.userId)).running;
+  const corrected = await prisma.workSession.findUnique({ where: { id: first.id } });
+  await repo.updateWorkSession(f.userId, first.id, correction(corrected, '2026-11-03T20:00:00-03:00'));
+  const state = await repo.getWorkState(f.userId);
+  assert.equal(state.running.id, active.id);
+  assert(state.sessions.some(s => s.id === first.id));
+  const anchor = await prisma.setting.findUnique({ where: { userId_key: { userId: f.userId, key: 'workCycleStartedAt' } } });
+  assert.equal(anchor.value, iso('2026-11-03T20:00:00-03:00'));
+  await maintain(); assert.equal(await count(r), 0);
+  await repo.endWork(f.userId); assert.equal(await count(r), 1);
+});
+
 after(async () => { global.Date = RealDate; await prisma.$disconnect(); fs.rmSync(dir, { recursive: true, force: true }); });

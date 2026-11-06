@@ -47,7 +47,7 @@ npx next build && node node_modules/next/dist/bin/next start -p 3000   # build d
 ## 4. Verificação
 
 ```bash
-npm run test:recurring     # integração de recorrências/sessões em SQLite temporário vazio
+npm run test:recurring     # integração de recorrências/sessões e edição do histórico em SQLite temporário vazio
 npm run test:mind          # testes puros do mapa mental, sem banco/rede
 npx tsc --noEmit -p .      # tipos: deve passar sem erros
 npx eslint src             # lint, incluindo regras do React Compiler: deve passar sem erros

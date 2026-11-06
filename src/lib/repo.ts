@@ -1,3 +1,4 @@
+import { Prisma } from "@/generated/prisma/client";
 import { WORK_CYCLE_KEY, unfinishedWorkStart, rememberWorkStart } from "./work-cycle";
 import { parseLabels, readLabels } from "./labels";
 import { subDays } from "date-fns";
@@ -1475,6 +1476,69 @@ export async function endWork(userId: string): Promise<WorkState> {
 
 /** Compatibilidade: "stop" equivale a pausar. */
 export const stopWork = pauseWork;
+
+/** Corrige um segmento encerrado, com proteção contra edições simultâneas. */
+export async function updateWorkSession(userId: string, id: string, input: {
+  startedAt: string;
+  endedAt: string;
+  previousStartedAt: string;
+  previousEndedAt: string;
+}): Promise<SessionDTO> {
+  const values = [input.startedAt, input.endedAt, input.previousStartedAt, input.previousEndedAt];
+  const dates = values.map(value => new Date(value));
+  if (dates.some((date, index) => !Number.isFinite(date.getTime()) || date.toISOString() !== values[index])) {
+    throw new ApiError(400, "Informe datas e horários válidos");
+  }
+  const [startedAt, endedAt, previousStart, previousEnd] = dates;
+  if (endedAt <= startedAt) throw new ApiError(400, "O término deve ser depois do início. Confira também as datas.");
+  if (endedAt > new Date()) throw new ApiError(400, "O horário de término ainda não chegou");
+
+  try {
+    return await prisma.$transaction(async tx => {
+      const session = await tx.workSession.findFirst({ where: { id, userId } });
+      if (!session) throw new ApiError(404, "Sessão não encontrada");
+      if (!session.endedAt) throw new ApiError(409, "Pause a sessão antes de editar os horários.");
+      // Uma repetição da mesma gravação já confirmada é segura.
+      if (session.startedAt.getTime() === startedAt.getTime() && session.endedAt.getTime() === endedAt.getTime()) {
+        return serializeSession(session);
+      }
+      if (session.startedAt.getTime() !== previousStart.getTime() || session.endedAt.getTime() !== previousEnd.getTime()) {
+        throw new ApiError(409, "Esta sessão foi alterada em outra aba. Atualize a página e tente novamente.");
+      }
+      const overlap = await tx.workSession.findFirst({
+        where: {
+          userId, id: { not: id }, startedAt: { lt: endedAt },
+          OR: [{ endedAt: null }, { endedAt: { gt: startedAt } }],
+        },
+        select: { id: true },
+      });
+      if (overlap) throw new ApiError(400, "Esse horário coincide com outra sessão de trabalho. Confira o início e o término.");
+      const cycleStart = await unfinishedWorkStart(tx, userId);
+      const updated = await tx.workSession.updateMany({
+        where: { id, userId, startedAt: previousStart, endedAt: previousEnd },
+        data: { startedAt, endedAt },
+      });
+      if (!updated.count) throw new ApiError(409, "Esta sessão foi alterada. Atualize a página e tente novamente.");
+
+      // Corrigir o primeiro segmento de um ciclo pausado mantém seus demais segmentos visíveis.
+      if (cycleStart && session.startedAt >= cycleStart) {
+        const others = await tx.workSession.findFirst({
+          where: { userId, id: { not: id }, startedAt: { gte: cycleStart } },
+          orderBy: { startedAt: "asc" },
+          select: { startedAt: true },
+        });
+        const anchor = others && others.startedAt < startedAt ? others.startedAt : startedAt;
+        await rememberWorkStart(tx, userId, anchor);
+      }
+      return serializeSession({ ...session, startedAt, endedAt });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034") {
+      throw new ApiError(409, "Outra alteração aconteceu ao mesmo tempo. Atualize a página e tente novamente.");
+    }
+    throw error;
+  }
+}
 
 export async function deleteWorkSession(userId: string, id: string) {
   const session = await prisma.workSession.findFirst({ where: { id, userId } });

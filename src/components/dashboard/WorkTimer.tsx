@@ -1,11 +1,12 @@
 "use client";
 
 import { askConfirm } from "@/components/ui/ConfirmProvider";
-import { Lightbulb, Pause, Play, Sparkles, Square, Trash2 } from "lucide-react";
+import { Lightbulb, Pause, Pencil, Play, Sparkles, Square, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { elapsedSince, http, notifyWorkChanged, TONE_BAR, TONE_PILL, useNow } from "@/lib/client";
 import { formatClock, formatDuration } from "@/lib/time";
 import type { WorkSessionInsightDTO, WorkState } from "@/lib/types";
+import { WorkSessionEditor } from "./WorkSessionEditor";
 import { Modal } from "@/components/ui/Modal";
 
 function timeLabel(iso: string) {
@@ -20,6 +21,7 @@ function endLabel(endIso: string, startIso: string) {
 
 export function WorkTimer({ work, onChange }: { work: WorkState; onChange: (w: WorkState) => void }) {
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState<{ id: string; startedAt: string; endedAt: string } | null>(null);
   const running = Boolean(work.running);
   const now = useNow(running);
   // Soma as sessões encerradas e, se houver uma em andamento, o tempo desde o início dela.
@@ -188,21 +190,31 @@ export function WorkTimer({ work, onChange }: { work: WorkState; onChange: (w: W
         {work.sessions.length === 0 ? (
           <p className="text-sm text-ink-3">Nenhuma sessão ainda. Aperte o botão para começar.</p>
         ) : (
-          <ul className="space-y-1.5">
-            {work.sessions.slice(0, 6).map((s) => {
+          <ul className="max-h-80 space-y-1.5 overflow-y-auto">
+            {work.sessions.map((s) => {
               const ms = s.endedAt
                 ? new Date(s.endedAt).getTime() - new Date(s.startedAt).getTime()
                 : elapsedSince(s.startedAt, now);
               return (
                 <li
                   key={s.id}
-                  className="group flex items-center justify-between rounded-lg border border-line bg-well px-3 py-1.5 text-sm"
+                  className="group flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg border border-line bg-well px-3 py-1.5 text-sm"
                 >
                   <span className="text-ink-2 tabular-nums">
                     {timeLabel(s.startedAt)} – {s.endedAt ? endLabel(s.endedAt, s.startedAt) : "agora"}
                   </span>
                   <span className="flex items-center gap-2">
                     <span className="tabular-nums">{formatDuration(ms)}</span>
+                    <button
+                      type="button"
+                      onClick={() => { if (s.endedAt) setEditing({ ...s, endedAt: s.endedAt }); }}
+                      disabled={!s.endedAt}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink-3 transition hover:bg-fill-2 hover:text-ink disabled:opacity-30"
+                      aria-label="Editar sessão"
+                      title={s.endedAt ? "Editar sessão" : "Pause a sessão para editar os horários"}
+                    >
+                      <Pencil size={14} />
+                    </button>
                     {s.endedAt && (
                       <button
                         type="button"
@@ -232,6 +244,8 @@ export function WorkTimer({ work, onChange }: { work: WorkState; onChange: (w: W
         )}
       </div>
     
+      {editing && <WorkSessionEditor key={editing.id} session={editing} onClose={() => setEditing(null)}
+        onSaved={next => { insightCache.current.clear(); onChange(next); }} />}
       <Modal
         open={insightFor !== null}
         onClose={() => setInsightFor(null)}

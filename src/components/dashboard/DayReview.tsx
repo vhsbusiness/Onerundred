@@ -1,7 +1,10 @@
 "use client";
 
-import { CalendarClock, CheckCircle2, Clock, Gamepad2 } from "lucide-react";
+import { CalendarClock, CheckCircle2, Clock, Gamepad2, Pencil } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { WorkSessionEditor } from "./WorkSessionEditor";
 import { formatPercent, priorityUi, TONE_PILL, TONE_TEXT } from "@/lib/client";
 import { scoreTone } from "@/lib/metrics";
 import { formatDayLong, formatDuration } from "@/lib/time";
@@ -23,8 +26,11 @@ function endLabel(endIso: string, startIso: string) {
 /** Revisão de um dia passado: nota, tarefas feitas, sessões de trabalho e lazer. */
 export function DayReview({ data, initialAi, performance }: { data: DayReviewDTO; initialAi?: AiStatusDTO; performance: PerformanceDTO }) {
   const tone = scoreTone(data.score.score);
+  const router = useRouter();
+  const [editing, setEditing] = useState<DayReviewDTO["workSessions"][number] | null>(null);
   return (
     <div className="space-y-4">
+      {editing && <WorkSessionEditor key={editing.id} session={editing} onClose={() => setEditing(null)} onSaved={() => router.refresh()} />}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Revisão do dia</h1>
@@ -149,11 +155,17 @@ export function DayReview({ data, initialAi, performance }: { data: DayReviewDTO
           ) : (
             <ul className="mt-3 space-y-1.5">
               {data.workSessions.map((s) => (
-                <li key={s.id} className="flex items-center justify-between rounded-lg border border-line bg-well px-3 py-1.5 text-sm">
+                <li key={s.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg border border-line bg-well px-3 py-1.5 text-sm">
                   <span className="text-ink-2 tabular-nums">
                     {timeLabel(s.startedAt)} – {endLabel(s.endedAt, s.startedAt)}
                   </span>
-                  <span className="tabular-nums">{formatDuration(s.ms)}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="tabular-nums">{formatDuration(s.ms)}</span>
+                    <button type="button" onClick={() => setEditing(s)} aria-label="Editar sessão" title="Editar sessão"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-3 transition hover:bg-fill-2 hover:text-ink">
+                      <Pencil size={14} />
+                    </button>
+                  </span>
                 </li>
               ))}
             </ul>
