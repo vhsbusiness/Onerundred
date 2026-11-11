@@ -3,7 +3,8 @@
 import { Check, Pause, Play, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { isOverdue } from "@/lib/metrics";
-import { elapsedSince, http, priorityUi, useNow } from "@/lib/client";
+import { taskTimerLabel, taskTimerTone } from "@/lib/task-timer-tone";
+import { elapsedSince, http, notifyWorkChanged, priorityUi, useNow } from "@/lib/client";
 import { formatDuration, minutesToLabel } from "@/lib/time";
 import type { CardDTO, TodayCard } from "@/lib/types";
 
@@ -21,11 +22,13 @@ export function TodayTasks({
 
   async function timer(card: CardDTO) {
     await http.post(`/api/cards/${card.id}/timer`, { action: card.runningSince ? "stop" : "start" });
+    notifyWorkChanged();
     onChanged();
   }
 
   async function toggleDone(card: CardDTO) {
     await http.patch(`/api/cards/${card.id}`, { completed: !card.completedAt });
+    notifyWorkChanged();
     onChanged();
   }
 
@@ -48,13 +51,15 @@ export function TodayTasks({
         const done = Boolean(c.completedAt);
         const running = Boolean(c.runningSince);
         const spent = c.spentMs + (running ? elapsedSince(c.runningSince, now) : 0);
+        const tone = taskTimerTone(spent, c.estimatedMinutes);
         const overdue = isOverdue(c, todayKey);
         const postponed = !done && c.postponedDays.includes(todayKey);
         return (
           <li
             key={c.id}
+            data-task-timer={running ? tone : undefined}
             className={`group flex items-center gap-3 rounded-xl border border-line px-3 py-2 transition ${
-              running ? "bg-green/[0.06] border-green/30" : "bg-well hover:bg-fill"
+              running ? "" : "bg-well hover:bg-fill"
             } ${done ? "opacity-55" : ""}`}
           >
             <button
@@ -81,8 +86,8 @@ export function TodayTasks({
               <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-ink-3">
                 <span>{c.listName}</span>
                 {c.estimatedMinutes ? <span>· est. {minutesToLabel(c.estimatedMinutes)}</span> : null}
-                {spent > 0 ? (
-                  <span className={running ? "text-green" : ""}>· {formatDuration(spent)}</span>
+                {running || spent > 0 ? (
+                  <span className={running ? "task-timer-value" : ""} title={running ? taskTimerLabel[tone] : undefined}>· {formatDuration(spent)}</span>
                 ) : null}
                 {overdue ? <span className="text-red">· atrasada</span> : null}
                 {postponed ? <span className="text-orange">· realocada</span> : null}
@@ -93,7 +98,7 @@ export function TodayTasks({
               <button
                 type="button"
                 onClick={() => timer(c)}
-                className={`btn h-8 w-8 shrink-0 p-0 ${running ? "pill-green border-green/40" : "md:opacity-0 md:group-hover:opacity-100"}`}
+                className={`btn h-8 w-8 shrink-0 p-0 ${running ? "task-timer-control" : "md:opacity-0 md:group-hover:opacity-100"}`}
                 aria-label={running ? "Pausar cronômetro" : "Iniciar cronômetro"}
                 title={running ? "Pausar" : "Iniciar"}
               >

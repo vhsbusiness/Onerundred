@@ -161,7 +161,7 @@ export interface TodayCard extends CardDTO {
 
 export interface WorkState {
   todayMs: number;
-  running: { id: string; startedAt: string } | null;
+  running: { id: string; startedAt: string; previousCycleMs: number } | null;
   /** Dia de trabalho encerrado pelo usuário (pode reabrir). */
   ended: boolean;
   sessions: WorkSessionDTO[];

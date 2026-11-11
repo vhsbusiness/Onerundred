@@ -170,6 +170,8 @@ export function WorkTimer({ work, onChange }: { work: WorkState; onChange: (w: W
         </div>
       </div>
 
+      <p className="mt-3 text-xs text-ink-2">Aviso sonoro a cada 1h30 de trabalho.</p>
+
       <div className="mt-5">
         <div className="mb-1.5 flex justify-between text-xs text-ink-2">
           <span>Meta de hoje</span>

@@ -2,7 +2,7 @@ import { prisma } from "./db";
 import { ApiError } from "./errors";
 import { dayKey, keyToDate, todayKey } from "./time";
 import { isWorkout } from "./workouts";
-import type { Exercise, TrainingDetail, TrainingLog, TrainingSummary } from "./training-types";
+import type { DayPlan, Exercise, TrainingDetail, TrainingLog, TrainingSummary } from "./training-types";
 
 function invalid(message: string): never { throw new ApiError(400, message); }
 function object(value: unknown): Record<string, unknown> {
@@ -27,7 +27,14 @@ function exerciseList(raw: unknown): Exercise[] {
     const e = object(item);
     const weightKg = e.weightKg ?? null;
     if (weightKg !== null && (typeof weightKg !== "number" || !Number.isFinite(weightKg) || weightKg < 0)) invalid("Carga inválida.");
-    return { name: nameOf(e.name), sets: positiveInt(e.sets, "Número de séries"), reps: positiveInt(e.reps, "Número de repetições"), weightKg };
+    const reps = typeof e.reps === "string" ? e.reps.trim() : e.reps;
+    if (typeof reps !== "number" && typeof reps !== "string") invalid("Repetições inválidas.");
+    if (typeof reps === "string" && (!reps || reps.length > 80 || /^[-+.]\d/.test(reps))) invalid("Informe as repetições ou o tempo da série.");
+    const substitute = e.substitute == null ? "" : e.substitute;
+    if (typeof substitute !== "string" || substitute.length > 180) invalid("Exercício substituto inválido.");
+    return { name: nameOf(e.name), sets: positiveInt(e.sets, "Número de séries"),
+      reps: typeof reps === "string" && !/^\d+$/.test(reps) ? reps : positiveInt(Number(reps), "Número de repetições"), weightKg,
+      ...(substitute.trim() ? { substitute: substitute.trim() } : {}) };
   });
 }
 const counts = { _count: { select: { workouts: true } } } as const;
@@ -73,19 +80,25 @@ export async function removeTraining(userId: string, id: string) {
   const result = await prisma.project.deleteMany({ where: owned(userId, id) });
   if (!result.count) throw new ApiError(404, "Projeto de treino não encontrado.");
 }
-async function requireActive(userId: string, id: string) {
+export async function requireActiveTraining(userId: string, id: string) {
   const p = await prisma.project.findFirst({ where: owned(userId, id), select: { archivedAt: true } });
   if (!p) throw new ApiError(404, "Projeto de treino não encontrado.");
   if (p.archivedAt) throw new ApiError(409, "Reative o projeto para registrar treinos.");
 }
 export async function saveTrainingDay(userId: string, projectId: string, raw: unknown) {
   const input = object(raw);
-  const weekday = input.weekday;
-  if (typeof weekday !== "number" || !Number.isInteger(weekday) || weekday < 0 || weekday > 6) invalid("Dia da semana inválido.");
-  const exercises = exerciseList(input.exercises);
-  await requireActive(userId, projectId);
-  await prisma.workoutPlan.upsert({ where: { projectId_weekday: { projectId, weekday } },
-    create: { projectId, weekday, exercises }, update: { exercises } });
+  const days: unknown[] = Array.isArray(input.days) ? input.days : [input];
+  if (!days.length || days.length > 7) invalid("Selecione de um a sete dias.");
+  const plans: DayPlan[] = days.map(rawDay => {
+    const d = object(rawDay);
+    if (typeof d.weekday !== "number" || !Number.isInteger(d.weekday) || d.weekday < 0 || d.weekday > 6) invalid("Dia da semana inválido.");
+    return { weekday: d.weekday, exercises: exerciseList(d.exercises) };
+  });
+  if (new Set(plans.map(d => d.weekday)).size !== plans.length) invalid("Cada dia deve aparecer apenas uma vez.");
+  await requireActiveTraining(userId, projectId);
+  await prisma.$transaction(plans.map(({ weekday, exercises }) => prisma.workoutPlan.upsert({
+    where: { projectId_weekday: { projectId, weekday } }, create: { projectId, weekday, exercises }, update: { exercises },
+  })));
 }
 export async function recordTraining(userId: string, projectId: string, raw: unknown) {
   const input = object(raw);
@@ -99,7 +112,7 @@ export async function recordTraining(userId: string, projectId: string, raw: unk
   const distanceMeters = distance ? positiveInt(input.distanceMeters, "Distância") : null;
   const exercises = sport === "strength" ? exerciseList(input.exercises) : [];
   if (sport === "strength" && !exercises.length) invalid("Adicione pelo menos um exercício.");
-  await requireActive(userId, projectId);
+  await requireActiveTraining(userId, projectId);
   // A mesma tentativa reenviada após uma falha de rede não soma duas sessões.
   const row = await prisma.workoutLog.upsert({ where: { projectId_id: { projectId, id } }, update: {},
     create: { id, projectId, sport, dayKey: date, durationSeconds, distanceMeters, exercises } });

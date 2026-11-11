@@ -41,6 +41,7 @@
 
   /* Acentos pastel (UI) */
   --color-orange: #f5b06e;
+  --color-timer-yellow: #eac45f;
   --color-green: #8be3a6;
   --color-blue: #7fb7f5;
   --color-red: #f08a8a;
@@ -98,6 +99,7 @@
   --color-on-ink: #ffffff;
 
   --color-orange: #c7761f;
+  --color-timer-yellow: #826200;
   --color-green: #2a9a5c;
   --color-blue: #2f74c4;
   --color-red: #d04f4f;
@@ -925,4 +927,32 @@ body {
 :root[data-rail="expanded"] .rail-favorites-chevron { right: 12px; top: 50%; bottom: auto; translate: 0 -50%; }
 @media (prefers-reduced-motion: reduce) {
   .rail-board-favorites, .rail-favorites-chevron { transition: none; }
+}
+
+/* O estado do cronômetro muda sem alterar a cor da prioridade da tarefa. */
+:root [data-task-timer] {
+  --timer-accent: var(--color-green);
+  background-color: color-mix(in srgb, var(--timer-accent) 8%, var(--color-list));
+}
+:root [data-task-timer="warning"] { --timer-accent: var(--color-timer-yellow); }
+:root [data-task-timer="critical"] { --timer-accent: var(--color-red); }
+:root [data-task-timer] .task-timer-value,
+:root [data-task-timer] .btn.task-timer-control { color: var(--timer-accent); }
+:root [data-task-timer].task-card,
+:root [data-task-timer],
+:root [data-task-timer] .btn.task-timer-control {
+  border-color: color-mix(in srgb, var(--timer-accent) 35%, var(--color-line));
+}
+:root [data-task-timer] .btn.task-timer-control {
+  --control-glass: color-mix(in srgb, var(--timer-accent) 13%, var(--color-surface));
+  background-color: var(--control-glass);
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root [data-task-timer], :root [data-task-timer] .task-timer-value,
+  :root [data-task-timer] .btn.task-timer-control {
+    transition: color 450ms ease, border-color 450ms ease, background-color 450ms ease;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root [data-task-timer], :root [data-task-timer] .btn.task-timer-control { transition: none; }
 }

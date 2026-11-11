@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { formatDayLong, todayKey } from "@/lib/time";
 import { isTheme, type Theme, isDesign } from "@/lib/theme";
 import { applyDesign, applyTheme, currentDesign, currentTheme } from "@/lib/theme-client";
+import { watchWorkClock } from "@/lib/work-chime";
 import type { MeDTO } from "@/lib/types";
 
 const tabs = [
@@ -66,32 +67,7 @@ function Clock() {
   );
 }
 
-function WorkIndicator() {
-  const [running, setRunning] = useState(false);
-
-  useEffect(() => {
-    let alive = true;
-    const load = async () => {
-      try {
-        const res = await fetch("/api/work", { cache: "no-store" });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (alive) setRunning(Boolean(data.running));
-      } catch {
-        /* ignora */
-      }
-    };
-    load();
-    const id = setInterval(load, 20000);
-    const onChange = () => load();
-    window.addEventListener("work-changed", onChange);
-    return () => {
-      alive = false;
-      clearInterval(id);
-      window.removeEventListener("work-changed", onChange);
-    };
-  }, []);
-
+function WorkIndicator({ running }: { running: boolean }) {
   if (!running) return null;
   return (
     <span className="pill pill-green">
@@ -328,6 +304,12 @@ export function Nav() {
   const pathname = usePathname();
   const [me, setMe] = useState<MeDTO | null>(meCache ?? null);
 
+  const [running, setRunning] = useState(false);
+  const enabled = pathname !== "/login";
+  useEffect(() => {
+    if (enabled) return watchWorkClock(setRunning);
+  }, [enabled]);
+
   useEffect(() => {
     if (pathname === "/login") return;
     const load = () =>
@@ -363,7 +345,7 @@ export function Nav() {
       <div className="flex items-end justify-between gap-3">
         <ClockV2 />
         <div className="flex shrink-0 items-center gap-2">
-          <WorkIndicator />
+          <WorkIndicator running={running} />
           <span className="md:hidden">{me && <InviteBell />}</span>
           <span className="md:hidden">{me && <UserMenu me={me} />}</span>
         </div>
@@ -398,7 +380,7 @@ export function Nav() {
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-2 lg:gap-3">
-          <WorkIndicator />
+          <WorkIndicator running={running} />
           <Clock />
           {me && <InviteBell />}
           {me && <UserMenu me={me} />}

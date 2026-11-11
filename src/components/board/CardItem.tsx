@@ -3,6 +3,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { AlignLeft, ListChecks, Pause, Play, Repeat } from "lucide-react";
+import { taskTimerLabel, taskTimerTone } from "@/lib/task-timer-tone";
 import { elapsedSince, priorityUi } from "@/lib/client";
 import { isOverdue } from "@/lib/metrics";
 import { imageUrl } from "@/lib/images";
@@ -36,6 +37,7 @@ export function CardBody({
   const running = Boolean(card.runningSince);
   const done = !organization && Boolean(card.completedAt);
   const spent = card.spentMs + (running ? elapsedSince(card.runningSince, now) : 0);
+  const tone = taskTimerTone(spent, card.estimatedMinutes);
   const overdue = !organization && isOverdue({ ...card, listPriority, listKind }, todayKey);
   const future = !organization && !done && card.scheduledFor > todayKey;
   // Saiu da lista Hoje sem ser feita (ex.: jogada para Amanhã): marcada como realocada.
@@ -43,9 +45,10 @@ export function CardBody({
 
   return (
     <div
+      data-task-timer={running && !organization ? tone : undefined}
       className={`task-card group relative rounded-xl border px-3 py-2.5 transition ${
         running
-          ? "border-green/35 bg-green/[0.07]"
+          ? ""
           : "border-line bg-card hover:border-line-3 hover:bg-card-hover"
       } ${done ? "opacity-60" : ""} ${dragging ? "rotate-[1.5deg] shadow-2xl" : ""}`}
       onClick={onOpen}
@@ -85,8 +88,8 @@ export function CardBody({
             ) : null}
             {card.imageIds.length > 1 ? <span>{card.imageIds.length} imagens</span> : null}
             {!organization && card.estimatedMinutes ? <span>est. {minutesToLabel(card.estimatedMinutes)}</span> : null}
-            {!organization && spent > 0 ? (
-              <span className={running ? "font-medium text-green" : ""}>{formatDuration(spent)}</span>
+            {!organization && (running || spent > 0) ? (
+              <span className={running ? "task-timer-value font-medium" : ""} title={running ? taskTimerLabel[tone] : undefined}>{formatDuration(spent)}</span>
             ) : null}
             {overdue ? <span className="pill pill-red px-1.5 py-0 text-[10px]">atrasada</span> : null}
             {postponed ? <span className="pill pill-orange px-1.5 py-0 text-[10px]">realocada</span> : null}
@@ -106,7 +109,7 @@ export function CardBody({
               onTimer();
             }}
             className={`btn h-7 w-7 shrink-0 p-0 ${
-              running ? "pill-green border-green/40" : "md:opacity-0 md:group-hover:opacity-100"
+              running ? "task-timer-control" : "md:opacity-0 md:group-hover:opacity-100"
             }`}
             aria-label={running ? "Pausar cronômetro" : "Iniciar cronômetro"}
             title={running ? "Pausar" : "Iniciar"}

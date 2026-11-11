@@ -7,6 +7,7 @@ import { DescriptionEditor } from "@/components/ui/DescriptionEditor";
 import { TimeField } from "@/components/ui/TimeField";
 import { todayKey } from "@/lib/time";
 import { useEffect, useRef, useState } from "react";
+import { taskTimerLabel, taskTimerTone } from "@/lib/task-timer-tone";
 import { elapsedSince, http, notifyWorkChanged, priorityUi, useNow } from "@/lib/client";
 import { imageUrl, imagesFromClipboard, toImageDataUrl } from "@/lib/images";
 import { formatClock, formatDuration } from "@/lib/time";
@@ -259,6 +260,7 @@ export function CardModal({
 
   const done = Boolean(card.completedAt);
   const spent = card.spentMs + (running ? elapsedSince(card.runningSince, now) : 0);
+  const tone = taskTimerTone(spent, card.estimatedMinutes);
   const listOf = lists.find((l) => l.id === card.listId);
 
   async function patch(data: Record<string, unknown>) {
@@ -620,19 +622,20 @@ export function CardModal({
 
         <aside className="space-y-4">
           {!organization && <div
+            data-task-timer={running ? tone : undefined}
             className={`rounded-2xl border p-4 ${
-              running ? "border-green/35 bg-green/[0.07]" : "border-line bg-well"
+              running ? "" : "border-line bg-well"
             }`}
           >
             <div className="text-xs font-medium uppercase tracking-wide text-ink-3">Tempo na tarefa</div>
-            <div className="mt-1 font-mono text-[1.7rem] font-semibold leading-none tabular-nums">
+            <div className="task-timer-value mt-1 font-mono text-[1.7rem] font-semibold leading-none tabular-nums">
               {formatClock(spent)}
             </div>
             {card.estimatedMinutes ? (
               <div className="mt-1 text-xs text-ink-3">
                 estimativa {formatDuration(card.estimatedMinutes * 60000)}
-                {spent > card.estimatedMinutes * 60000 ? (
-                  <span className="text-orange"> · passou</span>
+                {tone !== "normal" ? (
+                  <span className={running ? "task-timer-value" : ""}> · {taskTimerLabel[tone]}</span>
                 ) : null}
               </div>
             ) : null}
@@ -640,7 +643,7 @@ export function CardModal({
               <button
                 type="button"
                 onClick={timer}
-                className={`btn mt-3 w-full ${running ? "pill-red border-red/40" : "btn-primary"}`}
+                className={`btn mt-3 w-full ${running ? "task-timer-control" : "btn-primary"}`}
               >
                 {running ? (
                   <>

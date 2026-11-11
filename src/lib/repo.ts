@@ -1425,7 +1425,11 @@ export async function getWorkState(userId: string): Promise<WorkState> {
 
   return {
     todayMs,
-    running: running ? { id: running.id, startedAt: running.startedAt.toISOString() } : null,
+    running: running ? {
+      id: running.id,
+      startedAt: running.startedAt.toISOString(),
+      previousCycleMs: totalWorkedMs(sessions.filter(s => s.endedAt && cycleStart && s.startedAt >= cycleStart)),
+    } : null,
     ended: !running && endedRow?.value === today,
     sessions: sessions.map(serializeWorkSession),
     plannedMinutes,

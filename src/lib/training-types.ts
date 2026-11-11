@@ -1,6 +1,6 @@
 import type { Workout } from "./workouts";
 
-export type Exercise = { name: string; sets: number; reps: number; weightKg: number | null };
+export type Exercise = { name: string; sets: number; reps: number | string; weightKg: number | null; substitute?: string };
 export type DayPlan = { weekday: number; exercises: Exercise[] };
 export type TrainingLog = {
   id: string; dayKey: string; sport: Workout; durationSeconds: number | null;
@@ -31,3 +31,8 @@ export function parseElapsed(input: string) {
 export function paceSeconds(seconds: number, meters: number) {
   return Math.round(seconds * 1000 / meters);
 }
+
+/** -1 indica que a ficha não especificou o dia; o usuário escolhe na revisão. */
+export type ImportedDay = DayPlan & { label: string };
+export const PLAN_FILE_LIMIT = 8 * 1024 * 1024;
+export const PLAN_FILE_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
