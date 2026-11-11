@@ -5,7 +5,7 @@ import { Lightbulb, Pause, Pencil, Play, Sparkles, Square, Trash2 } from "lucide
 import { useRef, useState } from "react";
 import { elapsedSince, http, notifyWorkChanged, TONE_BAR, TONE_PILL, useNow } from "@/lib/client";
 import { formatClock, formatDuration } from "@/lib/time";
-import type { WorkSessionInsightDTO, WorkState } from "@/lib/types";
+import type { DayReviewDTO, WorkSessionInsightDTO, WorkState } from "@/lib/types";
 import { WorkSessionEditor } from "./WorkSessionEditor";
 import { Modal } from "@/components/ui/Modal";
 
@@ -21,13 +21,13 @@ function endLabel(endIso: string, startIso: string) {
 
 export function WorkTimer({ work, onChange }: { work: WorkState; onChange: (w: WorkState) => void }) {
   const [busy, setBusy] = useState(false);
-  const [editing, setEditing] = useState<{ id: string; startedAt: string; endedAt: string } | null>(null);
+  const [editing, setEditing] = useState<DayReviewDTO["workSessions"][number] | null>(null);
   const running = Boolean(work.running);
   const now = useNow(running);
   // Soma as sessões encerradas e, se houver uma em andamento, o tempo desde o início dela.
   const closedMs = work.sessions
     .filter((s) => s.endedAt)
-    .reduce((acc, s) => acc + (new Date(s.endedAt!).getTime() - new Date(s.startedAt).getTime()), 0);
+    .reduce((acc, s) => acc + s.ms, 0);
   const totalMs = closedMs + (running ? elapsedSince(work.running!.startedAt, now) : 0);
 
   const plannedMs = work.plannedMinutes * 60000;
@@ -193,7 +193,7 @@ export function WorkTimer({ work, onChange }: { work: WorkState; onChange: (w: W
           <ul className="max-h-80 space-y-1.5 overflow-y-auto">
             {work.sessions.map((s) => {
               const ms = s.endedAt
-                ? new Date(s.endedAt).getTime() - new Date(s.startedAt).getTime()
+                ? s.ms
                 : elapsedSince(s.startedAt, now);
               return (
                 <li

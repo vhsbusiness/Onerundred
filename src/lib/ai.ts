@@ -1,3 +1,4 @@
+import { workedMs, workIntervals } from "./work-breaks";
 import OpenAI from "openai";
 import { subDays } from "date-fns";
 import { prisma } from "./db";
@@ -121,13 +122,10 @@ async function buildContext(userId: string, observation: AiObservation, day: str
   const workByDay: Record<string, number> = {};
   const hourHistogram = new Array(24).fill(0) as number[];
   for (const s of workSessions) {
-    const end = s.endedAt ?? now;
     const key = dayKey(s.startedAt);
-    workByDay[key] = (workByDay[key] ?? 0) + Math.round((end.getTime() - s.startedAt.getTime()) / 60000);
-    const cursor = new Date(s.startedAt);
-    while (cursor < end) {
-      hourHistogram[cursor.getHours()] += 1;
-      cursor.setMinutes(cursor.getMinutes() + 30);
+    workByDay[key] = (workByDay[key] ?? 0) + Math.round(workedMs(s, now.getTime()) / 60000);
+    for (const part of workIntervals(s, now.getTime())) {
+      for (let t = part.start; t < part.end; t += 30 * 60000) hourHistogram[new Date(t).getHours()] += 1;
     }
   }
   const focusHours = new Array(24).fill(0) as number[];
@@ -461,11 +459,9 @@ export async function analyzeWorkSession(userId: string, sessionId: string): Pro
 
   const start = session.startedAt;
   const end = session.endedAt;
-  const clip = (a: Date, b: Date | null) => {
-    const s = Math.max(a.getTime(), start.getTime());
-    const e = Math.min((b ?? new Date()).getTime(), end.getTime());
-    return Math.max(0, e - s);
-  };
+  const intervals = workIntervals(session);
+  const clip = (a: Date, b: Date | null) => intervals.reduce((sum, part) =>
+    sum + Math.max(0, Math.min((b ?? end).getTime(), part.end) - Math.max(a.getTime(), part.start)), 0);
 
   const [taskSessions, completed, daySessions, work] = await Promise.all([
     prisma.taskSession.findMany({
@@ -482,12 +478,14 @@ export async function analyzeWorkSession(userId: string, sessionId: string): Pro
 
   const byCard = new Map<string, { title: string; minutes: number; done: boolean; priority: number; estimatedMinutes: number | null; list: string }>();
   for (const ts of taskSessions) {
+    const overlap = clip(ts.startedAt, ts.endedAt);
+    if (overlap === 0) continue;
     const cur = byCard.get(ts.card.id) ?? { title: ts.card.title, minutes: 0, done: Boolean(ts.card.completedAt), priority: ts.card.priority, estimatedMinutes: ts.card.estimatedMinutes, list: ts.card.list.name };
-    cur.minutes += Math.round(clip(ts.startedAt, ts.endedAt) / 60000);
+    cur.minutes += Math.round(overlap / 60000);
     byCard.set(ts.card.id, cur);
   }
   const tasks = [...byCard.values()].sort((a, b) => b.minutes - a.minutes);
-  const durationMin = Math.round((end.getTime() - start.getTime()) / 60000);
+  const durationMin = Math.round(workedMs(session) / 60000);
   const focusedMin = tasks.reduce((acc, t) => acc + t.minutes, 0);
   const idx = daySessions.findIndex((s) => s.id === session.id);
   // Hora; o fim leva dia/mês na frente quando a sessão atravessou a meia-noite.
@@ -500,7 +498,7 @@ export async function analyzeWorkSession(userId: string, sessionId: string): Pro
     minutosComCronometroDeTarefa: focusedMin,
     tarefasComCronometro: tasks.map((t) => ({ titulo: t.title, lista: t.list, minutos: t.minutes, prioridade: PRIORITY_LABEL[asPriority(t.priority)], estimativaMin: t.estimatedMinutes, concluida: t.done })),
     tarefasConcluidasNaSessao: completed.map((c) => ({ titulo: c.title, prioridade: PRIORITY_LABEL[asPriority(c.priority)], estimativaMin: c.estimatedMinutes })),
-    outrasSessoesDoDia: daySessions.filter((s) => s.id !== session.id).map((s) => ({ inicio: fmt(s.startedAt), fim: s.endedAt ? fmt(s.endedAt) : "em andamento", duracaoMin: Math.round(((s.endedAt ?? new Date()).getTime() - s.startedAt.getTime()) / 60000) })),
+    outrasSessoesDoDia: daySessions.filter((s) => s.id !== session.id).map((s) => ({ inicio: fmt(s.startedAt), fim: s.endedAt ? fmt(s.endedAt) : "em andamento", duracaoMin: Math.round(workedMs(s) / 60000) })),
     metaDoDiaMin: work.plannedMinutes,
     trabalhadoNoDiaMin: Math.round(work.workedMs / 60000),
   };

@@ -1,3 +1,4 @@
+import { totalWorkedMs } from "./work-breaks";
 import webpush from "web-push";
 import { addDays, subDays } from "date-fns";
 import { prisma } from "./db";
@@ -7,7 +8,7 @@ import { periodScore, type MetricCard } from "./metrics";
 import { computeLeisureStats, listLeisure } from "./leisure";
 import { listProjects } from "./projects";
 import { taskBoardAccess, getWorkState } from "./repo";
-import { dayKey, dayRange, formatDuration, sumSessions, todayKey, weekRange } from "./time";
+import { dayKey, dayRange, formatDuration, todayKey, weekRange } from "./time";
 import type { NotificationPrefsDTO, NotificationType } from "./types";
 
 /*
@@ -190,13 +191,13 @@ function weekKey(d: Date): string {
 async function workedTodayMin(userId: string): Promise<number> {
   const { start } = dayRange(todayKey());
   const sessions = await prisma.workSession.findMany({ where: { userId, OR: [{ startedAt: { gte: start } }, { endedAt: null }] } });
-  return Math.round(sumSessions(sessions) / 60000);
+  return Math.round(totalWorkedMs(sessions) / 60000);
 }
 
 async function workedAvg7Min(userId: string): Promise<number> {
   const since = subDays(dayRange(todayKey()).start, 7);
   const sessions = await prisma.workSession.findMany({ where: { userId, startedAt: { gte: since, lt: dayRange(todayKey()).start }, endedAt: { not: null } } });
-  return Math.round(sumSessions(sessions) / 60000 / 7);
+  return Math.round(totalWorkedMs(sessions) / 60000 / 7);
 }
 
 /** Avalia todas as regras para um usuário e envia o que couber. Devolve os tipos enviados. */

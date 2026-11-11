@@ -1,3 +1,4 @@
+import { totalWorkedMs } from "@/lib/work-breaks";
 import { BoardIcon } from "@/components/boards/BoardIcon";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -44,7 +45,7 @@ export default async function Report({ params, searchParams }: { params: Promise
         postponements: { select: { dayKey: true } },
       } },
     } }),
-    prisma.workSession.findMany({ where: { userId, startedAt: dateFilter }, orderBy: { startedAt: "asc" }, select: { startedAt: true, endedAt: true } }),
+    prisma.workSession.findMany({ where: { userId, startedAt: dateFilter }, orderBy: { startedAt: "asc" }, select: { startedAt: true, endedAt: true, breaks: true } }),
     collaborationBoards(manager.id, userId, id),
   ]);
   const cards = lists.flatMap(list => list.cards.map(card => ({
@@ -58,8 +59,7 @@ export default async function Report({ params, searchParams }: { params: Promise
     return { key, ...periodScore(cards, range.start, range.end, key, { hasTodayList }) };
   });
   const selected = week[6];
-  const now = new Date().getTime();
-  const workMs = sessions.reduce((sum, session) => sum + (session.endedAt?.getTime() ?? now) - session.startedAt.getTime(), 0);
+  const workMs = totalWorkedMs(sessions);
   return <main className="space-y-4">
     <Link href="/configuracoes/colaboradores" className="text-sm text-blue">← Colaboradores</Link>
     <header className="flex flex-wrap items-center justify-between gap-3">

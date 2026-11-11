@@ -1,4 +1,5 @@
 import { Prisma } from "@/generated/prisma/client";
+import { breakError, sortedBreaks, storedBreaks, totalWorkedMs, workedMs } from "./work-breaks";
 import { WORK_CYCLE_KEY, unfinishedWorkStart, rememberWorkStart } from "./work-cycle";
 import { parseLabels, readLabels } from "./labels";
 import { subDays } from "date-fns";
@@ -34,6 +35,8 @@ import type {
   DayReviewDTO,
   TodayCard,
   WorkState,
+  WorkBreak,
+  WorkSessionDTO,
   BoardListsDTO,
 } from "./types";
 
@@ -77,6 +80,10 @@ export function serializeSession(s: SessionRow): SessionDTO {
     startedAt: s.startedAt.toISOString(),
     endedAt: s.endedAt ? s.endedAt.toISOString() : null,
   };
+}
+
+function serializeWorkSession(s: SessionRow & { breaks: string }): WorkSessionDTO {
+  return { ...serializeSession(s), breaks: storedBreaks(s), ms: workedMs(s) };
 }
 
 export function parseWeekdays(v: string): number[] {
@@ -1394,7 +1401,7 @@ export async function getWorkSessionDayContext(userId: string, session: { starte
     getSettings(userId),
   ]);
   const estimated = cards.reduce((sum, card) => sum + (card.estimatedMinutes ?? 0), 0);
-  return { dayKey: key, plannedMinutes: estimated > 0 ? estimated : settings.dailyGoalMinutes, workedMs: sumSessions(sessions) };
+  return { dayKey: key, plannedMinutes: estimated > 0 ? estimated : settings.dailyGoalMinutes, workedMs: totalWorkedMs(sessions) };
 }
 
 export async function getWorkState(userId: string): Promise<WorkState> {
@@ -1410,7 +1417,7 @@ export async function getWorkState(userId: string): Promise<WorkState> {
     orderBy: { startedAt: "desc" },
   });
   const running = sessions.find((s) => !s.endedAt) ?? null;
-  const todayMs = sumSessions(sessions);
+  const todayMs = totalWorkedMs(sessions);
   const settings = await getSettings(userId);
   const estimated = await plannedMinutesForToday(userId);
   const plannedMinutes = estimated > 0 ? estimated : settings.dailyGoalMinutes;
@@ -1420,7 +1427,7 @@ export async function getWorkState(userId: string): Promise<WorkState> {
     todayMs,
     running: running ? { id: running.id, startedAt: running.startedAt.toISOString() } : null,
     ended: !running && endedRow?.value === today,
-    sessions: sessions.map(serializeSession),
+    sessions: sessions.map(serializeWorkSession),
     plannedMinutes,
     dailyGoalMinutes: settings.dailyGoalMinutes,
     verdict: workVerdict(todayMs / 60000, plannedMinutes),
@@ -1487,7 +1494,9 @@ export async function updateWorkSession(userId: string, id: string, input: {
   endedAt: string;
   previousStartedAt: string;
   previousEndedAt: string;
-}): Promise<SessionDTO> {
+  breaks?: WorkBreak[];
+  previousBreaks?: WorkBreak[];
+}): Promise<WorkSessionDTO> {
   const values = [input.startedAt, input.endedAt, input.previousStartedAt, input.previousEndedAt];
   const dates = values.map(value => new Date(value));
   if (dates.some((date, index) => !Number.isFinite(date.getTime()) || date.toISOString() !== values[index])) {
@@ -1502,11 +1511,16 @@ export async function updateWorkSession(userId: string, id: string, input: {
       const session = await tx.workSession.findFirst({ where: { id, userId } });
       if (!session) throw new ApiError(404, "Sessão não encontrada");
       if (!session.endedAt) throw new ApiError(409, "Pause a sessão antes de editar os horários.");
+      const breaks = input.breaks === undefined ? storedBreaks(session) : sortedBreaks(input.breaks);
+      const invalid = breakError(breaks, startedAt, endedAt);
+      if (invalid) throw new ApiError(400, invalid);
+      const encoded = JSON.stringify(breaks);
       // Uma repetição da mesma gravação já confirmada é segura.
-      if (session.startedAt.getTime() === startedAt.getTime() && session.endedAt.getTime() === endedAt.getTime()) {
-        return serializeSession(session);
+      if (session.startedAt.getTime() === startedAt.getTime() && session.endedAt.getTime() === endedAt.getTime() && session.breaks === encoded) {
+        return serializeWorkSession(session);
       }
-      if (session.startedAt.getTime() !== previousStart.getTime() || session.endedAt.getTime() !== previousEnd.getTime()) {
+      if (session.startedAt.getTime() !== previousStart.getTime() || session.endedAt.getTime() !== previousEnd.getTime() ||
+          (input.breaks !== undefined && session.breaks !== JSON.stringify(sortedBreaks(input.previousBreaks ?? [])))) {
         throw new ApiError(409, "Esta sessão foi alterada em outra aba. Atualize a página e tente novamente.");
       }
       const overlap = await tx.workSession.findFirst({
@@ -1519,8 +1533,8 @@ export async function updateWorkSession(userId: string, id: string, input: {
       if (overlap) throw new ApiError(400, "Esse horário coincide com outra sessão de trabalho. Confira o início e o término.");
       const cycleStart = await unfinishedWorkStart(tx, userId);
       const updated = await tx.workSession.updateMany({
-        where: { id, userId, startedAt: previousStart, endedAt: previousEnd },
-        data: { startedAt, endedAt },
+        where: { id, userId, startedAt: previousStart, endedAt: previousEnd, breaks: session.breaks },
+        data: { startedAt, endedAt, breaks: encoded },
       });
       if (!updated.count) throw new ApiError(409, "Esta sessão foi alterada. Atualize a página e tente novamente.");
 
@@ -1534,7 +1548,7 @@ export async function updateWorkSession(userId: string, id: string, input: {
         const anchor = others && others.startedAt < startedAt ? others.startedAt : startedAt;
         await rememberWorkStart(tx, userId, anchor);
       }
-      return serializeSession({ ...session, startedAt, endedAt });
+      return serializeWorkSession({ ...session, startedAt, endedAt, breaks: encoded });
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034") {
@@ -1736,10 +1750,8 @@ export async function getDayReview(userId: string, key: string): Promise<DayRevi
       archived: Boolean(c.archivedAt),
     }));
   const sessions = workSessions.map((s) => ({
-    id: s.id,
-    startedAt: s.startedAt.toISOString(),
+    ...serializeWorkSession(s),
     endedAt: s.endedAt!.toISOString(),
-    ms: s.endedAt!.getTime() - s.startedAt.getTime(),
   }));
   return {
     dayKey: key,

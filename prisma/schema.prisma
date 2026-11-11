@@ -215,6 +215,7 @@ model TaskSession {
 
 /// Sessão de trabalho (botão iniciar/parar do dashboard)
 model WorkSession {
+  breaks    String   @default("[]")
   id        String    @id @default(cuid())
   userId    String
   startedAt DateTime  @default(now())

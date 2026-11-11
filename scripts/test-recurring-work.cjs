@@ -252,4 +252,30 @@ test('editing a paused overnight cycle preserves its anchor, remaining segments 
   await repo.endWork(f.userId); assert.equal(await count(r), 1);
 });
 
+test('retroactive breaks keep one overnight session and its net work on the starting day', async () => {
+  const f = await fixture();
+  const session = await closed(f, '2026-11-03T21:00:00-03:00', '2026-11-04T00:55:00-03:00');
+  const a = { startedAt: iso('2026-11-03T23:50:00-03:00'), endedAt: iso('2026-11-04T00:10:00-03:00') };
+  const b = { startedAt: iso('2026-11-04T00:40:00-03:00'), endedAt: iso('2026-11-04T00:55:00-03:00') };
+  const edit = { ...correction(session), breaks: [b, a], previousBreaks: [] };
+  const saved = await repo.updateWorkSession(f.userId, session.id, edit);
+  assert.deepEqual(saved.breaks, [a, b]);
+  assert.deepEqual(await repo.updateWorkSession(f.userId, session.id, edit), saved);
+  const review = await repo.getDayReview(f.userId, yesterday);
+  assert.equal(review.workMs, 200 * 60000);
+  assert.equal(review.workSessions.length, 1);
+  assert.equal(review.workSessions[0].ms, review.workMs);
+  assert.equal((await repo.getDayReview(f.userId, today)).workMs, 0);
+  assert.equal((await repo.getWorkSessionDayContext(f.userId, session)).workedMs, review.workMs);
+  await assert.rejects(repo.updateWorkSession(f.userId, session.id, { ...edit, breaks: [a] }), fails(409));
+  for (const invalid of [[a, a], [{ ...a, endedAt: a.startedAt }], [{ ...a, startedAt: 'invalid' }],
+    [{ ...a, startedAt: iso('2026-11-03T20:59:00-03:00') }]]) {
+    await assert.rejects(repo.updateWorkSession(f.userId, session.id, { ...edit, previousBreaks: saved.breaks, breaks: invalid }), fails(400));
+  }
+  const legacy = await repo.updateWorkSession(f.userId, session.id, correction(session, '2026-11-03T20:00:00-03:00'));
+  assert.deepEqual(legacy.breaks, saved.breaks);
+  const cleared = await repo.updateWorkSession(f.userId, session.id, { ...correction(legacy), breaks: [], previousBreaks: legacy.breaks });
+  assert.equal(cleared.ms, 295 * 60000);
+});
+
 after(async () => { global.Date = RealDate; await prisma.$disconnect(); fs.rmSync(dir, { recursive: true, force: true }); });

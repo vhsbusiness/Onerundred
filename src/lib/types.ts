@@ -9,6 +9,9 @@ export interface SessionDTO {
   endedAt: string | null;
 }
 
+export interface WorkBreak { startedAt: string; endedAt: string }
+export interface WorkSessionDTO extends SessionDTO { breaks: WorkBreak[]; ms: number }
+
 export interface CardLabel { name: string; color: "orange" | "green" | "blue" | "red"; }
 
 export interface CardDTO {
@@ -161,7 +164,7 @@ export interface WorkState {
   running: { id: string; startedAt: string } | null;
   /** Dia de trabalho encerrado pelo usuário (pode reabrir). */
   ended: boolean;
-  sessions: SessionDTO[];
+  sessions: WorkSessionDTO[];
   plannedMinutes: number;
   dailyGoalMinutes: number;
   verdict: WorkVerdict;
@@ -215,7 +218,7 @@ export interface DayReviewDTO {
     estimatedMinutes: number | null;
     archived: boolean;
   }[];
-  workSessions: { id: string; startedAt: string; endedAt: string; ms: number }[];
+  workSessions: (WorkSessionDTO & { endedAt: string })[];
   workMs: number;
   leisureMin: number;
   /** Tarefas realocadas nesse dia (saíram da "Hoje" sem ser feitas) e não concluídas nele. */

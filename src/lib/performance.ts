@@ -1,3 +1,4 @@
+import { workedMs } from "./work-breaks";
 import { addDays, subDays } from "date-fns";
 import { prisma } from "./db";
 import { periodScore, type MetricCard } from "./metrics";
@@ -170,7 +171,7 @@ async function loadDayData(userId: string, firstKey: string): Promise<DayData> {
   const workByDay = new Map<string, number>();
   for (const s of workSessions) {
     const k = dayKey(s.startedAt);
-    workByDay.set(k, (workByDay.get(k) ?? 0) + ((s.endedAt?.getTime() ?? now) - s.startedAt.getTime()));
+    workByDay.set(k, (workByDay.get(k) ?? 0) + workedMs(s, now));
   }
 
   const doneByDay = new Map<string, number>();

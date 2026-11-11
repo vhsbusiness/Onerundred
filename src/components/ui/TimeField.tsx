@@ -15,11 +15,13 @@ export function TimeField({
   onChange,
   className = "",
   ariaLabel,
+  liveInput = false,
 }: {
   value: string;
   onChange: (v: string) => void;
   className?: string;
   ariaLabel?: string;
+  liveInput?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   // Rascunho enquanto o usuário digita; null = mostra o valor atual.
@@ -52,7 +54,7 @@ export function TimeField({
     onChange(`${h.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}`);
   }
 
-  const [curH, curM] = value.split(":");
+  const [curH, curM] = (value || "00:00").split(":");
   const col = "max-h-44 w-14 overflow-y-auto overscroll-contain py-1 [scrollbar-width:none]";
   const item = (active: boolean) =>
     `block w-full rounded-lg px-2 py-1.5 text-center text-sm tabular-nums transition ${
@@ -64,7 +66,15 @@ export function TimeField({
       <div className="relative">
         <input
           value={text}
-          onChange={(e) => setDraft(e.target.value.replace(/[^\d:h]/g, "").slice(0, 5))}
+          onChange={(e) => {
+            const next = e.target.value.replace(/[^\d:h]/g, "").slice(0, 5);
+            setDraft(next);
+            if (liveInput) {
+              const match = /^(\d{1,2})[:h]?(\d{2})$/.exec(next);
+              onChange(match && Number(match[1]) < 24 && Number(match[2]) < 60
+                ? `${match[1].padStart(2, "0")}:${match[2]}` : "");
+            }
+          }}
           onBlur={commitText}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
