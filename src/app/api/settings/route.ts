@@ -1,5 +1,6 @@
 import { ApiError, json, readBody, withUser } from "@/lib/api";
 import { getSettings, updateSettings } from "@/lib/repo";
+import { MAX_CHIME_MINUTES, validChimeInterval } from "@/lib/work-chime-settings";
 import { isDesign, isTheme } from "@/lib/theme";
 import type { SettingsDTO, TargetsDTO } from "@/lib/types";
 
@@ -22,6 +23,16 @@ function clockOrNull(v: unknown, label: string): string | null | undefined {
 export const PATCH = withUser(async (user, req: Request) => {
   const body = await readBody(req);
   const data: Partial<Omit<SettingsDTO, "targets">> & { targets?: Partial<TargetsDTO> } = {};
+  if (body.workChime !== undefined) {
+    const sound = body.workChime;
+    if (!sound || typeof sound !== "object" || !("enabled" in sound) || typeof sound.enabled !== "boolean") {
+      throw new ApiError(400, "Escolha se deseja ouvir o aviso.");
+    }
+    if (!("intervalMinutes" in sound) || !validChimeInterval(sound.intervalMinutes)) {
+      throw new ApiError(400, `Informe um intervalo de 1 a ${MAX_CHIME_MINUTES} minutos inteiros.`);
+    }
+    data.workChime = { enabled: sound.enabled, intervalMinutes: sound.intervalMinutes, changedAt: Date.now() };
+  }
   if (body.dailyGoalMinutes !== undefined) {
     const n = Math.round(Number(body.dailyGoalMinutes));
     if (!Number.isFinite(n) || n <= 0 || n > 24 * 60) throw new ApiError(400, "Meta diária inválida");

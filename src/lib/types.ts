@@ -1,3 +1,4 @@
+import type { WorkChimeSettings } from "./work-chime-settings";
 import type { Theme, Design } from "./theme";
 import type { PeriodScore, Tone, WorkVerdict } from "./metrics";
 
@@ -160,6 +161,7 @@ export interface TodayCard extends CardDTO {
 }
 
 export interface WorkState {
+  workChime: WorkChimeSettings;
   todayMs: number;
   running: { id: string; startedAt: string; previousCycleMs: number } | null;
   /** Dia de trabalho encerrado pelo usuário (pode reabrir). */
@@ -233,6 +235,7 @@ export interface ArchivedCard extends Pick<CardDTO, "id" | "title" | "descriptio
 }
 
 export interface SettingsDTO {
+  workChime: WorkChimeSettings;
   dailyGoalMinutes: number;
   /** Tema da interface escolhido pelo usuário. */
   theme: Theme;

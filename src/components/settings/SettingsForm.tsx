@@ -6,9 +6,11 @@ import { useEffect, useState } from "react";
 import { http } from "@/lib/client";
 import { Modal } from "@/components/ui/Modal";
 import type { Theme } from "@/lib/theme";
+import { WorkSoundSettings } from "./WorkSoundSettings";
+import type { WorkChimeSettings } from "@/lib/work-chime-settings";
 import { applyTheme, currentTheme } from "@/lib/theme-client";
 
-export function SettingsForm({ collaborators }: { collaborators: { id: string; employee: { name: string; username: string } }[] }) {
+export function SettingsForm({ collaborators, workChime }: { workChime: WorkChimeSettings; collaborators: { id: string; employee: { name: string; username: string } }[] }) {
   const [resetOpen, setResetOpen] = useState(false);
   const [understood, setUnderstood] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -115,6 +117,8 @@ export function SettingsForm({ collaborators }: { collaborators: { id: string; e
           })}
         </div>
       </section>
+
+      <WorkSoundSettings initial={workChime} key={workChime.changedAt} />
 
       <section className="card p-5 text-sm text-ink-2 lg:col-span-2">
         <h2 className="text-base font-semibold text-ink">Como a nota é calculada</h2>

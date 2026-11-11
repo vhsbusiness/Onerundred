@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 import { breakError, sortedBreaks, storedBreaks, totalWorkedMs, workedMs } from "./work-breaks";
+import { readWorkChimeSetting } from "./work-chime-settings";
 import { WORK_CYCLE_KEY, unfinishedWorkStart, rememberWorkStart } from "./work-cycle";
 import { parseLabels, readLabels } from "./labels";
 import { subDays } from "date-fns";
@@ -1302,7 +1303,7 @@ export async function deleteTaskSession(userId: string, sessionId: string) {
 
 const DEFAULT_DAILY_GOAL = 8 * 60;
 
-const SETTING_KEYS = ["dailyGoalMinutes", "theme", "design", "designPreview", "sleepTargetMinutes", "bedtimeTarget", "wakeTarget", "leisureTargetMinutes", "performanceTarget"];
+const SETTING_KEYS = ["workChime", "dailyGoalMinutes", "theme", "design", "designPreview", "sleepTargetMinutes", "bedtimeTarget", "wakeTarget", "leisureTargetMinutes", "performanceTarget"];
 
 export async function getSettings(userId: string): Promise<SettingsDTO> {
   const [rows, account] = await Promise.all([
@@ -1321,6 +1322,7 @@ export async function getSettings(userId: string): Promise<SettingsDTO> {
   const theme = get("theme");
   const design = get("designPreview");
   return {
+    workChime: readWorkChimeSetting(get("workChime")),
     dailyGoalMinutes: num("dailyGoalMinutes") ?? DEFAULT_DAILY_GOAL,
     theme: isTheme(theme) ? theme : DEFAULT_THEME,
     // A escolha de comparação é exclusiva dos admins. Preferências antigas/cookies
@@ -1341,6 +1343,7 @@ export async function updateSettings(
   data: Partial<Omit<SettingsDTO, "targets">> & { targets?: Partial<TargetsDTO> },
 ): Promise<SettingsDTO> {
   const entries: [string, string][] = [];
+  if (data.workChime !== undefined) entries.push(["workChime", JSON.stringify(data.workChime)]);
   if (data.dailyGoalMinutes !== undefined) entries.push(["dailyGoalMinutes", String(data.dailyGoalMinutes)]);
   if (data.theme !== undefined) entries.push(["theme", data.theme]);
   if (data.design !== undefined) {
@@ -1425,6 +1428,7 @@ export async function getWorkState(userId: string): Promise<WorkState> {
 
   return {
     todayMs,
+    workChime: settings.workChime,
     running: running ? {
       id: running.id,
       startedAt: running.startedAt.toISOString(),

@@ -1,19 +1,33 @@
 import type { WorkState } from "./types";
 
-const INTERVAL = 90 * 60_000;
+import { DEFAULT_WORK_CHIME, type WorkChimeSettings } from "./work-chime-settings";
+
+const CHANNEL = "onerundred-work-chime-changed";
+
+export function notifyChimeSettingsChanged() {
+  window.dispatchEvent(new Event("work-changed"));
+  if (typeof BroadcastChannel !== "undefined") {
+    const channel = new BroadcastChannel(CHANNEL);
+    channel.postMessage("refresh");
+    channel.close();
+  }
+}
 // Abas em segundo plano podem acordar atrasadas. Não tocar avisos antigos.
 const GRACE = 60_000;
 const MARKER = "onerundred:last-work-chime";
 
-export function workMilestone(running: NonNullable<WorkState["running"]>, now: number) {
+export function workMilestone(running: NonNullable<WorkState["running"]>, now: number, settings: WorkChimeSettings) {
+  const interval = settings.intervalMinutes * 60_000;
   const start = Date.parse(running.startedAt);
-  const elapsed = running.previousCycleMs + Math.max(0, now - start);
-  const number = Math.floor(elapsed / INTERVAL);
-  const remainder = elapsed % INTERVAL;
+  const previousMs = running.previousCycleMs ?? 0;
+  const elapsed = previousMs + Math.max(0, now - start);
+  const number = Math.floor(elapsed / interval);
+  const milestoneMs = number * interval;
+  const remainder = elapsed % interval;
   return {
-    due: number > 0 && number * INTERVAL > running.previousCycleMs && remainder < GRACE,
-    key: running.id + ":" + number,
-    nextIn: INTERVAL - remainder,
+    due: settings.enabled && milestoneMs > previousMs && remainder < GRACE && now - remainder >= settings.changedAt,
+    key: running.id + ":" + milestoneMs,
+    nextIn: interval - remainder,
   };
 }
 
@@ -89,11 +103,11 @@ export function watchWorkClock(showRunning: (running: boolean) => void) {
     try {
       const res = await fetch("/api/work", { cache: "no-store" });
       if (!active || current !== version || !res.ok) return;
-      const { running }: WorkState = await res.json();
+      const { running, workChime = DEFAULT_WORK_CHIME }: WorkState = await res.json();
       if (!active || current !== version) return;
       showRunning(Boolean(running));
-      if (running) {
-        const { due, key, nextIn } = workMilestone(running, Date.now());
+      if (running && workChime.enabled) {
+        const { due, key, nextIn } = workMilestone(running, Date.now(), workChime);
         if (due) chime(key, current);
         delay = Math.min(delay, nextIn);
       }
@@ -104,6 +118,8 @@ export function watchWorkClock(showRunning: (running: boolean) => void) {
   }
 
   function visible() { if (document.visibilityState === "visible") void refresh(); }
+  const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel(CHANNEL) : null;
+  channel?.addEventListener("message", refresh);
   window.addEventListener("pointerup", unlock, true);
   window.addEventListener("keydown", unlock, true);
   window.addEventListener("work-changed", refresh);
@@ -111,6 +127,7 @@ export function watchWorkClock(showRunning: (running: boolean) => void) {
   void refresh();
   return () => {
     active = false;
+    channel?.close();
     window.clearTimeout(timeout);
     window.removeEventListener("pointerup", unlock, true);
     window.removeEventListener("keydown", unlock, true);
