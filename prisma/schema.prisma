@@ -73,6 +73,7 @@ model Board {
   mindUndos MindUndo[]
   editRequests BoardEditRequest[]
   labels    BoardLabel[]
+  createdCards Card[] @relation("CardCreationBoard")
 
   @@index([userId])
 }
@@ -169,6 +170,8 @@ model List {
 }
 
 model Card {
+  originBoardId    String?
+  originBoard      Board? @relation("CardCreationBoard", fields: [originBoardId], references: [id], onDelete: SetNull)
   id               String        @id @default(cuid())
   listId           String
   title            String
@@ -194,6 +197,7 @@ model Card {
   recurring        RecurringTask?     @relation(fields: [recurringId], references: [id], onDelete: SetNull)
 
   @@index([listId])
+  @@index([originBoardId])
   @@index([scheduledFor])
   @@index([completedAt])
 }

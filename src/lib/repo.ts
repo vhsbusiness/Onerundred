@@ -248,7 +248,7 @@ async function spawnRecurringCards(today: string, userId?: string): Promise<void
   const weekday = keyToDate(today).getDay();
   const due = await prisma.recurringTask.findMany({
     where: { ...(userId ? { userId } : {}), active: true, list: { board: { type: "tasks" } }, OR: [{ lastSpawnedKey: null }, { lastSpawnedKey: { lt: today } }] },
-    include: { list: { select: { id: true, kind: true } } },
+    include: { list: { select: { id: true, kind: true, boardId: true } } },
   });
   for (const r of due) {
     if (!parseWeekdays(r.weekdays).includes(weekday)) continue;
@@ -257,7 +257,7 @@ async function spawnRecurringCards(today: string, userId?: string): Promise<void
 }
 
 async function spawnRecurringCard(
-  r: { id: string; userId: string; listId: string; title: string; description: string; priority: number; estimatedMinutes: number | null; list: { kind: string } },
+  r: { id: string; userId: string; listId: string; title: string; description: string; priority: number; estimatedMinutes: number | null; list: { kind: string; boardId: string } },
   today: string,
 ) {
   await prisma.$transaction(async (tx) => {
@@ -278,6 +278,7 @@ async function spawnRecurringCard(
     await tx.card.create({
       data: {
         listId: r.listId,
+        originBoardId: r.list.boardId,
         title: r.title,
         description: r.description,
         priority: r.priority,
@@ -310,7 +311,7 @@ export async function createRecurring(
       estimatedMinutes: input.estimatedMinutes ?? null,
       weekdays: days.join(","),
     },
-    include: { list: { select: { id: true, kind: true } } },
+    include: { list: { select: { id: true, kind: true, boardId: true } } },
   });
   const today = todayKey();
   let card: CardDTO | null = null;
@@ -741,6 +742,7 @@ export async function copyList(id: string, userId: string) {
       position: list.position + 1,
       cards: {
         create: cards.map((c, i) => ({
+          originBoardId: list.boardId,
           title: c.title,
           description: c.description,
           labels: c.labels,
@@ -894,6 +896,7 @@ export async function createCard(
   const card = await prisma.card.create({
     data: {
       listId: input.listId,
+      originBoardId: list.boardId,
       title: input.title,
       description: input.description ?? "",
       priority: input.priority ?? 2,
@@ -963,6 +966,7 @@ export async function copyCard(userId: string, cardId: string): Promise<CardDTO>
   const created = await prisma.card.create({
     data: {
       listId: card.listId,
+      originBoardId: card.list.boardId,
       title: card.title,
       description: card.description,
       labels: card.labels,
@@ -1760,15 +1764,26 @@ export async function listArchived(userId: string): Promise<ArchivedCard[]> {
   await runMaintenance();
   const cards = await prisma.card.findMany({
     where: { archivedAt: { not: null }, list: { board: boardAccess(userId) } },
-    orderBy: { archivedAt: "desc" },
-    include: { list: { include: { board: true } }, sessions: true, images: { select: { id: true } } },
-    take: 500,
+    orderBy: [{ archivedAt: "desc" }, { id: "asc" }],
+    select: {
+      id: true, title: true, description: true, priority: true, estimatedMinutes: true,
+      createdAt: true, completedAt: true, archivedAt: true, originBoardId: true,
+      list: { select: { name: true, board: { select: { id: true, name: true } } } },
+      sessions: { where: { endedAt: { not: null } }, select: { startedAt: true, endedAt: true } },
+    },
   });
-  return cards.map((c) => ({
-    ...serializeCard(c),
-    listName: c.list.name,
-    boardId: c.list.boardId,
-    boardName: c.list.board.name,
+  // A permissão da tarefa vem do quadro atual. Só revele a origem se ela também for acessível.
+  const movedFrom = [...new Set(cards.flatMap(c => c.originBoardId && c.originBoardId !== c.list.board.id ? [c.originBoardId] : []))];
+  const origins = new Map((movedFrom.length ? await prisma.board.findMany({
+    where: { id: { in: movedFrom }, ...boardAccess(userId) }, select: { id: true, name: true },
+  }) : []).map(board => [board.id, board]));
+  return cards.map(c => ({
+    id: c.id, title: c.title, description: c.description, priority: c.priority,
+    estimatedMinutes: c.estimatedMinutes, createdAt: c.createdAt.toISOString(),
+    completedAt: c.completedAt?.toISOString() ?? null, archivedAt: c.archivedAt?.toISOString() ?? null,
+    spentMs: sumSessions(c.sessions), listName: c.list.name,
+    boardId: c.list.board.id, boardName: c.list.board.name,
+    origin: (c.originBoardId && origins.get(c.originBoardId)) || c.list.board,
   }));
 }
 

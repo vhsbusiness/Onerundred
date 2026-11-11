@@ -234,3 +234,7 @@ Na descrição das tarefas, `-` ou `.` seguido de espaço no início do parágra
 Cada conta pode favoritar até três quadros, inclusive compartilhados, usando a estrela na grade ou no cabeçalho do quadro. Os atalhos aparecem abaixo de Quadros na barra lateral enquanto o mouse está sobre o grupo; também ficam acessíveis pelo foco do teclado. A barra recolhida mostra os ícones com os nomes no tooltip. No celular, as estrelas continuam acessíveis na grade e no quadro.
 
 Favoritos usam `Setting.favoriteBoardIds`, sem migration, com limite e acesso validados na API `GET/PUT /api/boards/favoritos`. Quadros excluídos ou sem acesso são filtrados e deixam de ocupar vagas na próxima leitura. Falhas ao salvar preservam a seleção confirmada. Alteração local, sem publicação.
+
+### Origem das tarefas arquivadas
+
+A origem é o quadro de criação da tarefa (inclusive de uma cópia, importação ou ocorrência recorrente). Mover uma tarefa ou sua lista não altera a origem. Em Arquivadas, o acesso à tarefa depende do quadro atual; se o quadro de origem foi excluído ou não está acessível, o agrupamento usa o quadro atual sem revelar a origem. Para dados anteriores ao registro da origem, usa-se o quadro conhecido na migração. As datas continuam agrupadas pelo dia da conclusão ou, para tarefas não concluídas, do arquivamento.

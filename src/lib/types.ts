@@ -222,7 +222,8 @@ export interface DayReviewDTO {
   postponed: { id: string; title: string; priority: number; boardId: string; boardName: string; listName: string }[];
 }
 
-export interface ArchivedCard extends CardDTO {
+export interface ArchivedCard extends Pick<CardDTO, "id" | "title" | "description" | "priority" | "createdAt" | "completedAt" | "archivedAt" | "spentMs" | "estimatedMinutes"> {
+  origin: { id: string; name: string };
   listName: string;
   boardId: string;
   boardName: string;

@@ -239,6 +239,7 @@ export async function applyImport(
       await prisma.card.create({
         data: {
           listId: targetListId,
+          originBoardId: boardId,
           title: c.title.slice(0, 200),
           priority: c.priority,
           estimatedMinutes: c.estimatedMinutes,

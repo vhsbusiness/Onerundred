@@ -24,7 +24,7 @@ Produção: `https://app.onerundred.com` (Railway, Postgres). Repositório:
 - Tarefa contínua: reaparece numa lista nos dias da semana escolhidos (pausar, mudar dias, parar).
 - Menu da lista: adicionar, copiar lista, mover todas as tarefas, mover lista para outro quadro, puxar tarefas de uma prioridade, arquivar todas, organizar por importância (IA), desfazer última ação, mover esquerda/direita, tipo, excluir.
 - Relógio na lista com a estimativa de horas para terminá-la.
-- Arquivamento automático de tarefas concluídas no dia seguinte; aba Arquivadas com busca e excluir tudo.
+- Arquivamento automático de tarefas concluídas no dia seguinte; aba Arquivadas agrupada por quadro de origem e por dia, com busca, filtro de quadro e exclusão global.
 - Compartilhamento de quadros por @ (convite, aceitar/recusar, membros, sair).
 - "Trazer dados": importa prints do Trello com IA (visão).
 
