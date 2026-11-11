@@ -299,9 +299,36 @@ model Project {
   createdAt   DateTime     @default(now())
   archivedAt  DateTime?
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restSeconds Int          @default(60)
+  plans       WorkoutPlan[]
+  workouts    WorkoutLog[]
   checks      ProjectDay[]
 
   @@index([userId])
+}
+
+model WorkoutPlan {
+  projectId String
+  weekday   Int
+  exercises Json
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, weekday])
+}
+
+model WorkoutLog {
+  id              String
+  projectId       String
+  dayKey          String
+  sport           String
+  durationSeconds Int?
+  distanceMeters  Int?
+  exercises       Json?
+  createdAt       DateTime @default(now())
+  project         Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, id])
+  @@index([projectId, dayKey])
 }
 
 /// Marcação de um dia do projeto

@@ -28,7 +28,7 @@ export function TargetsPage() {
 
   return (
     <div className="space-y-5">
-      <MetasHeader subtitle="Suas metas básicas. A IA compara seus números com elas e a performance do dashboard usa como referência." />
+      <MetasHeader title="Configurações das metas" subtitle="Suas metas básicas. A IA compara seus números com elas e a performance do dashboard usa como referência." />
       <div className="grid gap-4 lg:grid-cols-2">
         <SleepTargetCard settings={settings} save={save} />
         <WorkTargetCard settings={settings} save={save} />

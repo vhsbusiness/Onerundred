@@ -234,7 +234,7 @@ export function SleepPage() {
             <span className="flex items-center gap-2 text-ink-2">
               <Target size={15} className="text-blue" /> Meta de sono: horas por noite, deitar e acordar
             </span>
-            <span className="text-xs text-ink-3">Editar em Metas →</span>
+            <span className="text-xs text-ink-3">Ajustar meta →</span>
           </Link>
 
           <section className="card p-5">

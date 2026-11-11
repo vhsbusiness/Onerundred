@@ -218,3 +218,9 @@ Sem migration nem nova dependência. `npm run test:recurring` passou com 16 test
 Novo projeto e Editar aceitam projeto comum ou Treino. A mesma seleção de modalidade é exibida no cartão e nos detalhes. A migration aditiva `20261111013057_project_workout` acrescenta uma coluna opcional em Project (Postgres e SQLite); não converte projetos pelo nome. Não muda a marcação de ontem, o histórico nem os cálculos. A edição das sessões de trabalho da etapa anterior já foi publicada (e7ba057, Railway ac48f63a-1ac6-492d-9976-9fcc5f62c5ec).
 
 Verificação local: atualização de SQLite com dados de exemplo, TypeScript, ESLint, build e Chrome 375/1440 px. Cobertos escolha condicional de luta, criação, consulta, alteração, recarga, isolamento entre contas e preservação de marcações. Migração Postgres gerada, sem aplicar a banco de produção. Aguardando pedido explícito de publicação dos projetos de treino.
+
+## Diário de treinos e abas de metas — 10/11/2026
+
+A versão publicada com a escolha de modalidade (0b1b6d2) utilizava marcações diárias para treino. Esta correção reserva /metas aos compromissos diários, /metas/projetos aos projetos esportivos e /metas/basicas às Configurações das metas. Os links antigos de treino passam pelo controle de proprietário e abrem o diário correspondente. Project.workout distingue os dois fluxos. As consultas de metas usadas por manutenção, notificações, IA e performance filtram workout nulo.
+
+A migration aditiva 20261111015019_training_diary guarda planos por dia da semana, o intervalo de descanso e sessões esportivas datadas. As marcações manuais antigas ficam consultáveis no diário. Validado com atualização de banco SQLite temporário, TypeScript, ESLint, build e Chrome em 375/1440 px. O teste incluiu as quatro modalidades, atualização do plano depois de registrar o treino, recarga durante o descanso, cálculo de tempo/pace e isolamento entre contas. A correção aguarda publicação.

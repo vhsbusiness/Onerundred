@@ -5,8 +5,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const subtabs = [
-  { href: "/metas", label: "Projetos" },
-  { href: "/metas/basicas", label: "Metas" },
+  { href: "/metas/projetos", label: "Projetos" },
+  { href: "/metas", label: "Metas" },
+  { href: "/metas/basicas", label: "Configurações das metas" },
 ];
 
 export function MetasHeader({ title, subtitle }: { title?: string; subtitle?: string }) {
@@ -19,14 +20,17 @@ export function MetasHeader({ title, subtitle }: { title?: string; subtitle?: st
         </h1>
         <p className="text-sm text-ink-2">{subtitle ?? "Compromissos de vários dias que você marca dia a dia."}</p>
       </div>
-      <nav className="flex items-center gap-1 rounded-full border border-line bg-fill p-1">
+      <nav aria-label="Seções de metas" className="flex max-w-full flex-wrap items-center gap-1 rounded-full border border-line bg-fill p-1">
         {subtabs.map((t) => {
-          const active = t.href === "/metas" ? pathname === "/metas" || pathname.startsWith("/metas/projetos") : pathname.startsWith(t.href);
+          const active = pathname === t.href
+            || (t.href === "/metas" && pathname.startsWith("/metas/projetos/"))
+            || (t.href === "/metas/projetos" && pathname.startsWith("/metas/treinos/"));
           return (
             <Link
               key={t.href}
               href={t.href}
-              className={`rounded-full px-3.5 py-1.5 text-sm transition ${
+              aria-current={active ? "page" : undefined}
+              className={`rounded-full px-2 py-2 text-xs transition sm:px-3.5 sm:py-1.5 sm:text-sm ${
                 active ? "bg-fill-3 text-ink" : "text-ink-2 hover:text-ink"
               }`}
             >

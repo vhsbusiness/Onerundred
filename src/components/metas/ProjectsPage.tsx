@@ -3,13 +3,12 @@
 import { DateField } from "@/components/ui/DateField";
 
 import { askConfirm } from "@/components/ui/ConfirmProvider";
-import { Archive, ArrowUpRight, Check, Dumbbell, Flame, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Archive, ArrowUpRight, Check, Flame, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { http } from "@/lib/client";
 import { Modal } from "@/components/ui/Modal";
 import { todayKey } from "@/lib/time";
-import { ACTIVITIES, FIGHT_STYLES, isFightStyle, workoutLabel } from "@/lib/workouts";
 import type { ProjectDTO } from "@/lib/types";
 import { MetasHeader } from "./MetasTabs";
 import { confirmMarkDone } from "./confirmDone";
@@ -29,11 +28,7 @@ export function ProjectForm({
   onSaved: () => void;
   onClose: () => void;
 }) {
-  const [training, setTraining] = useState(Boolean(initial?.workout));
-  const [activity, setActivity] = useState<string>(isFightStyle(initial?.workout) ? "fight" : initial?.workout ?? "");
-  const [fightStyle, setFightStyle] = useState<string>(isFightStyle(initial?.workout) ? initial.workout : "");
-  const [nameDraft, setName] = useState<string | null>(initial?.name ?? null);
-  const name = nameDraft ?? (training ? "Treino" : "");
+  const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [obligations, setObligations] = useState(initial?.obligations.join("\n") ?? "");
   const [days, setDays] = useState(initial ? String(initial.days) : "30");
@@ -46,8 +41,7 @@ export function ProjectForm({
     setBusy(true);
     setError(null);
     try {
-      const workout = training ? (activity === "fight" ? fightStyle : activity) : null;
-      const payload = { name, description, obligations, days: Number(days), startDate, workout };
+      const payload = { name, description, obligations, days: Number(days), startDate };
       if (initial) await http.patch(`/api/projetos/${initial.id}`, payload);
       else await http.post("/api/projetos", payload);
       onSaved();
@@ -61,48 +55,13 @@ export function ProjectForm({
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      <fieldset className="min-w-0">
-        <legend className="mb-2 text-xs uppercase tracking-wide text-ink-3">Tipo de projeto</legend>
-        <div className="grid grid-cols-2 gap-1 rounded-xl border border-line bg-well p-1">
-          {(["Projeto comum", "Treino"] as const).map((label, i) => (
-            <label key={label} className="relative cursor-pointer">
-              <input type="radio" name="project-kind" className="peer sr-only" checked={training === (i === 1)}
-                onChange={() => setTraining(i === 1)} />
-              <span className="flex min-h-10 items-center justify-center gap-2 rounded-lg text-sm text-ink-2 peer-checked:bg-fill-3 peer-checked:font-medium peer-checked:text-ink peer-focus-visible:outline-2 peer-focus-visible:outline-orange">
-                {i === 1 && <Dumbbell size={15} />} {label}
-              </span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
-      {training && (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className={activity === "fight" ? "min-w-0" : "min-w-0 sm:col-span-2"}>
-            <span className="mb-1 block text-xs uppercase tracking-wide text-ink-3">Tipo de treino</span>
-            <select required className="input" value={activity} onChange={e => setActivity(e.target.value)}>
-              <option value="" disabled>Escolha o treino</option>
-              {Object.entries(ACTIVITIES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-              <option value="fight">Luta</option>
-            </select>
-          </label>
-          {activity === "fight" && (
-            <label className="min-w-0">
-              <span className="mb-1 block text-xs uppercase tracking-wide text-ink-3">Modalidade de luta</span>
-              <select required className="input" value={fightStyle} onChange={e => setFightStyle(e.target.value)}>
-                <option value="" disabled>Escolha a modalidade</option>
-                {Object.entries(FIGHT_STYLES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-              </select>
-            </label>
-          )}
-        </div>
-      )}
       <label className="block text-sm">
         <span className="mb-1 block text-xs uppercase tracking-wide text-ink-3">Nome</span>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="ex.: 30 dias sem açúcar" className="input" />
+        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="ex.: 30 dias sem açúcar" className="input" />
       </label>
       <label className="block text-sm">
         <span className="mb-1 block text-xs uppercase tracking-wide text-ink-3">Descrição</span>
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="Por que esse projeto importa" className="input resize-y" />
+        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="Por que essa meta importa" className="input resize-y" />
       </label>
       <label className="block text-sm">
         <span className="mb-1 block text-xs uppercase tracking-wide text-ink-3">Obrigações (uma por linha)</span>
@@ -127,7 +86,7 @@ export function ProjectForm({
       {error && <p className="text-sm text-red">{error}</p>}
       <div className="flex gap-2">
         <button type="submit" disabled={busy} className="btn btn-primary flex-1">
-          {busy ? "Salvando…" : initial ? "Salvar alterações" : "Criar projeto"}
+          {busy ? "Salvando…" : initial ? "Salvar alterações" : "Criar meta"}
         </button>
         <button type="button" onClick={onClose} className="btn btn-ghost">
           Cancelar
@@ -259,14 +218,14 @@ export function ProjectsPage() {
 
   return (
     <div className="space-y-5">
-      <MetasHeader />
+      <MetasHeader subtitle="Acompanhe seus compromissos dia a dia." />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-ink-3">
-          Crie um projeto de quantos dias quiser e marque, dia a dia, se cumpriu as obrigações. Dias não marcados até a virada do dia contam como não feitos.
+          Marque hoje se cumpriu a meta de ontem.
         </p>
         <button type="button" onClick={() => setCreating(true)} className="btn btn-primary shrink-0">
-          <Plus size={14} /> Novo projeto
+          <Plus size={14} /> Nova meta
         </button>
       </div>
 
@@ -278,7 +237,7 @@ export function ProjectsPage() {
           <div className="card h-44" />
         </div>
       ) : active.length === 0 ? (
-        <div className="card p-8 text-center text-sm text-ink-3">Nenhum projeto ainda. Crie o primeiro.</div>
+        <div className="card p-8 text-center text-sm text-ink-3">Nenhuma meta ainda.</div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {active.map((p, i) => {
@@ -293,7 +252,6 @@ export function ProjectsPage() {
                 <div className="flex items-start justify-between gap-3">
                   <Link href={`/metas/projetos/${p.id}`} className="min-w-0">
                     <h2 className="truncate text-lg font-semibold tracking-tight hover:underline">{p.name}</h2>
-                    {p.workout && <span className="pill my-1 inline-flex items-center gap-1.5"><Dumbbell size={12} /> {workoutLabel(p.workout)}</span>}
                     <p className="line-clamp-2 text-sm text-ink-2">{p.description || p.obligations.slice(0, 2).join(" · ")}</p>
                   </Link>
                   <div className="flex shrink-0 items-center gap-1">
@@ -309,7 +267,7 @@ export function ProjectsPage() {
                 <div className="mt-4">
                   <div className="mb-1 flex justify-between text-xs text-ink-3">
                     <span>
-                      dia {Math.min(p.daysElapsed, p.days)} de {p.days}
+                      {p.endless ? "Sem data para acabar" : "dia " + Math.min(p.daysElapsed, p.days) + " de " + p.days}
                     </span>
                     <span className="tabular-nums">
                       {p.doneCount} feitos · {p.missedCount} não
@@ -340,7 +298,7 @@ export function ProjectsPage() {
                     </>
                   ) : (
                     <span className="pill">
-                      {p.markStatus === "ended" ? "Projeto encerrado" : p.startDate === todayKey() ? "Começou hoje · marque amanhã" : `Começa em ${p.startDate.split("-").reverse().join("/")}`}
+                      {p.markStatus === "ended" ? "Meta encerrada" : p.startDate === todayKey() ? "Começou hoje · marque amanhã" : `Começa em ${p.startDate.split("-").reverse().join("/")}`}
                     </span>
                   )}
                 </div>
@@ -369,7 +327,7 @@ export function ProjectsPage() {
         </section>
       )}
 
-      <Modal open={creating} onClose={() => setCreating(false)} title={<h2 className="text-lg font-semibold">Novo projeto</h2>}>
+      <Modal open={creating} onClose={() => setCreating(false)} title={<h2 className="text-lg font-semibold">Nova meta</h2>}>
         <ProjectForm onSaved={load} onClose={() => setCreating(false)} />
       </Modal>
 

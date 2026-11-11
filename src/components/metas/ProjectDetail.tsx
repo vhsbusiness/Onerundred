@@ -1,14 +1,13 @@
 "use client";
 
 import { askConfirm, notify } from "@/components/ui/ConfirmProvider";
-import { Archive, ArrowLeft, Check, Dumbbell, Flame, Pencil, Trash2, X } from "lucide-react";
+import { Archive, ArrowLeft, Check, Flame, Pencil, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { http } from "@/lib/client";
 import { Modal } from "@/components/ui/Modal";
 import { keyToDate, weekdayShort } from "@/lib/time";
-import { workoutLabel } from "@/lib/workouts";
 import type { ProjectDTO, ProjectDayDTO } from "@/lib/types";
 import { MetasHeader } from "./MetasTabs";
 import { ProjectForm } from "./ProjectsPage";
@@ -86,13 +85,12 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-5">
-      <MetasHeader title={p.name} subtitle={p.description || "Projeto"} />
+      <MetasHeader title={p.name} subtitle={p.description || "Meta diária"} />
 
       <div className="flex flex-wrap items-center gap-2">
         <Link href="/metas" className="btn btn-ghost h-8 px-2">
-          <ArrowLeft size={15} /> Projetos
+          <ArrowLeft size={15} /> Metas
         </Link>
-        {p.workout && <span className="pill inline-flex items-center gap-1.5"><Dumbbell size={12} /> {workoutLabel(p.workout)}</span>}
         <span className="pill">
           {p.endless ? `desde ${fmtDay(p.startDate)} · sem data para acabar` : `${fmtDay(p.startDate)} → ${fmtDay(p.endDate ?? p.startDate)} · ${p.days} dias`}
         </span>
@@ -221,7 +219,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
         )}
       </Modal>
 
-      <Modal open={editing} onClose={() => setEditing(false)} title={<h2 className="text-lg font-semibold">Editar projeto</h2>}>
+      <Modal open={editing} onClose={() => setEditing(false)} title={<h2 className="text-lg font-semibold">Editar meta</h2>}>
         {editing && <ProjectForm initial={p} onSaved={load} onClose={() => setEditing(false)} />}
       </Modal>
     </div>

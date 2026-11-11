@@ -66,9 +66,12 @@ Roda em leituras relevantes, no máximo uma vez por minuto por instância e semp
 - Adiar não consome o dia: `lastSpawnedKey` só avança na geração. Reserva do dia e criação do card ocorrem na mesma transação; chamadas repetidas/concorrentes não duplicam cards. Dias da semana e `active` continuam respeitados. Lista Amanhã agenda para amanhã. Não há preenchimento retroativo de dias perdidos nem remoção de cards já gerados antes desta correção.
 - Pausar (`active=false`) não apaga nada; parar (DELETE) apaga a regra e os cards existentes ficam (`recurringId` → null).
 
-## 7. Metas › Projetos (`src/lib/projects.ts`)
+## 7. Metas e projetos de treino
 
-- Projeto comum ou Treino: a modalidade é uma escolha por projeto, editável e independente do nome. Musculação, Corrida e Bike são opções diretas; Luta exige escolher a modalidade. O catálogo compartilhado está em `src/lib/workouts.ts`. `Project.workout = null` mantém os projetos anteriores como comuns; omitir o campo no PATCH preserva o valor salvo. Treinos seguem a mesma marcação de ontem e as mesmas regras de duração, lembretes e performance.
+- Em **Metas**, os compromissos diários usam `Project.workout = null`. Só eles entram em marcações automáticas, lembretes de meta, contexto de metas da IA e componente Metas da performance. Os alvos de sono, lazer, trabalho e performance ficam em **Configurações das metas**.
+- Em **Projetos**, cada projeto de treino tem um esporte inicial. Cada sessão guarda a data e a modalidade efetivamente praticada. Corrida e bike guardam distância em metros e duração em segundos. O pace em min/km deriva dessas medidas. Luta guarda a modalidade e o tempo praticado.
+- Musculação tem um plano por dia da semana e registra uma cópia dos exercícios realizados com séries, repetições e carga opcional. Editar o plano não altera sessões passadas. O descanso padrão é de 60 segundos e o projeto guarda o intervalo escolhido ao iniciar o timer. A contagem usa a hora de término no dispositivo.
+- Treinos criados no formato anterior continuam acessíveis pelos links anteriores. Marcações manuais antigas ficam disponíveis para consulta no diário. Um dia marcado como feito não gera uma sessão esportiva com medidas presumidas.
 
 - `days` 1–365 ou 0 = sem fim (mostra alguns dias futuros). O dia marcável é sempre **ontem** (`markDayKey`); futuros não podem ser marcados.
 - Dias anteriores a ontem sem marcação viram "não feito" automaticamente; o usuário pode corrigir (há aviso para marcar feito só se cumpriu). Lembrete push às 10:00 quando ontem está pendente.

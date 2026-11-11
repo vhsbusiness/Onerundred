@@ -52,10 +52,10 @@ export function SettingsForm({ collaborators }: { collaborators: { id: string; e
       <section className="card p-5">
         <h1 className="text-xl font-semibold tracking-tight">Configurações</h1>
         <p className="mt-1 text-sm text-ink-2">
-          Suas metas (sono, trabalho por dia, lazer e performance) agora ficam na aba Metas.
+          Ajuste seus objetivos de sono, trabalho, lazer e performance em Configurações das metas.
         </p>
         <Link href="/metas/basicas" className="btn mt-4">
-          <Target size={14} className="text-orange" /> Abrir metas
+          <Target size={14} className="text-orange" /> Configurações das metas
         </Link>
       </section>
 

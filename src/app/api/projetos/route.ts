@@ -6,6 +6,7 @@ export const GET = withUser(async (user) => json(await listProjects(user.id)));
 
 export const POST = withUser(async (user, req: Request) => {
   const body = await readBody(req);
+  if (body?.workout != null) throw new ApiError(400, "Abra Projetos para registrar treinos.");
   const days = Number(body.days);
   if (!Number.isInteger(days)) throw new ApiError(400, "Duração em dias inválida");
   const project = await createProject(user.id, {
@@ -14,7 +15,6 @@ export const POST = withUser(async (user, req: Request) => {
     obligations: typeof body.obligations === "string" ? body.obligations : "",
     startDate: optionalDayKey(body.startDate) ?? todayKey(),
     days,
-    workout: body.workout,
   });
   return json(project, { status: 201 });
 });
