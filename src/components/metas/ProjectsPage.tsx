@@ -3,12 +3,13 @@
 import { DateField } from "@/components/ui/DateField";
 
 import { askConfirm } from "@/components/ui/ConfirmProvider";
-import { Archive, ArrowUpRight, Check, Flame, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Archive, ArrowUpRight, Check, Dumbbell, Flame, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { http } from "@/lib/client";
 import { Modal } from "@/components/ui/Modal";
 import { todayKey } from "@/lib/time";
+import { ACTIVITIES, FIGHT_STYLES, isFightStyle, workoutLabel } from "@/lib/workouts";
 import type { ProjectDTO } from "@/lib/types";
 import { MetasHeader } from "./MetasTabs";
 import { confirmMarkDone } from "./confirmDone";
@@ -28,7 +29,11 @@ export function ProjectForm({
   onSaved: () => void;
   onClose: () => void;
 }) {
-  const [name, setName] = useState(initial?.name ?? "");
+  const [training, setTraining] = useState(Boolean(initial?.workout));
+  const [activity, setActivity] = useState<string>(isFightStyle(initial?.workout) ? "fight" : initial?.workout ?? "");
+  const [fightStyle, setFightStyle] = useState<string>(isFightStyle(initial?.workout) ? initial.workout : "");
+  const [nameDraft, setName] = useState<string | null>(initial?.name ?? null);
+  const name = nameDraft ?? (training ? "Treino" : "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [obligations, setObligations] = useState(initial?.obligations.join("\n") ?? "");
   const [days, setDays] = useState(initial ? String(initial.days) : "30");
@@ -41,7 +46,8 @@ export function ProjectForm({
     setBusy(true);
     setError(null);
     try {
-      const payload = { name, description, obligations, days: Number(days), startDate };
+      const workout = training ? (activity === "fight" ? fightStyle : activity) : null;
+      const payload = { name, description, obligations, days: Number(days), startDate, workout };
       if (initial) await http.patch(`/api/projetos/${initial.id}`, payload);
       else await http.post("/api/projetos", payload);
       onSaved();
@@ -55,9 +61,44 @@ export function ProjectForm({
 
   return (
     <form onSubmit={submit} className="space-y-4">
+      <fieldset className="min-w-0">
+        <legend className="mb-2 text-xs uppercase tracking-wide text-ink-3">Tipo de projeto</legend>
+        <div className="grid grid-cols-2 gap-1 rounded-xl border border-line bg-well p-1">
+          {(["Projeto comum", "Treino"] as const).map((label, i) => (
+            <label key={label} className="relative cursor-pointer">
+              <input type="radio" name="project-kind" className="peer sr-only" checked={training === (i === 1)}
+                onChange={() => setTraining(i === 1)} />
+              <span className="flex min-h-10 items-center justify-center gap-2 rounded-lg text-sm text-ink-2 peer-checked:bg-fill-3 peer-checked:font-medium peer-checked:text-ink peer-focus-visible:outline-2 peer-focus-visible:outline-orange">
+                {i === 1 && <Dumbbell size={15} />} {label}
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      {training && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className={activity === "fight" ? "min-w-0" : "min-w-0 sm:col-span-2"}>
+            <span className="mb-1 block text-xs uppercase tracking-wide text-ink-3">Tipo de treino</span>
+            <select required className="input" value={activity} onChange={e => setActivity(e.target.value)}>
+              <option value="" disabled>Escolha o treino</option>
+              {Object.entries(ACTIVITIES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+              <option value="fight">Luta</option>
+            </select>
+          </label>
+          {activity === "fight" && (
+            <label className="min-w-0">
+              <span className="mb-1 block text-xs uppercase tracking-wide text-ink-3">Modalidade de luta</span>
+              <select required className="input" value={fightStyle} onChange={e => setFightStyle(e.target.value)}>
+                <option value="" disabled>Escolha a modalidade</option>
+                {Object.entries(FIGHT_STYLES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+              </select>
+            </label>
+          )}
+        </div>
+      )}
       <label className="block text-sm">
         <span className="mb-1 block text-xs uppercase tracking-wide text-ink-3">Nome</span>
-        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="ex.: 30 dias sem açúcar" className="input" />
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="ex.: 30 dias sem açúcar" className="input" />
       </label>
       <label className="block text-sm">
         <span className="mb-1 block text-xs uppercase tracking-wide text-ink-3">Descrição</span>
@@ -252,6 +293,7 @@ export function ProjectsPage() {
                 <div className="flex items-start justify-between gap-3">
                   <Link href={`/metas/projetos/${p.id}`} className="min-w-0">
                     <h2 className="truncate text-lg font-semibold tracking-tight hover:underline">{p.name}</h2>
+                    {p.workout && <span className="pill my-1 inline-flex items-center gap-1.5"><Dumbbell size={12} /> {workoutLabel(p.workout)}</span>}
                     <p className="line-clamp-2 text-sm text-ink-2">{p.description || p.obligations.slice(0, 2).join(" · ")}</p>
                   </Link>
                   <div className="flex shrink-0 items-center gap-1">

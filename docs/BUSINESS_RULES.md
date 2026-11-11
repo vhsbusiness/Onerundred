@@ -68,6 +68,8 @@ Roda em leituras relevantes, no máximo uma vez por minuto por instância e semp
 
 ## 7. Metas › Projetos (`src/lib/projects.ts`)
 
+- Projeto comum ou Treino: a modalidade é uma escolha por projeto, editável e independente do nome. Musculação, Corrida e Bike são opções diretas; Luta exige escolher a modalidade. O catálogo compartilhado está em `src/lib/workouts.ts`. `Project.workout = null` mantém os projetos anteriores como comuns; omitir o campo no PATCH preserva o valor salvo. Treinos seguem a mesma marcação de ontem e as mesmas regras de duração, lembretes e performance.
+
 - `days` 1–365 ou 0 = sem fim (mostra alguns dias futuros). O dia marcável é sempre **ontem** (`markDayKey`); futuros não podem ser marcados.
 - Dias anteriores a ontem sem marcação viram "não feito" automaticamente; o usuário pode corrigir (há aviso para marcar feito só se cumpriu). Lembrete push às 10:00 quando ontem está pendente.
 

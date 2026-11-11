@@ -14,6 +14,7 @@ export const POST = withUser(async (user, req: Request) => {
     obligations: typeof body.obligations === "string" ? body.obligations : "",
     startDate: optionalDayKey(body.startDate) ?? todayKey(),
     days,
+    workout: body.workout,
   });
   return json(project, { status: 201 });
 });

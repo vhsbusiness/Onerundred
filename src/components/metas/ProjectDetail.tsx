@@ -1,13 +1,14 @@
 "use client";
 
 import { askConfirm, notify } from "@/components/ui/ConfirmProvider";
-import { Archive, ArrowLeft, Check, Flame, Pencil, Trash2, X } from "lucide-react";
+import { Archive, ArrowLeft, Check, Dumbbell, Flame, Pencil, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { http } from "@/lib/client";
 import { Modal } from "@/components/ui/Modal";
 import { keyToDate, weekdayShort } from "@/lib/time";
+import { workoutLabel } from "@/lib/workouts";
 import type { ProjectDTO, ProjectDayDTO } from "@/lib/types";
 import { MetasHeader } from "./MetasTabs";
 import { ProjectForm } from "./ProjectsPage";
@@ -91,6 +92,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
         <Link href="/metas" className="btn btn-ghost h-8 px-2">
           <ArrowLeft size={15} /> Projetos
         </Link>
+        {p.workout && <span className="pill inline-flex items-center gap-1.5"><Dumbbell size={12} /> {workoutLabel(p.workout)}</span>}
         <span className="pill">
           {p.endless ? `desde ${fmtDay(p.startDate)} · sem data para acabar` : `${fmtDay(p.startDate)} → ${fmtDay(p.endDate ?? p.startDate)} · ${p.days} dias`}
         </span>

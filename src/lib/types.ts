@@ -486,6 +486,7 @@ export interface ProjectDayDTO {
 }
 
 export interface ProjectDTO {
+  workout: import("./workouts").Workout | null;
   id: string;
   name: string;
   description: string;

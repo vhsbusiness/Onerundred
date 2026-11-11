@@ -1,5 +1,6 @@
 import { addDays } from "date-fns";
 import { prisma } from "./db";
+import { isWorkout, type Workout } from "./workouts";
 import { ApiError } from "./errors";
 import { dayKey, keyToDate, todayKey } from "./time";
 import type { ProjectDTO, ProjectDayDTO, ProjectDayStatus } from "./types";
@@ -59,7 +60,14 @@ export async function autoMarkMissedDays(): Promise<void> {
   }
 }
 
+function parseWorkout(value: unknown): Workout | null | undefined {
+  if (value === undefined || value === null) return value;
+  if (!isWorkout(value)) throw new ApiError(400, "Escolha um tipo de treino válido e, para luta, a modalidade.");
+  return value;
+}
+
 interface ProjectRow {
+  workout: string | null;
   id: string;
   name: string;
   description: string;
@@ -115,6 +123,7 @@ function serialize(p: ProjectRow): ProjectDTO {
 
   return {
     id: p.id,
+    workout: isWorkout(p.workout) ? p.workout : null,
     name: p.name,
     description: p.description,
     obligations: parseObligations(p.obligations),
@@ -166,13 +175,14 @@ function validate(input: { name: string; days: number; startDate: string }) {
 
 export async function createProject(
   userId: string,
-  input: { name: string; description: string; obligations: string; startDate: string; days: number },
+  input: { name: string; description: string; obligations: string; startDate: string; days: number; workout?: unknown },
 ): Promise<ProjectDTO> {
   validate(input);
   const row = await prisma.project.create({
     data: {
       userId,
       name: input.name.trim(),
+      workout: parseWorkout(input.workout),
       description: input.description.trim(),
       obligations: parseObligations(input.obligations).join("\n"),
       startDate: input.startDate,
@@ -186,7 +196,7 @@ export async function createProject(
 export async function updateProject(
   userId: string,
   id: string,
-  input: Partial<{ name: string; description: string; obligations: string; startDate: string; days: number; archived: boolean }>,
+  input: Partial<{ name: string; description: string; obligations: string; startDate: string; days: number; archived: boolean; workout: unknown }>,
 ): Promise<ProjectDTO> {
   const existing = await prisma.project.findFirst({ where: { id, userId } });
   if (!existing) throw new ApiError(404, "Projeto não encontrado");
@@ -200,6 +210,7 @@ export async function updateProject(
     where: { id },
     data: {
       name: merged.name.trim(),
+      workout: parseWorkout(input.workout),
       days: merged.days,
       startDate: merged.startDate,
       description: input.description !== undefined ? input.description.trim() : undefined,

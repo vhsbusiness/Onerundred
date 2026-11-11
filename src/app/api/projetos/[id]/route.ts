@@ -19,6 +19,7 @@ export const PATCH = withUser(async (user, req: Request, ctx: Ctx) => {
     obligations: typeof body.obligations === "string" ? body.obligations : undefined,
     startDate: optionalDayKey(body.startDate),
     days,
+    workout: body.workout,
     archived: body.archived === undefined ? undefined : Boolean(body.archived),
   });
   return json(project);

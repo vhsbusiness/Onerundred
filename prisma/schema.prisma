@@ -285,6 +285,8 @@ model SleepLog {
 
 /// Meta do tipo "projeto": compromisso diário por N dias
 model Project {
+  /// Modalidade de treino; null para projetos comuns.
+  workout     String?
   id          String       @id @default(cuid())
   userId      String
   name        String
