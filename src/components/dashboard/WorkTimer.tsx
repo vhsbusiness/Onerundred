@@ -1,5 +1,6 @@
 "use client";
 
+import { WorkChimeTest } from "@/components/ui/WorkChimeTest";
 import { askConfirm } from "@/components/ui/ConfirmProvider";
 import { Lightbulb, Pause, Pencil, Play, Sparkles, Square, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
@@ -170,7 +171,10 @@ export function WorkTimer({ work, onChange }: { work: WorkState; onChange: (w: W
         </div>
       </div>
 
-      <p className="mt-3 text-xs text-ink-2">{work.workChime.enabled ? `Aviso sonoro a cada ${work.workChime.intervalMinutes} min de trabalho.` : "Aviso sonoro desligado."}</p>
+      <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1">
+        <p className="text-xs text-ink-2">{work.workChime.enabled ? `Aviso sonoro a cada ${work.workChime.intervalMinutes} min de trabalho.` : "Aviso sonoro desligado."}</p>
+        {work.workChime.enabled && <WorkChimeTest />}
+      </div>
 
       <div className="mt-5">
         <div className="mb-1.5 flex justify-between text-xs text-ink-2">

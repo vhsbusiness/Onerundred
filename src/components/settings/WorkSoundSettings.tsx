@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Volume2 } from "lucide-react";
+import { WorkChimeTest } from "@/components/ui/WorkChimeTest";
 import { http } from "@/lib/client";
 import { notifyChimeSettingsChanged } from "@/lib/work-chime";
 import { MAX_CHIME_MINUTES, validChimeInterval, type WorkChimeSettings } from "@/lib/work-chime-settings";
@@ -54,5 +55,6 @@ export function WorkSoundSettings({ initial }: { initial: WorkChimeSettings }) {
         </div>
       </fieldset>
     </form>
+    <div className="mt-3"><WorkChimeTest /></div>
   </section>;
 }

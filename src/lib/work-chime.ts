@@ -1,5 +1,5 @@
 import type { WorkState } from "./types";
-
+import { closeWorkAudio, enableWorkAudio, playWorkTone } from "./work-chime-audio";
 import { DEFAULT_WORK_CHIME, type WorkChimeSettings } from "./work-chime-settings";
 
 const CHANNEL = "onerundred-work-chime-changed";
@@ -12,11 +12,13 @@ export function notifyChimeSettingsChanged() {
     channel.close();
   }
 }
-// Abas em segundo plano podem acordar atrasadas. Não tocar avisos antigos.
-const GRACE = 60_000;
+// Ao abrir a página, considera apenas avisos recentes. Depois da primeira leitura
+// do ciclo, o próximo marco continua válido mesmo que o navegador atrase a aba.
+const INITIAL_GRACE = 60_000;
+type Observation = { sessionId: string; changedAt: number; since: number };
 const MARKER = "onerundred:last-work-chime";
 
-export function workMilestone(running: NonNullable<WorkState["running"]>, now: number, settings: WorkChimeSettings) {
+export function workMilestone(running: NonNullable<WorkState["running"]>, now: number, settings: WorkChimeSettings, observedSince = now) {
   const interval = settings.intervalMinutes * 60_000;
   const start = Date.parse(running.startedAt);
   const previousMs = running.previousCycleMs ?? 0;
@@ -24,8 +26,10 @@ export function workMilestone(running: NonNullable<WorkState["running"]>, now: n
   const number = Math.floor(elapsed / interval);
   const milestoneMs = number * interval;
   const remainder = elapsed % interval;
+  const milestoneAt = start + milestoneMs - previousMs;
+  const recentOrObserved = remainder < INITIAL_GRACE || milestoneAt >= observedSince;
   return {
-    due: settings.enabled && milestoneMs > previousMs && remainder < GRACE && now - remainder >= settings.changedAt,
+    due: settings.enabled && milestoneMs > previousMs && milestoneAt >= settings.changedAt && recentOrObserved,
     key: running.id + ":" + milestoneMs,
     nextIn: interval - remainder,
   };
@@ -33,7 +37,7 @@ export function workMilestone(running: NonNullable<WorkState["running"]>, now: n
 
 /** Um monitor por aba, compartilhado entre todos os designs e páginas autenticadas. */
 export function watchWorkClock(showRunning: (running: boolean) => void) {
-  let audio: AudioContext | undefined;
+  let observation: Observation | undefined;
   let active = true;
   let version = 0;
   let timeout: number | undefined;
@@ -41,28 +45,18 @@ export function watchWorkClock(showRunning: (running: boolean) => void) {
 
   function unlock() {
     try {
-      audio ??= new AudioContext();
-      if (audio.state !== "running") void audio.resume().catch(() => {});
+      enableWorkAudio();
     } catch { /* O navegador pode proibir áudio. O cronômetro continua normalmente. */ }
   }
 
   function chime(key: string, requestVersion: number) {
-    const ready = () => active && requestVersion === version && audio?.state === "running" && lastPlayed !== key;
+    if (lastPlayed === key) return;
+    let output: AudioContext;
+    try { output = enableWorkAudio(); } catch { return; }
+    const ready = () => active && requestVersion === version && output.state === "running" && lastPlayed !== key;
     if (!ready()) return;
     function playOnce() {
-      if (!ready() || !audio) return false;
-      const oscillator = audio.createOscillator();
-      const gain = audio.createGain();
-      const t = audio.currentTime;
-      oscillator.type = "sine";
-      oscillator.frequency.value = 740;
-      gain.gain.setValueAtTime(0.0001, t);
-      gain.gain.exponentialRampToValueAtTime(0.12, t + 0.025);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
-      oscillator.connect(gain).connect(audio.destination);
-      oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
-      oscillator.start(t);
-      oscillator.stop(t + 0.36);
+      if (!ready() || !playWorkTone(output)) return false;
       lastPlayed = key;
       return true;
     }
@@ -88,7 +82,8 @@ export function watchWorkClock(showRunning: (running: boolean) => void) {
         const store = tx.objectStore("clock");
         const last = store.get(MARKER);
         last.onsuccess = () => {
-          if (last.result !== key && playOnce()) store.put(key, MARKER);
+          if (last.result === key) lastPlayed = key;
+          else if (playOnce()) store.put(key, MARKER);
         };
         tx.oncomplete = () => db.close();
         tx.onabort = () => { db.close(); fallback(); };
@@ -107,9 +102,15 @@ export function watchWorkClock(showRunning: (running: boolean) => void) {
       if (!active || current !== version) return;
       showRunning(Boolean(running));
       if (running && workChime.enabled) {
-        const { due, key, nextIn } = workMilestone(running, Date.now(), workChime);
+        const now = Date.now();
+        if (observation?.sessionId !== running.id || observation.changedAt !== workChime.changedAt) {
+          observation = { sessionId: running.id, changedAt: workChime.changedAt, since: now };
+        }
+        const { due, key, nextIn } = workMilestone(running, now, workChime, observation.since);
         if (due) chime(key, current);
         delay = Math.min(delay, nextIn);
+      } else {
+        observation = undefined;
       }
     } catch { /* sem confirmação de que a sessão segue aberta, não emitir som */ }
     finally {
@@ -133,6 +134,6 @@ export function watchWorkClock(showRunning: (running: boolean) => void) {
     window.removeEventListener("keydown", unlock, true);
     window.removeEventListener("work-changed", refresh);
     document.removeEventListener("visibilitychange", visible);
-    if (audio) void audio.close().catch(() => {});
+    closeWorkAudio();
   };
 }
