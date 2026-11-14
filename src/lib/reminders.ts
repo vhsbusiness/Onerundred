@@ -16,7 +16,7 @@ type ReminderRow = {
   lastSentAt: Date | null;
   card?: { id: string; title: string; completedAt: Date | null; list: { boardId: string } } | null;
 };
-const withCard = { card: { select: { id: true, title: true, completedAt: true, list: { select: { boardId: true } } } } } as const;
+const withCard = (userId: string) => ({ card: { where: { list: { board: boardAccess(userId) } }, select: { id: true, title: true, completedAt: true, list: { select: { boardId: true } } } } } as const);
 
 function serialize(r: ReminderRow): ReminderDTO {
   return {
@@ -55,7 +55,7 @@ export async function listReminders(userId: string, cardId?: string): Promise<Re
     where: { userId, ...(cardId ? { cardId } : {}) },
     orderBy: [{ active: "desc" }, { at: "asc" }],
     take: 200,
-    include: withCard,
+    include: withCard(userId),
   });
   return rows.map(serialize);
 }
@@ -77,7 +77,7 @@ export async function createReminder(userId: string, input: Record<string, unkno
     throw new ApiError(400, "Esse horário já passou");
   }
   const cardId = await ownedCardId(userId, input.cardId);
-  const row = await prisma.reminder.create({ data: { userId, ...data, cardId }, include: withCard });
+  const row = await prisma.reminder.create({ data: { userId, ...data, cardId }, include: withCard(userId) });
   return serialize(row);
 }
 
@@ -98,7 +98,7 @@ export async function updateReminder(userId: string, id: string, input: Record<s
   }
   if (typeof input.active === "boolean") data.active = input.active;
   const cardId = input.cardId === undefined ? undefined : await ownedCardId(userId, input.cardId);
-  const row = await prisma.reminder.update({ where: { id }, data: { ...data, ...(cardId !== undefined ? { cardId } : {}) }, include: withCard });
+  const row = await prisma.reminder.update({ where: { id }, data: { ...data, ...(cardId !== undefined ? { cardId } : {}) }, include: withCard(userId) });
   return serialize(row);
 }
 

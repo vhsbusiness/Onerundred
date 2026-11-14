@@ -1,8 +1,10 @@
+import { consumeAuthAttempt, registrationNetwork } from "@/lib/security-rate";
 import { NextResponse } from "next/server";
 import { handle, readBody, requireString } from "@/lib/api";
 import { createSession, registerUser, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/auth";
 
 export const POST = handle(async (req: Request) => {
+  await consumeAuthAttempt("register", registrationNetwork(req), 20);
   const body = await readBody(req);
   const user = await registerUser({
     name: requireString(body.name, "name"),

@@ -13,7 +13,9 @@
     "db:pg-migration": "node scripts/pg-migration.mjs",
     "db:studio": "prisma studio",
     "test:mind": "node --test scripts/test-mind-map.cjs",
-    "test:recurring": "node --test scripts/test-recurring-work.cjs"
+    "test:recurring": "node --test scripts/test-recurring-work.cjs",
+    "test:security": "node --test scripts/test-security.cjs",
+    "test:security:http": "node scripts/test-security-http.cjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -31,7 +33,7 @@
     "better-sqlite3": "^13.0.3",
     "date-fns": "^4.4.0",
     "lucide-react": "^1.59.0",
-    "next": "16.4.2",
+    "next": "16.4.5",
     "openai": "^7.38.0",
     "pg": "^8.23.1",
     "prisma": "^7.10.1",

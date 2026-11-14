@@ -11,12 +11,40 @@ export function json<T>(data: T, init?: ResponseInit) {
   return NextResponse.json(data, { ...init, headers: { "Cache-Control": "no-store", ...(init?.headers ?? {}) } });
 }
 
-export async function readBody<T = Record<string, unknown>>(req: Request): Promise<T> {
-  try {
-    return (await req.json()) as T;
-  } catch {
-    throw new ApiError(400, "JSON inválido");
+export function assertSameOrigin(req: Request) {
+  if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return;
+  if (req.headers.get("sec-fetch-site") === "cross-site") throw new ApiError(403, "Origem não autorizada");
+  const origin = req.headers.get("origin");
+  if (origin) {
+    let source: URL;
+    try { source = new URL(origin); } catch { throw new ApiError(403, "Origem não autorizada"); }
+    const target = new URL(req.url);
+    const host = req.headers.get("host") ?? target.host;
+    const forwarded = req.headers.get("x-forwarded-proto")?.split(",")[0].trim();
+    const protocol = forwarded === "https" || forwarded === "http" ? forwarded + ":" : target.protocol;
+    if (source.host !== host || source.protocol !== protocol || !["http:", "https:"].includes(source.protocol)) throw new ApiError(403, "Origem não autorizada");
   }
+}
+
+export async function readBody<T = Record<string, unknown>>(req: Request, maxBytes = 2 * 1024 * 1024): Promise<T> {
+  if (req.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json") throw new ApiError(415, "Envie JSON");
+  if (Number(req.headers.get("content-length")) > maxBytes) throw new ApiError(413, "Requisição grande demais");
+  const reader = req.body?.getReader();
+  if (!reader) throw new ApiError(400, "JSON inválido");
+  const chunks: Uint8Array[] = []; let size = 0;
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > maxBytes) { await reader.cancel(); throw new ApiError(413, "Requisição grande demais"); }
+      chunks.push(value);
+    }
+  } finally { reader.releaseLock(); }
+  let data: unknown;
+  try { data = JSON.parse(Buffer.concat(chunks).toString("utf8")); } catch { throw new ApiError(400, "JSON inválido"); }
+  if (!data || typeof data !== "object" || Array.isArray(data)) throw new ApiError(400, "Objeto JSON inválido");
+  return data as T;
 }
 
 /** Envolve um handler para transformar erros em respostas JSON. */
@@ -25,6 +53,7 @@ export function handle<Args extends unknown[]>(
 ): (...args: Args) => Promise<Response> {
   return async (...args: Args) => {
     try {
+      if (args[0] instanceof Request) assertSameOrigin(args[0]);
       return await fn(...args);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -35,7 +64,7 @@ export function handle<Args extends unknown[]>(
         console.error("Falha no provedor de IA", { status: providerError.status });
         return json({ error: providerError.message }, { status: providerError.status });
       }
-      console.error(err);
+      console.error("Erro interno na API", { type: err instanceof Error ? err.name : "unknown" });
       return json({ error: "Erro interno" }, { status: 500 });
     }
   };

@@ -275,7 +275,7 @@ async function spawnRecurringCard(
     // A reserva e a criação são atômicas: manutenção e encerramento simultâneos
     // não podem criar duas ocorrências. Ao adiar, lastSpawnedKey fica intacta.
     const claimed = await tx.recurringTask.updateMany({
-      where: { id: r.id, active: true, OR: [{ lastSpawnedKey: null }, { lastSpawnedKey: { lt: today } }] },
+      where: { id: r.id, userId: r.userId, list: { board: boardAccess(r.userId) }, active: true, OR: [{ lastSpawnedKey: null }, { lastSpawnedKey: { lt: today } }] },
       data: { lastSpawnedKey: today },
     });
     if (!claimed.count) return;
@@ -336,7 +336,7 @@ export async function updateRecurring(
   id: string,
   data: { weekdays?: number[]; active?: boolean; listId?: string },
 ): Promise<RecurringDTO> {
-  const existing = await prisma.recurringTask.findFirst({ where: { id, userId } });
+  const existing = await prisma.recurringTask.findFirst({ where: { id, userId, list: { board: boardAccess(userId) } } });
   if (!existing) throw new ApiError(404, "Tarefa contínua não encontrada");
   const patch: { weekdays?: string; active?: boolean; listId?: string } = {};
   if (data.weekdays) {
@@ -355,7 +355,7 @@ export async function updateRecurring(
 }
 
 export async function deleteRecurring(userId: string, id: string) {
-  const existing = await prisma.recurringTask.findFirst({ where: { id, userId } });
+  const existing = await prisma.recurringTask.findFirst({ where: { id, userId, list: { board: boardAccess(userId) } } });
   if (!existing) throw new ApiError(404, "Tarefa contínua não encontrada");
   await prisma.recurringTask.delete({ where: { id } });
 }

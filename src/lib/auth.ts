@@ -2,6 +2,7 @@ import { randomBytes, scrypt as scryptCb, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { prisma } from "./db";
 import { ApiError } from "./errors";
+import { consumeAuthAttempt } from "./security-rate";
 
 const scrypt = promisify(scryptCb);
 
@@ -85,7 +86,7 @@ export async function destroySession(token: string | undefined) {
 
 /** Usuário dono de um token de sessão válido, ou null. */
 export async function userFromSession(token: string | undefined): Promise<CurrentUser | null> {
-  if (!token) return null;
+  if (!token || !/^[a-f0-9]{64}$/.test(token)) return null;
   const session = await prisma.authSession.findUnique({
     where: { id: token },
     include: { user: true },
@@ -111,28 +112,19 @@ export async function registerUser(input: {
   const username = normalizeUsername(input.username);
   validateRegistration({ ...input, email, username });
 
-  const userCount = await prisma.user.count();
-  if (userCount > 0 && !(await registrationAllowed())) {
-    throw new ApiError(403, "Cadastro desativado pelo administrador");
-  }
-
-  const clash = await prisma.user.findFirst({
-    where: { OR: [{ email }, { username }] },
-    select: { email: true, username: true },
-  });
-  if (clash?.email === email) throw new ApiError(409, "Já existe uma conta com esse e-mail");
-  if (clash?.username === username) throw new ApiError(409, "Esse nome de usuário já está em uso");
-
-  const user = await prisma.user.create({
-    data: {
-      name: input.name.trim(),
-      email,
-      username,
-      passwordHash: await hashPassword(input.password),
-      // O primeiro usuário do sistema vira administrador.
-      role: userCount === 0 ? "admin" : "user",
-      lastLoginAt: new Date(),
-    },
+  const passwordHash = await hashPassword(input.password);
+  const user = await prisma.$transaction(async tx => {
+    // The row lock serializes bootstrap across processes, before counting users.
+    await tx.appSetting.upsert({ where: { key: "security:registration-lock" },
+      create: { key: "security:registration-lock", value: "1" }, update: { value: "1" } });
+    const userCount = await tx.user.count();
+    const allowed = await tx.appSetting.findUnique({ where: { key: "allowRegistration" } });
+    if (userCount > 0 && allowed?.value === "false") throw new ApiError(403, "Cadastro desativado pelo administrador");
+    const clash = await tx.user.findFirst({ where: { OR: [{ email }, { username }] }, select: { email: true, username: true } });
+    if (clash?.email === email) throw new ApiError(409, "Já existe uma conta com esse e-mail");
+    if (clash?.username === username) throw new ApiError(409, "Esse nome de usuário já está em uso");
+    return tx.user.create({ data: { name: input.name.trim(), email, username, passwordHash,
+      role: userCount === 0 ? "admin" : "user", lastLoginAt: new Date() } });
   });
   return toCurrentUser(user);
 }
@@ -143,6 +135,7 @@ export async function authenticate(identifier: string, password: string): Promis
   const user = await prisma.user.findFirst({
     where: { OR: [{ email: id }, { username: id }] },
   });
+  await consumeAuthAttempt("login", user?.id ?? id, 10);
   const ok = user ? await verifyPassword(password, user.passwordHash) : false;
   if (!user || !ok) throw new ApiError(401, "Usuário ou senha incorretos");
   if (!user.active) throw new ApiError(403, "Conta desativada. Fale com o administrador.");
@@ -209,8 +202,9 @@ export async function changePassword(
     throw new ApiError(400, "Senha atual incorreta");
   }
   if (newPassword.length < 8) throw new ApiError(400, "A nova senha precisa ter pelo menos 8 caracteres");
-  await prisma.user.update({ where: { id: userId }, data: { passwordHash: await hashPassword(newPassword) } });
-  await prisma.authSession.deleteMany({
-    where: { userId, ...(keepSessionToken ? { NOT: { id: keepSessionToken } } : {}) },
-  });
+  const passwordHash = await hashPassword(newPassword);
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: userId }, data: { passwordHash } }),
+    prisma.authSession.deleteMany({ where: { userId, ...(keepSessionToken ? { NOT: { id: keepSessionToken } } : {}) } }),
+  ]);
 }

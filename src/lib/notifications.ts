@@ -1,3 +1,5 @@
+import { boardAccess } from "./repo";
+import { pushAgent, pushEndpoint, samePushDevice, validatePushSubscription } from "./push-security";
 import { totalWorkedMs } from "./work-breaks";
 import webpush from "web-push";
 import { addDays, subDays } from "date-fns";
@@ -99,13 +101,15 @@ export async function subscribe(
   sub: { endpoint: string; keys: { p256dh: string; auth: string } },
   userAgent: string,
 ) {
-  if (!sub?.endpoint || !sub.keys?.p256dh || !sub.keys?.auth) throw new ApiError(400, "Inscrição inválida");
-  await prisma.pushSubscription.upsert({
-    where: { endpoint: sub.endpoint },
-    create: { userId, endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth, userAgent: userAgent.slice(0, 200) },
-    update: { userId, p256dh: sub.keys.p256dh, auth: sub.keys.auth, userAgent: userAgent.slice(0, 200) },
+  const valid = validatePushSubscription(sub);
+  await prisma.$transaction(async tx => {
+    const row = await tx.pushSubscription.upsert({ where: { endpoint: valid.endpoint },
+      create: { userId, endpoint: valid.endpoint, ...valid.keys, userAgent: userAgent.slice(0, 200) }, update: {} });
+    if (row.userId !== userId && !samePushDevice(row, valid.keys)) throw new ApiError(409, "Não foi possível confirmar a inscrição deste dispositivo.");
+    await tx.pushSubscription.updateMany({ where: { endpoint: valid.endpoint, userId: row.userId },
+      data: { userId, ...valid.keys, userAgent: userAgent.slice(0, 200) } });
+    await tx.notificationPref.upsert({ where: { userId }, create: { userId, enabled: true }, update: { enabled: true } });
   });
-  await prisma.notificationPref.upsert({ where: { userId }, create: { userId, enabled: true }, update: { enabled: true } });
 }
 
 export async function unsubscribe(userId: string, endpoint?: string, id?: string) {
@@ -129,10 +133,11 @@ export async function sendToUser(userId: string, msg: PushMessage): Promise<numb
   let delivered = 0;
   for (const s of subs) {
     try {
+      pushEndpoint(s.endpoint);
       await webpush.sendNotification(
         { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
         JSON.stringify(msg),
-        { TTL: 60 * 60 },
+        { TTL: 60 * 60, timeout: 10_000, agent: pushAgent },
       );
       delivered += 1;
     } catch (err) {
@@ -140,7 +145,7 @@ export async function sendToUser(userId: string, msg: PushMessage): Promise<numb
       if (status === 404 || status === 410) {
         await prisma.pushSubscription.delete({ where: { id: s.id } }).catch(() => {});
       } else {
-        console.error("push falhou", status, (err as Error).message);
+        console.error("push falhou", { status });
       }
     }
   }
@@ -361,7 +366,7 @@ export async function evaluateUser(userId: string, now = new Date()): Promise<st
     const due = await prisma.reminder.findMany({
       where: { userId, active: true, at: { lte: now } },
       orderBy: { at: "asc" },
-      include: { card: { select: { id: true, title: true, list: { select: { boardId: true } } } } },
+      include: { card: { where: { list: { board: boardAccess(userId) } }, select: { id: true, title: true, list: { select: { boardId: true } } } } },
     });
     for (const r of due) {
       await sendToUser(userId, {
@@ -394,7 +399,7 @@ export async function tick(now = new Date()): Promise<{ users: number; sent: num
     try {
       total += (await evaluateUser(u.userId, now)).length;
     } catch (err) {
-      console.error("notificações: falha para", u.userId, (err as Error).message);
+      console.error("notificações: falha", { type: err instanceof Error ? err.name : "unknown" });
     }
   }
   return { users: users.length, sent: total };

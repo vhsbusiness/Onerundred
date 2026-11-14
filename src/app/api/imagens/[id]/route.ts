@@ -22,7 +22,8 @@ export const GET = handle(async (_req: Request, ctx: Ctx) => {
     headers: {
       "Content-Type": match[1],
       "Content-Length": String(bytes.length),
-      "Cache-Control": collaboration ? "private, no-store" : "private, max-age=86400, immutable",
+      "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff",
     },
   });
 });

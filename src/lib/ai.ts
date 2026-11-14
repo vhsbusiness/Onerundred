@@ -448,9 +448,9 @@ const sessionSchema = {
 
 /** Visão da IA sobre uma sessão de trabalho já encerrada. */
 export async function analyzeWorkSession(userId: string, sessionId: string): Promise<WorkSessionInsightDTO> {
-  if (!aiEnabled()) throw new ApiError(503, "IA não configurada (OPENAI_API_KEY ausente)");
   const session = await prisma.workSession.findFirst({ where: { id: sessionId, userId } });
   if (!session) throw new ApiError(404, "Sessão não encontrada");
+  if (!aiEnabled()) throw new ApiError(503, "IA não configurada (OPENAI_API_KEY ausente)");
   if (!session.endedAt) throw new ApiError(400, "Encerre ou pause a sessão antes de pedir a visão da IA");
 
   const startDay = dayRange(dayKey(session.startedAt));

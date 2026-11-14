@@ -3,6 +3,7 @@
 import { LockKeyhole } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { safeLoginRedirect } from "@/lib/safe-redirect";
 import { Logo } from "@/components/Nav";
 
 type Mode = "login" | "register";
@@ -32,7 +33,7 @@ export function AuthForm() {
 
   function goNext() {
     const next = params.get("next");
-    router.replace(next && next.startsWith("/") ? next : "/");
+    router.replace(safeLoginRedirect(next));
     router.refresh();
   }
 

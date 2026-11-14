@@ -16,7 +16,7 @@ export async function register() {
       const r = await tick();
       if (r.sent > 0) console.log(`[notificações] ${r.sent} enviada(s) para ${r.users} usuário(s)`);
     } catch (err) {
-      console.error("[notificações] erro no agendador", (err as Error).message);
+      console.error("[notificações] erro no agendador", { type: err instanceof Error ? err.name : "unknown" });
     }
   };
   g.__onerundredScheduler = setInterval(run, 5 * 60 * 1000);

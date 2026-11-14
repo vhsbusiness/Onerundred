@@ -31,7 +31,7 @@ const url = resolveUrlForCli();
 
 if (!isSqliteUrl(url) && !isPostgresUrl(url)) {
   throw new Error(
-    `DATABASE_URL inválida: use "file:..." (SQLite) ou "postgresql://..." (Postgres). Recebido: ${url}`,
+    `DATABASE_URL inválida: use "file:..." (SQLite) ou "postgresql://..." (Postgres).`,
   );
 }
 
