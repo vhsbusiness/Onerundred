@@ -1,3 +1,4 @@
+import { MIND_TITLE_MAX_LENGTH } from "./mind-title";
 import { Prisma } from "@/generated/prisma/client";
 import { breakError, sortedBreaks, storedBreaks, totalWorkedMs, workedMs } from "./work-breaks";
 import { readWorkChimeSetting } from "./work-chime-settings";
@@ -577,7 +578,7 @@ export async function createBoard(userId: string, name: string, type: BoardType 
       symbol,
       name,
       position: (max._max.position ?? -1) + 1,
-      mindNodes: type === "mindmap" ? { create: { title: name.slice(0, 160), shape: "plain" } } : undefined,
+      mindNodes: type === "mindmap" ? { create: { title: name.slice(0, MIND_TITLE_MAX_LENGTH), shape: "plain" } } : undefined,
       lists: type === "mindmap" ? undefined : {
         create: type === "organization" ? [{ name: "Informações", position: 0, priority: 2, kind: "normal" }] : [
           { name: "A fazer", position: 0, priority: 2, kind: "normal" },

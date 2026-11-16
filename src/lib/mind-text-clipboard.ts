@@ -1,3 +1,4 @@
+import { MIND_TITLE_MAX_LENGTH } from "./mind-title";
 import type { MindNodeDTO } from "./types";
 
 export const MIND_TEXT_MIME = "application/x-onerundred-mind-text+json";
@@ -36,12 +37,12 @@ export function readMindText(clipboard: DataTransfer): MindText | null {
   if (raw && raw.length < 20_000) {
     try {
       const data = JSON.parse(raw);
-      if (data.version === 1 && typeof data.text === "string" && data.text.length <= 160)
+      if (data.version === 1 && typeof data.text === "string" && data.text.length <= MIND_TITLE_MAX_LENGTH)
         return { text: data.text, style: safeMindTextStyle(data.style) };
     } catch { /* fall through to safe HTML/text parsing */ }
   }
   const text = clipboard.getData("text/plain"), html = clipboard.getData("text/html");
-  if (!html || html.length > 200_000 || !text || text.length > 160) return null;
+  if (!html || html.length > 200_000 || !text || text.length > MIND_TITLE_MAX_LENGTH) return null;
   // Inert template: never mount clipboard HTML, fetch resources or execute markup.
   const template = document.createElement("template");
   template.innerHTML = html;

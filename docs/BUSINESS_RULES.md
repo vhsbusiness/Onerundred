@@ -227,7 +227,7 @@ O fundo do mapa mantém os pontinhos nos temas claro e escuro. As cores têm pr�
 ### Reconexão por arraste e colagem formatada — 04/11/2026
 
 - Reconectar leva todos os descendentes, incluindo recolhidos, para a direita do novo pai; uma ação de histórico restaura título em edição, ligação e posições. O backend continua exigindo escrita no quadro, sem ciclos ou ligações entre quadros. Itens fixados impedem mover a subárvore. Auto continua respeitando as regras existentes nas árvores envolvidas.
-- Colar uma frase formatada em um item aberto atualiza texto e os estilos suportados do **bloco**. Não altera cor da conexão, hierarquia, posição ou travamento por dados do clipboard. O limite de título permanece 160 caracteres. Cópia de vários blocos deve ser colada no fundo do mapa; não inserir sua representação JSON num título.
+- Colar uma frase formatada em um item aberto atualiza texto e os estilos suportados do **bloco**. Não altera cor da conexão, hierarquia, posição ou travamento por dados do clipboard. Cada bloco aceita até 2.000 caracteres. Cópia de vários blocos deve ser colada no fundo do mapa; não inserir sua representação JSON num título.
 
 
 ## Bullets e quadros favoritos — 04/11/2026

@@ -1,5 +1,6 @@
 "use client";
 
+import { MIND_TITLE_MAX_LENGTH, MIND_TITLE_LIMIT_MESSAGE } from "@/lib/mind-title";
 import { useEffect, useEffectEvent, useRef, useState, useMemo, type PointerEvent, type CSSProperties } from "react";
 import { Focus, Minus, Maximize, Minimize, Moon, Sun, Plus, Undo2, ExternalLink, MousePointer2, Hand, ImagePlus, GitBranchPlus, Sparkles, Type, Square, Pencil, ClipboardPaste, Spline, Slash, Redo2, Search, X, ChevronUp, ChevronDown, ChevronsDownUp, Download, ListTree } from "lucide-react";
 import { http } from "@/lib/client";
@@ -456,7 +457,7 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
     void save(async () => {
       for (const [index, file] of files.entries()) {
         const image = await prepareMindImage(file);
-        const node = await http.post<MindNodeDTO>(url, { detached: true, title: file.name.slice(0, 160) || "Imagem", ...image, x: point.x + index * 40, y: point.y + index * 40 });
+        const node = await http.post<MindNodeDTO>(url, { detached: true, title: file.name.slice(0, MIND_TITLE_MAX_LENGTH) || "Imagem", ...image, x: point.x + index * 40, y: point.y + index * 40 });
         select(node.id); focus(node, view.zoom);
       }
     });
@@ -539,7 +540,7 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
           event.preventDefault();
           const start = target.selectionStart;
           const title = target.value.slice(0, start) + phrase.text + target.value.slice(target.selectionEnd);
-          if (title.length > 160) { notify("Use até 160 caracteres por ideia.", "error"); return; }
+          if (title.length > MIND_TITLE_MAX_LENGTH) { notify(MIND_TITLE_LIMIT_MESSAGE, "error"); return; }
           if (!title.trim()) return;
           const id = editor.id;
           edit({ id, title });
@@ -548,6 +549,13 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
           return;
         }
         if (data) { event.preventDefault(); notify("Para colar vários itens, clique primeiro no fundo do mapa.", "info"); return; }
+        const plainText = event.clipboardData.getData("text/plain").replace(/\r\n?/g, "\n");
+        const retainedLength = target.value.length - (target.selectionEnd - target.selectionStart);
+        if (plainText.length + retainedLength > MIND_TITLE_MAX_LENGTH) {
+          event.preventDefault();
+          notify(MIND_TITLE_LIMIT_MESSAGE, "error");
+          return;
+        }
       }
       if (data && !editingText(target)) {
         event.preventDefault();
@@ -785,7 +793,7 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
                 // eslint-disable-next-line @next/next/no-img-element
                 ? <img src={n.imageData} alt={n.title} draggable={false} style={{ width: n.imageWidth, height: n.imageHeight, objectFit: "contain" }} />
                 : editor?.id === n.id && onChanged
-                ? <textarea rows={1} data-mind-title aria-label="Texto do ramo" autoFocus onFocus={e => e.target.select()} maxLength={160} value={editor.title}
+                ? <textarea rows={1} data-mind-title aria-label="Texto do ramo" autoFocus onFocus={e => e.target.select()} maxLength={MIND_TITLE_MAX_LENGTH} value={editor.title}
                     className="w-full min-w-0 resize-none select-text bg-transparent text-center outline-none" style={{ backgroundColor: n.highlight || undefined, height: Math.max(n.fontSize * 1.25, textBlockSize(n).height - (central && !n.detached ? 20 : 14)) }}
                     onChange={e => edit({ id: n.id, title: e.target.value })} onBlur={commitTitle}
                     onKeyDown={e => { if (e.key === "Escape") { commitTitle(); select(undefined); e.stopPropagation(); } else shortcut(e, n.id); }} />

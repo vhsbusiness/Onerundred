@@ -1,3 +1,4 @@
+import { MIND_TITLE_MAX_LENGTH, MIND_TITLE_LIMIT_MESSAGE } from "@/lib/mind-title";
 import { randomUUID } from "node:crypto";
 import { ApiError, json, readBody, withUser } from "@/lib/api";
 import { prisma } from "@/lib/db";
@@ -25,7 +26,7 @@ function pathsFrom(value: unknown): MindImportTopic[][] {
       const topic = typeof value === "string" ? { title: value, bold: false } : value;
       if (!topic || typeof topic !== "object" || Array.isArray(topic)) throw new ApiError(400, "Ideia inválida.");
       const { title, bold } = topic as Partial<MindImportTopic>;
-      if (typeof title !== "string" || !title.trim() || title.trim().length > 160) throw new ApiError(400, "Cada ideia precisa ter entre 1 e 160 caracteres.");
+      if (typeof title !== "string" || !title.trim() || title.trim().length > MIND_TITLE_MAX_LENGTH) throw new ApiError(400, MIND_TITLE_LIMIT_MESSAGE);
       if (typeof bold !== "boolean") throw new ApiError(400, "Negrito inválido.");
       return { title: title.trim(), bold };
     });
@@ -60,7 +61,7 @@ export const PUT = withUser(async (user, req: Request, ctx: Context) => {
     if (!root) {
       // Importing into a cleared map creates a central idea as part of the same undo action.
       const board = await tx.board.findUniqueOrThrow({ where: { id: boardId }, select: { name: true } });
-      root = { detached: false, id: randomUUID(), parentId: null, boardId, title: board.name.slice(0, 160), bold: false, color: "blue", x: 0, y: 0 };
+      root = { detached: false, id: randomUUID(), parentId: null, boardId, title: board.name.slice(0, MIND_TITLE_MAX_LENGTH), bold: false, color: "blue", x: 0, y: 0 };
       nodes.push(root);
     }
     for (const path of paths) {

@@ -1,3 +1,4 @@
+import { MIND_TITLE_MAX_LENGTH, MIND_TITLE_LIMIT_MESSAGE } from "@/lib/mind-title";
 import { parseMindPicture, mindImageDimension } from "@/lib/mind-picture";
 import { ApiError, json, readBody, requireString, withUser } from "@/lib/api";
 import { isMindRoot } from "@/lib/mind-root";
@@ -12,7 +13,7 @@ function coordinate(n: unknown): n is number {
 }
 function topic(value: unknown) {
   const title = requireString(value, "Ideia");
-  if (title.length > 160) throw new ApiError(400, "Use até 160 caracteres por ideia.");
+  if (title.length > MIND_TITLE_MAX_LENGTH) throw new ApiError(400, MIND_TITLE_LIMIT_MESSAGE);
   return title;
 }
 

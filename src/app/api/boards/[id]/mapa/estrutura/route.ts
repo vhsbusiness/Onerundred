@@ -1,3 +1,4 @@
+import { MIND_TITLE_MAX_LENGTH, MIND_TITLE_LIMIT_MESSAGE } from "@/lib/mind-title";
 import { ApiError, json, readBody, requireString, withUser } from "@/lib/api";
 import { organizeMindTree, reconnectMindBranch } from "@/lib/mind-structure";
 export const POST = withUser(async (user, req: Request, ctx: { params: Promise<{ id: string }> }) => {
@@ -11,6 +12,6 @@ export const POST = withUser(async (user, req: Request, ctx: { params: Promise<{
   const id = requireString(body.id, "Ramo");
   const parentId = body.parentId === null ? null : requireString(body.parentId, "Ramo de destino");
   const title = body.title === undefined ? undefined : requireString(body.title, "Ideia");
-  if (title && title.length > 160) throw new ApiError(400, "Use até 160 caracteres por ideia.");
+  if (title && title.length > MIND_TITLE_MAX_LENGTH) throw new ApiError(400, MIND_TITLE_LIMIT_MESSAGE);
   return json(await reconnectMindBranch(boardId, user.id, id, parentId, title));
 });

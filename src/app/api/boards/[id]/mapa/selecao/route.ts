@@ -1,3 +1,4 @@
+import { MIND_TITLE_MAX_LENGTH } from "@/lib/mind-title";
 import { ApiError, json, readBody, withUser } from "@/lib/api";
 import { parseMindStyle } from "@/lib/mind-style";
 import { editSelection, type SelectionEdit } from "@/lib/mind-selection";
@@ -20,7 +21,7 @@ export const POST = withUser(async (user, req: Request, ctx: { params: Promise<{
     edit = { action: "move", dx: body.dx, dy: body.dy };
     if (body.titleEdit !== undefined) {
       const draft = body.titleEdit as Record<string, unknown> | null;
-      if (!draft || typeof draft !== "object" || typeof draft.id !== "string" || typeof draft.title !== "string" || !draft.title.trim() || draft.title.trim().length > 160) throw new ApiError(400, "Texto inválido.");
+      if (!draft || typeof draft !== "object" || typeof draft.id !== "string" || typeof draft.title !== "string" || !draft.title.trim() || draft.title.trim().length > MIND_TITLE_MAX_LENGTH) throw new ApiError(400, "Texto inválido.");
       edit.titleEdit = { id: draft.id, title: draft.title.trim() };
     }
   } else if (body.action === "paint" && (body.field === "color" || body.field === "textColor" || body.field === "highlight") &&
