@@ -1,9 +1,9 @@
-import { ApiError, json, optionalDayKey, readBody, requireString, withUser } from "@/lib/api";
+import { ApiError, json, optionalDayKey, readBody, requireString, withAccess } from "@/lib/api";
 import { getSleepPage, upsertSleep } from "@/lib/sleep";
 
-export const GET = withUser(async (user) => json(await getSleepPage(user.id)));
+export const GET = withAccess("sleep", async (user) => json(await getSleepPage(user.id)));
 
-export const POST = withUser(async (user, req: Request) => {
+export const POST = withAccess("sleep", async (user, req: Request) => {
   const body = await readBody(req);
   const dayKey = optionalDayKey(body.dayKey);
   if (!dayKey) throw new ApiError(400, "Informe o dia em que acordou (dayKey)");

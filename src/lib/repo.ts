@@ -1408,6 +1408,14 @@ export async function getWorkSessionDayContext(userId: string, session: { starte
   return { dayKey: key, plannedMinutes: estimated > 0 ? estimated : settings.dailyGoalMinutes, workedMs: totalWorkedMs(sessions) };
 }
 
+export async function workSessionsOnDay(userId: string, day: string) {
+  const { start, end } = dayRange(day);
+  const sessions = await prisma.workSession.findMany({
+    where: { userId, startedAt: { gte: start, lt: end } }, orderBy: { startedAt: "asc" },
+  });
+  return sessions.map(serializeWorkSession);
+}
+
 export async function getWorkState(userId: string): Promise<WorkState> {
   const today = todayKey();
   const { start } = dayRange(today);

@@ -1,14 +1,14 @@
-import { ApiError, json, optionalDayKey, readBody, requireString, withUser } from "@/lib/api";
+import { ApiError, json, optionalDayKey, readBody, requireString, withAccess } from "@/lib/api";
 import { deleteProject, getProject, updateProject } from "@/lib/projects";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-export const GET = withUser(async (user, _req: Request, ctx: Ctx) => {
+export const GET = withAccess("goals", async (user, _req: Request, ctx: Ctx) => {
   const { id } = await ctx.params;
   return json(await getProject(user.id, id));
 });
 
-export const PATCH = withUser(async (user, req: Request, ctx: Ctx) => {
+export const PATCH = withAccess("goals", async (user, req: Request, ctx: Ctx) => {
   const { id } = await ctx.params;
   const body = await readBody(req);
   if (body?.workout != null) throw new ApiError(400, "Abra Projetos para registrar treinos.");
@@ -25,7 +25,7 @@ export const PATCH = withUser(async (user, req: Request, ctx: Ctx) => {
   return json(project);
 });
 
-export const DELETE = withUser(async (user, _req: Request, ctx: Ctx) => {
+export const DELETE = withAccess("goals", async (user, _req: Request, ctx: Ctx) => {
   const { id } = await ctx.params;
   await deleteProject(user.id, id);
   return json({ ok: true });

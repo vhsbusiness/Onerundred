@@ -1,8 +1,8 @@
-import { ApiError, json, withUser } from "@/lib/api";
+import { ApiError, json, withAccess } from "@/lib/api";
 import { pasteMindSelection } from "@/lib/mind-copy";
 import { MIND_CLIPBOARD_LIMIT } from "@/lib/mind-clipboard";
 
-export const POST = withUser(async (user, req: Request, ctx: { params: Promise<{ id: string }> }) => {
+export const POST = withAccess("boards", async (user, req: Request, ctx: { params: Promise<{ id: string }> }) => {
   const { id } = await ctx.params;
   const reader = req.body?.getReader();
   if (!reader) throw new ApiError(400, "Cópia vazia.");

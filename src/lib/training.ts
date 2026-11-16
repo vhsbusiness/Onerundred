@@ -1,3 +1,4 @@
+import { coverData } from "./project-cover";
 import { prisma } from "./db";
 import { ApiError } from "./errors";
 import { dayKey, keyToDate, todayKey } from "./time";
@@ -37,9 +38,9 @@ function exerciseList(raw: unknown): Exercise[] {
       ...(substitute.trim() ? { substitute: substitute.trim() } : {}) };
   });
 }
-const counts = { _count: { select: { workouts: true } } } as const;
-function summary(p: { id: string; name: string; description: string; workout: string | null; archivedAt: Date | null; _count: { workouts: number } }): TrainingSummary {
-  return { id: p.id, name: p.name, description: p.description, workout: sportOf(p.workout), archived: Boolean(p.archivedAt), logCount: p._count.workouts };
+const counts = { cover:{ select:{ id:true } }, _count: { select: { workouts: true } } } as const;
+function summary(p: { cover:{id:string}|null; id: string; name: string; description: string; workout: string | null; archivedAt: Date | null; _count: { workouts: number } }): TrainingSummary {
+  return { id: p.id, coverId:p.cover?.id ?? null, name: p.name, description: p.description, workout: sportOf(p.workout), archived: Boolean(p.archivedAt), logCount: p._count.workouts };
 }
 export async function listTraining(userId: string) {
   const rows = await prisma.project.findMany({ where: { userId, workout: { not: null } }, include: counts, orderBy: { createdAt: "desc" } });
@@ -62,7 +63,8 @@ export async function readTraining(userId: string, id: string): Promise<Training
 }
 export async function createTraining(userId: string, raw: unknown) {
   const input = object(raw);
-  return summary(await prisma.project.create({ data: { userId, name: nameOf(input.name), workout: sportOf(input.workout),
+  const imageData = coverData(input.image);
+  return summary(await prisma.project.create({ data: { ...(imageData && {cover:{create:{imageData}}}), userId, name: nameOf(input.name), workout: sportOf(input.workout),
     description: typeof input.description === "string" ? input.description.trim() : "", startDate: todayKey(), days: 0 }, include: counts }));
 }
 export async function editTraining(userId: string, id: string, raw: unknown) {

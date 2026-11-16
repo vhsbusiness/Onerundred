@@ -282,6 +282,10 @@ export function AdminPanel() {
                     </td>
                     <td className="px-5 py-3">
                       <div className="flex items-center justify-end gap-1">
+                        <button className="btn btn-ghost h-8 whitespace-nowrap px-2 text-xs" aria-pressed={u.apiEnabled} onClick={async () => {
+                          if (u.apiEnabled && !await askConfirm({message:"Desativar a API e revogar as chaves de " + u.name + "?", danger:true, confirmLabel:"Desativar"})) return;
+                          act(() => http.patch("/api/admin/users/"+u.id,{apiEnabled:!u.apiEnabled}));
+                        }}>{u.apiEnabled ? "Desativar API" : "Liberar API"}</button>
                         {u.role === "admin" ? (
                           <button
                             type="button"

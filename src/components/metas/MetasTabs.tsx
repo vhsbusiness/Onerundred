@@ -24,7 +24,7 @@ export function MetasHeader({ title, subtitle }: { title?: string; subtitle?: st
         {subtabs.map((t) => {
           const active = pathname === t.href
             || (t.href === "/metas" && pathname.startsWith("/metas/projetos/"))
-            || (t.href === "/metas/projetos" && pathname.startsWith("/metas/treinos/"));
+            || (t.href === "/metas/projetos" && (pathname.startsWith("/metas/treinos/") || pathname.startsWith("/metas/dietas/")));
           return (
             <Link
               key={t.href}

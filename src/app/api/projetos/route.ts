@@ -1,10 +1,10 @@
-import { ApiError, json, optionalDayKey, readBody, requireString, withUser } from "@/lib/api";
+import { ApiError, json, optionalDayKey, readBody, requireString, withAccess } from "@/lib/api";
 import { createProject, listProjects } from "@/lib/projects";
 import { todayKey } from "@/lib/time";
 
-export const GET = withUser(async (user) => json(await listProjects(user.id)));
+export const GET = withAccess("goals", async (user) => json(await listProjects(user.id)));
 
-export const POST = withUser(async (user, req: Request) => {
+export const POST = withAccess("goals", async (user, req: Request) => {
   const body = await readBody(req);
   if (body?.workout != null) throw new ApiError(400, "Abra Projetos para registrar treinos.");
   const days = Number(body.days);

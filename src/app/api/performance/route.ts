@@ -1,8 +1,8 @@
-import { ApiError, json, withUser } from "@/lib/api";
+import { ApiError, json, withAccess } from "@/lib/api";
 import { getPerformance, getPeriodReview } from "@/lib/performance";
 
 /** Performance de hoje (+ histórico e constância); com ?fim=yyyy-MM-dd&dias=N, a revisão do período. */
-export const GET = withUser(async (user, req: Request) => {
+export const GET = withAccess("dashboard", async (user, req: Request) => {
   const url = new URL(req.url);
   const dias = url.searchParams.get("dias");
   if (dias) {

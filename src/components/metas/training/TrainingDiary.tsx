@@ -9,6 +9,7 @@ import { http } from "@/lib/client";
 import { keyToDate } from "@/lib/time";
 import { elapsedLabel, paceSeconds, type TrainingDetail, type TrainingLog } from "@/lib/training-types";
 import { workoutLabel, type Workout } from "@/lib/workouts";
+import { ProjectCover } from "../ProjectCover";
 import { MetasHeader } from "../MetasTabs";
 import { SportPicker } from "./SportPicker";
 import { ExerciseList } from "./Exercises";
@@ -51,6 +52,7 @@ export function TrainingDiary({ project, today }: { project: TrainingDetail; tod
         }}><Trash2 size={14} /></button>
       </div>
     </div>
+    <ProjectCover path={url+"/imagem"} coverId={project.coverId}/>
     <div className="grid items-start gap-4 lg:grid-cols-2">
     {project.archived ? <p className="card p-4 text-sm lg:col-span-2">Projeto arquivado.</p> : <>
       <section className="card min-w-0 space-y-4 p-4 sm:p-5">

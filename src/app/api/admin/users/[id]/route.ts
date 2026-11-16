@@ -9,7 +9,8 @@ export const PATCH = withAdmin(async (admin, req: Request, ctx: Ctx) => {
   const role = body.role === undefined ? undefined : body.role;
   if (role !== undefined && role !== "user" && role !== "admin") throw new ApiError(400, "Papel inválido");
   const active = body.active === undefined ? undefined : Boolean(body.active);
-  await updateUser(admin.id, id, { role: role as "user" | "admin" | undefined, active });
+  if (body.apiEnabled !== undefined && typeof body.apiEnabled !== "boolean") throw new ApiError(400,"Liberação de API inválida.");
+  await updateUser(admin.id, id, { apiEnabled: body.apiEnabled as boolean | undefined, role: role as "user" | "admin" | undefined, active });
   return json({ ok: true });
 });
 

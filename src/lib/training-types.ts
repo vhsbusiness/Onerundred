@@ -8,7 +8,7 @@ export type TrainingLog = {
 };
 export type TrainingSummary = {
   id: string; name: string; description: string; workout: Workout;
-  archived: boolean; logCount: number;
+  coverId: string | null; archived: boolean; logCount: number;
 };
 export type TrainingDetail = TrainingSummary & {
   restSeconds: number; plans: DayPlan[]; logs: TrainingLog[]; obligations: string;

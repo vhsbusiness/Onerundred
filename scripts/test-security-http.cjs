@@ -64,7 +64,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   for(let i=0;i<100;i++){try{if((await fetch(base+'/login')).ok)break;}catch{}if(server.exitCode!==null)throw Error('Isolated server exited');if(i===99)throw Error('Server unavailable');await sleep(100);}
   const files=[];function walk(d){for(const n of fs.readdirSync(d)){const f=path.join(d,n);if(fs.statSync(f).isDirectory())walk(f);else if(n==='route.ts')files.push(f);}}walk(path.join(root,'src/app/api'));
   let denied=0;
-  for(const f of files){const source=fs.readFileSync(f,'utf8');for(const match of source.matchAll(/export const (GET|POST|PATCH|PUT|DELETE) = (withUser|withAdmin|handle)/g)){
+  for(const f of files){const source=fs.readFileSync(f,'utf8');for(const match of source.matchAll(/export const (GET|POST|PATCH|PUT|DELETE) = (withUser|withAccess|withAdmin|handle)/g)){
    const [,method,guard]=match;if(guard==='handle'&&!f.includes('/imagens/'))continue;
    const url='/api/'+path.relative(path.join(root,'src/app/api'),f).split(path.sep).join('/').replace('/route.ts','').replace(/\[[^\]]+\]/g,'not-authorized');
    for(const forged of [false,true]){const r=await request(method,url,method==='GET'?undefined:{},null,forged?{cookie:'onerundred_session='+'0'.repeat(64)}:{});check(r.status===401,method+' '+url+' should reject anonymous/forged, got '+r.status);denied++;}

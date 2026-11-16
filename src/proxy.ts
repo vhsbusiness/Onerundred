@@ -10,6 +10,12 @@ const PUBLIC_PREFIXES = ["/login", "/api/auth/", "/icon", "/apple-icon", "/manif
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  if (pathname.startsWith("/api/") && request.headers.has("authorization")) {
+    // Integrations authenticate exclusively with their key, even in a signed-in browser.
+    const headers = new Headers(request.headers);
+    headers.delete("cookie");
+    return NextResponse.next({request:{headers}});
+  }
   if (PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(p))) {
     return NextResponse.next();
   }

@@ -1,10 +1,10 @@
-import { ApiError, json, readBody, withUser } from "@/lib/api";
+import { ApiError, json, readBody, withAccess } from "@/lib/api";
 import { getSettings, updateSettings } from "@/lib/repo";
 import { MAX_CHIME_MINUTES, validChimeInterval } from "@/lib/work-chime-settings";
 import { isDesign, isTheme } from "@/lib/theme";
 import type { SettingsDTO, TargetsDTO } from "@/lib/types";
 
-export const GET = withUser(async (user) => json(await getSettings(user.id)));
+export const GET = withAccess("settings", async (user) => json(await getSettings(user.id)));
 
 function minutesOrNull(v: unknown, label: string, max: number): number | null | undefined {
   if (v === undefined) return undefined;
@@ -20,7 +20,7 @@ function clockOrNull(v: unknown, label: string): string | null | undefined {
   return v;
 }
 
-export const PATCH = withUser(async (user, req: Request) => {
+export const PATCH = withAccess("settings", async (user, req: Request) => {
   const body = await readBody(req);
   const data: Partial<Omit<SettingsDTO, "targets">> & { targets?: Partial<TargetsDTO> } = {};
   if (body.workChime !== undefined) {

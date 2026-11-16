@@ -1,11 +1,11 @@
-import { ApiError, json, readBody, requireString, withUser } from "@/lib/api";
+import { ApiError, json, readBody, requireString, withAccess } from "@/lib/api";
 import { archiveAllCards, copyList, moveAllCards, pullByPriority } from "@/lib/repo";
 import { organizeListByImportance } from "@/lib/ai";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 /** action: "copy" | "moveCards" (toListId) | "archiveCards" | "pullPriority" (priority) | "aiSort" */
-export const POST = withUser(async (user, req: Request, ctx: Ctx) => {
+export const POST = withAccess("boards", async (user, req: Request, ctx: Ctx) => {
   const { id } = await ctx.params;
   const body = await readBody(req);
   switch (body.action) {

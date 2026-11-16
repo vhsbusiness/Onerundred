@@ -1,14 +1,14 @@
-import { json, optionalDayKey, optionalMinutes, optionalPriority, readBody, requireString, withUser } from "@/lib/api";
+import { json, optionalDayKey, optionalMinutes, optionalPriority, readBody, requireString, withAccess } from "@/lib/api";
 import { completeCard, deleteCard, getCard, reopenCard, updateCard } from "@/lib/repo";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-export const GET = withUser(async (user, _req: Request, ctx: Ctx) => {
+export const GET = withAccess("boards", async (user, _req: Request, ctx: Ctx) => {
   const { id } = await ctx.params;
   return json(await getCard(id, user.id));
 });
 
-export const PATCH = withUser(async (user, req: Request, ctx: Ctx) => {
+export const PATCH = withAccess("boards", async (user, req: Request, ctx: Ctx) => {
   const { id } = await ctx.params;
   const body = await readBody(req);
 
@@ -26,7 +26,7 @@ export const PATCH = withUser(async (user, req: Request, ctx: Ctx) => {
   return json(card);
 });
 
-export const DELETE = withUser(async (user, _req: Request, ctx: Ctx) => {
+export const DELETE = withAccess("boards", async (user, _req: Request, ctx: Ctx) => {
   const { id } = await ctx.params;
   await deleteCard(id, user.id);
   return json({ ok: true });

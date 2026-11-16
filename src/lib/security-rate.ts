@@ -5,7 +5,7 @@ import { ApiError } from "./errors";
 
 const WINDOW_MS = 15 * 60 * 1000;
 /** Persistent compare-and-swap counters: shared by workers and aliases of an account. */
-export async function consumeAuthAttempt(scope: "login" | "register", identity: string, limit: number) {
+export async function consumeAuthAttempt(scope: "login" | "register" | "api-key", identity: string, limit: number) {
   const window = String(Math.floor(Date.now() / WINDOW_MS)).padStart(12, "0");
   const prefix = "security:rate:";
   const digest = createHash("sha256").update(identity).digest("hex");

@@ -92,6 +92,7 @@ export async function listUsers(): Promise<AdminUser[]> {
     username: u.username,
     role: u.role as "user" | "admin",
     active: u.active,
+    apiEnabled: u.apiEnabled,
     createdAt: u.createdAt.toISOString(),
     lastLoginAt: u.lastLoginAt ? u.lastLoginAt.toISOString() : null,
     activeSessions: u._count.sessions,
@@ -130,14 +131,17 @@ export async function getOverview(): Promise<AdminOverview> {
 export async function updateUser(
   adminId: string,
   id: string,
-  data: { role?: "user" | "admin"; active?: boolean },
+  data: { role?: "user" | "admin"; active?: boolean; apiEnabled?: boolean },
 ) {
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) throw new ApiError(404, "Usuário não encontrado");
   if (id === adminId && (data.role === "user" || data.active === false)) {
     throw new ApiError(400, "Você não pode rebaixar nem desativar a própria conta");
   }
-  await prisma.user.update({ where: { id }, data });
+  await prisma.$transaction(async tx => {
+    await tx.user.update({ where: { id }, data });
+    if (data.apiEnabled === false || data.active === false) await tx.personalApiKey.deleteMany({where:{userId:id}});
+  });
   if (data.active === false) {
     await prisma.authSession.deleteMany({ where: { userId: id } });
   }

@@ -1,13 +1,13 @@
-import { ApiError, json, optionalDayKey, readBody, requireString, withUser } from "@/lib/api";
+import { ApiError, json, optionalDayKey, readBody, requireString, withAccess } from "@/lib/api";
 import { createLeisure, getLeisurePage, startLeisure, stopLeisure } from "@/lib/leisure";
 
-export const GET = withUser(async (user) => json(await getLeisurePage(user.id)));
+export const GET = withAccess("leisure", async (user) => json(await getLeisurePage(user.id)));
 
 /**
  * action: "start" começa um bloco agora; "stop" encerra o bloco em andamento;
  * sem action, registra um bloco manual (dayKey, startTime, endTime, activity, note).
  */
-export const POST = withUser(async (user, req: Request) => {
+export const POST = withAccess("leisure", async (user, req: Request) => {
   const body = await readBody(req);
   if (body.action === "start") {
     return json(await startLeisure(user.id, typeof body.activity === "string" ? body.activity : undefined), { status: 201 });

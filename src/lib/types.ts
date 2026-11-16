@@ -353,6 +353,7 @@ export interface AiObservation {
 }
 
 export interface AdminUser {
+  apiEnabled: boolean;
   id: string;
   avatar: string | null;
   name: string;

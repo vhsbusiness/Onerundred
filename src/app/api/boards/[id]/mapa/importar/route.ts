@@ -1,6 +1,6 @@
 import { MIND_TITLE_MAX_LENGTH, MIND_TITLE_LIMIT_MESSAGE } from "@/lib/mind-title";
 import { randomUUID } from "node:crypto";
-import { ApiError, json, readBody, withUser } from "@/lib/api";
+import { ApiError, json, readBody, withAccess } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { readBoardScreens } from "@/lib/import";
 import { remember, writeMap } from "@/lib/mind-undo";
@@ -35,7 +35,7 @@ function pathsFrom(value: unknown): MindImportTopic[][] {
   return paths;
 }
 
-export const POST = withUser(async (user, req: Request, ctx: Context) => {
+export const POST = withAccess("boards", async (user, req: Request, ctx: Context) => {
   const { id } = await ctx.params;
   const board = await prisma.board.findFirst({ where: { id, type: "mindmap", ...boardAccess(user.id) }, select: { id: true } });
   if (!board) throw new ApiError(404, "Mapa indisponível.");
@@ -49,7 +49,7 @@ export const POST = withUser(async (user, req: Request, ctx: Context) => {
 
 const norm = (s: string) => s.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("pt-BR");
 
-export const PUT = withUser(async (user, req: Request, ctx: Context) => {
+export const PUT = withAccess("boards", async (user, req: Request, ctx: Context) => {
   const { id: boardId } = await ctx.params;
   const paths = pathsFrom((await readBody(req, 50 * 1024 * 1024)).paths);
   const count = await writeMap(boardId, user.id, async tx => {

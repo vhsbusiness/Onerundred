@@ -241,3 +241,14 @@ Favoritos usam `Setting.favoriteBoardIds`, sem migration, com limite e acesso va
 ### Origem das tarefas arquivadas
 
 A origem é o quadro de criação da tarefa (inclusive de uma cópia, importação ou ocorrência recorrente). Mover uma tarefa ou sua lista não altera a origem. Em Arquivadas, o acesso à tarefa depende do quadro atual; se o quadro de origem foi excluído ou não está acessível, o agrupamento usa o quadro atual sem revelar a origem. Para dados anteriores ao registro da origem, usa-se o quadro conhecido na migração. As datas continuam agrupadas pelo dia da conclusão ou, para tarefas não concluídas, do arquivamento.
+
+
+## Financeiro e projetos de dieta
+
+Cada usuário possui dois espaços financeiros independentes, Pessoal e Empresa. Contas e limites pertencem a um espaço. Os valores são armazenados em centavos. Apenas lançamentos realizados afetam os saldos. Uma transferência debita a origem e credita o destino no mesmo espaço. Os limites mensais consideram as despesas pagas da categoria.
+
+Cada dieta tem um cardápio por data. A cópia preenche um dia vazio e começa com todas as refeições por consumir. A marcação de consumo vale até o dia atual. A imagem de um projeto de dieta ou treino pertence ao usuário do projeto.
+
+## Chaves de API pessoais
+
+O administrador libera a emissão por usuário. A criação exige a senha atual. Cada área recebe permissão de leitura ou de leitura e edição. Financeiro pessoal e empresarial possuem permissões próprias. O segredo completo é exibido na criação e o servidor guarda o hash. Revogar uma chave, desativar a conta ou retirar a liberação invalida o acesso. A reativação exige criar outra chave. As ações de administração e emissão de credenciais exigem uma sessão de usuário.

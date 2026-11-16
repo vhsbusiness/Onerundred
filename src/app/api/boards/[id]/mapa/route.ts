@@ -1,6 +1,6 @@
 import { MIND_TITLE_MAX_LENGTH, MIND_TITLE_LIMIT_MESSAGE } from "@/lib/mind-title";
 import { parseMindPicture, mindImageDimension } from "@/lib/mind-picture";
-import { ApiError, json, readBody, requireString, withUser } from "@/lib/api";
+import { ApiError, json, readBody, requireString, withAccess } from "@/lib/api";
 import { isMindRoot } from "@/lib/mind-root";
 import { parseDrawing } from "@/lib/mind-drawing";
 import { positionBranch } from "@/lib/mind-layout";
@@ -17,7 +17,7 @@ function topic(value: unknown) {
   return title;
 }
 
-export const POST = withUser(async (user, req: Request, ctx: Context) => {
+export const POST = withAccess("boards", async (user, req: Request, ctx: Context) => {
   const { id: boardId } = await ctx.params;
   const body = await readBody(req);
   if (body.detached !== undefined && typeof body.detached !== "boolean") throw new ApiError(400, "Tipo inválido.");
@@ -61,7 +61,7 @@ export const POST = withUser(async (user, req: Request, ctx: Context) => {
   return json(node, { status: 201 });
 });
 
-export const PATCH = withUser(async (user, req: Request, ctx: Context) => {
+export const PATCH = withAccess("boards", async (user, req: Request, ctx: Context) => {
   const { id: boardId } = await ctx.params;
   const body = await readBody(req);
   const id = requireString(body.id, "Ideia");
@@ -95,7 +95,7 @@ export const PATCH = withUser(async (user, req: Request, ctx: Context) => {
   return json({ ok: true });
 });
 
-export const DELETE = withUser(async (user, req: Request, ctx: Context) => {
+export const DELETE = withAccess("boards", async (user, req: Request, ctx: Context) => {
   const { id: boardId } = await ctx.params;
   const id = requireString((await readBody(req)).id, "Ideia");
   await writeMap(boardId, user.id, async tx => {

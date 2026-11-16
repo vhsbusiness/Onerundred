@@ -200,4 +200,52 @@ test('streamed JSON is bounded even without Content-Length and preserves the max
  const originReq=new Request('http://localhost/api/test',{method:'POST',headers:{host:'localhost',origin:'https://localhost','x-forwarded-proto':'https'}});
  assert.doesNotThrow(()=>api.assertSameOrigin(originReq));
 });
+
+test('personal API keys require the owner password, stay inside grants and expire on administrative disable',async()=>{
+  const keys=load(path.join(root,'src/lib/personal-api.ts'));
+  const management=load(path.join(root,'src/lib/admin.ts'));
+  const request=(secret,method)=>new Request('https://example.test/api/financeiro/personal',{
+    method,headers:{authorization:'Bearer '+secret}
+  });
+  const input={name:'Relatório',grants:{personal:'read'},password:pass};
+  await forbidden(keys.createPersonalKey(b.id,input));
+  await management.updateUser(admin.id,b.id,{apiEnabled:true});
+  await forbidden(keys.createPersonalKey(b.id,{...input,password:'wrong'}));
+  const {secret}=await keys.createPersonalKey(b.id,input);
+  assert.equal((await keys.apiPrincipal(request(secret,'GET'),'personal')).id,b.id);
+  await forbidden(keys.apiPrincipal(request(secret,'PATCH'),'personal'));
+  await forbidden(keys.apiPrincipal(request(secret,'GET'),'business'));
+  await management.updateUser(admin.id,b.id,{apiEnabled:false});
+  await management.updateUser(admin.id,b.id,{apiEnabled:true});
+  await assert.rejects(keys.apiPrincipal(request(secret,'GET'),'personal'),e=>e.status===401);
+});
+
+test('inserting a nearby sibling or an intermediate parent preserves tree identity across undo and redo',async()=>{
+  const {insertRelative}=load(path.join(root,'src/lib/mind-insert.ts'));
+  const {undoMap,redoMap}=load(path.join(root,'src/lib/mind-undo.ts'));
+  const board=await repo.createBoard(a.id,'Insertion test','mindmap');
+  const state=()=>repo.getBoard(board.id,a.id);
+  const center=(await state()).mindNodes[0];
+  const child=(title,parentId,x,y)=>prisma.mindNode.create({data:{boardId:board.id,title,parentId,x,y}});
+  const anchor=await child('A',center.id,250,0);
+  const last=await child('Último',center.id,250,600);
+  const leaf=await child('Descendente',anchor.id,500,0);
+  const next=await insertRelative(board.id,a.id,anchor.id,'sibling');
+  assert.equal(next.parentId,center.id);
+  assert(next.x>center.x && next.y>anchor.y && next.y<last.y && next.y-anchor.y<120);
+  await assert.rejects(insertRelative(board.id,a.id,center.id,'sibling'),e=>e.status===400);
+  for(const target of [anchor,center]){
+    const added=await insertRelative(board.id,a.id,target.id,'parent');
+    const get=id=>prisma.mindNode.findUnique({where:{id}});
+    assert.equal(added.parentId,target.parentId);
+    assert.equal((await get(target.id)).parentId,added.id);
+    assert.equal((await get(leaf.id)).parentId,anchor.id);
+    await undoMap(board.id,a.id,(await state()).mindUndoId);
+    assert.equal(await get(added.id),null);
+    assert.equal((await get(target.id)).parentId,target.parentId);
+    await redoMap(board.id,a.id,(await state()).mindRedoId);
+    assert.equal((await get(target.id)).parentId,added.id);
+  }
+});
+
 after(async()=>{await prisma.$disconnect();fs.rmSync(dir,{recursive:true,force:true});});

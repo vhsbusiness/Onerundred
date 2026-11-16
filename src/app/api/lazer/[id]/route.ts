@@ -1,9 +1,9 @@
-import { ApiError, json, optionalDayKey, readBody, requireString, withUser } from "@/lib/api";
+import { ApiError, json, optionalDayKey, readBody, requireString, withAccess } from "@/lib/api";
 import { deleteLeisure, updateLeisure } from "@/lib/leisure";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-export const PATCH = withUser(async (user, req: Request, ctx: Ctx) => {
+export const PATCH = withAccess("leisure", async (user, req: Request, ctx: Ctx) => {
   const { id } = await ctx.params;
   const body = await readBody(req);
   const dayKey = optionalDayKey(body.dayKey);
@@ -19,7 +19,7 @@ export const PATCH = withUser(async (user, req: Request, ctx: Ctx) => {
   );
 });
 
-export const DELETE = withUser(async (user, _req: Request, ctx: Ctx) => {
+export const DELETE = withAccess("leisure", async (user, _req: Request, ctx: Ctx) => {
   const { id } = await ctx.params;
   await deleteLeisure(user.id, id);
   return json({ ok: true });

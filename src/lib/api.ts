@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import type { CurrentUser } from "./auth";
 import { requireAdmin, requireUser } from "./current-user";
 
+import { apiPrincipal } from "./personal-api";
+import type { Area } from "./api-permissions";
 import { ApiError } from "./errors";
 import { aiProviderError } from "./ai-errors";
 
@@ -117,5 +119,23 @@ export function withAdmin<Args extends unknown[]>(
   return handle(async (...args: Args) => {
     const user = await requireAdmin();
     return fn(user, ...args);
+  });
+}
+
+/** Opt-in scope on a concrete route handler. Unannotated endpoints require a web session. */
+export function withAccess<Args extends unknown[]>(scope: Area | "finance",
+  fn: (user: CurrentUser, ...args: Args) => Promise<Response>,
+): (...args: Args) => Promise<Response> {
+  return handle(async (...args: Args) => {
+    const req = args[0];
+    if (!(req instanceof Request) || !req.headers.has("authorization")) return fn(await requireUser(), ...args);
+    let area: Area;
+    if (scope === "finance") {
+      const { space } = await (args[1] as { params: Promise<{space:string}> }).params;
+      if (space !== "personal" && space !== "business") throw new ApiError(404,"Espaço inválido.");
+      area = space;
+    } else area = scope;
+    const user = await apiPrincipal(req,area);
+    return fn(user,...args);
   });
 }

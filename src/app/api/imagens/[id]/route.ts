@@ -1,5 +1,4 @@
-import { handle } from "@/lib/api";
-import { requireUser } from "@/lib/current-user";
+import { withAccess } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { readableOwner } from "@/lib/collaboration-boards";
 import { getCardImage } from "@/lib/repo";
@@ -7,8 +6,7 @@ import { getCardImage } from "@/lib/repo";
 type Ctx = { params: Promise<{ id: string }> };
 
 /** Serve a imagem de uma tarefa do próprio usuário. */
-export const GET = handle(async (_req: Request, ctx: Ctx) => {
-  const user = await requireUser();
+export const GET = withAccess("boards", async (user, _req: Request, ctx: Ctx) => {
   const { id } = await ctx.params;
   const collaboration = new URL(_req.url).searchParams.get("colaboracao");
   const img = collaboration

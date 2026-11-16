@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, Bell, ChevronDown, ChevronsLeft, ChevronsRight, Gamepad2, LayoutDashboard, LogOut, Moon, Settings, ShieldCheck, SquareKanban, Sun, Target, UserRound } from "lucide-react";
+import { Archive, Bell, ChevronDown, ChevronsLeft, ChevronsRight, Gamepad2, LayoutDashboard, LogOut, Moon, Settings, ShieldCheck, SquareKanban, Wallet, Sun, Target, UserRound } from "lucide-react";
 import { useFavoriteBoards } from "@/components/boards/FavoriteBoards";
 import { BoardIcon } from "@/components/boards/BoardIcon";
 import { Avatar } from "@/components/profile/ProfilePage";
@@ -18,6 +18,7 @@ const tabs = [
   { href: "/", label: "Dashboard", short: "Início", icon: LayoutDashboard },
   { href: "/quadros", label: "Quadros", short: "Quadros", icon: SquareKanban },
   { href: "/metas", label: "Metas", short: "Metas", icon: Target },
+  { href: "/financeiro", label: "Financeiro", short: "Finanças", icon: Wallet },
   { href: "/sono", label: "Sono", short: "Sono", icon: Moon },
   { href: "/lazer", label: "Lazer", short: "Lazer", icon: Gamepad2 },
   { href: "/lembretes", label: "Lembretes", short: "Lembretes", icon: Bell },
@@ -167,7 +168,7 @@ function UserMenu({ me, placement = "down" }: { me: MeDTO; placement?: "down" | 
 }
 
 /** Barra inferior do celular, estilo app: só as abas principais. */
-const MOBILE_TABS = ["/", "/quadros", "/metas", "/sono", "/lazer", "/lembretes"];
+const MOBILE_TABS = ["/", "/quadros", "/metas", "/financeiro", "/sono", "/lazer", "/lembretes"];
 
 function BottomNav({
   tabs: items,
@@ -187,14 +188,14 @@ function BottomNav({
           const Icon = t.icon;
           const active = isActive(t.href);
           return (
-            <li key={t.href} className="flex-1">
+            <li key={t.href} className="min-w-0 flex-1">
               <Link
                 href={t.href}
-                className={`flex flex-col items-center gap-0.5 rounded-xl px-1 py-1 text-[11px] transition ${
+                className={`flex flex-col items-center gap-0.5 rounded-xl py-1 text-[10px] min-[390px]:text-[11px] transition ${
                   active ? "text-ink" : "text-ink-3"
                 }`}
               >
-                <span className={`flex h-8 w-11 items-center justify-center rounded-full ${active ? "bg-fill-3" : ""}`}>
+                <span className={`flex h-8 w-full max-w-11 items-center justify-center rounded-full ${active ? "bg-fill-3" : ""}`}>
                   <Icon size={20} strokeWidth={active ? 2.2 : 1.8} />
                 </span>
                 {t.short}

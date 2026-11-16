@@ -1,7 +1,7 @@
-import { json, optionalDayKey, optionalMinutes, optionalPriority, readBody, requireString, withUser } from "@/lib/api";
+import { json, optionalDayKey, optionalMinutes, optionalPriority, readBody, requireString, withAccess } from "@/lib/api";
 import { createCard } from "@/lib/repo";
 
-export const POST = withUser(async (user, req: Request) => {
+export const POST = withAccess("boards", async (user, req: Request) => {
   const body = await readBody(req);
   const card = await createCard(user.id, {
     listId: requireString(body.listId, "listId"),

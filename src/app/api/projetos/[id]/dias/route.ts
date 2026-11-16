@@ -1,10 +1,10 @@
-import { ApiError, json, optionalDayKey, readBody, withUser } from "@/lib/api";
+import { ApiError, json, optionalDayKey, readBody, withAccess } from "@/lib/api";
 import { setProjectDay } from "@/lib/projects";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 /** Marca um dia do projeto como feito (done: true) ou não feito (done: false). */
-export const POST = withUser(async (user, req: Request, ctx: Ctx) => {
+export const POST = withAccess("goals", async (user, req: Request, ctx: Ctx) => {
   const { id } = await ctx.params;
   const body = await readBody(req);
   const dayKey = optionalDayKey(body.dayKey);

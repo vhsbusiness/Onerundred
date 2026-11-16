@@ -15,7 +15,7 @@ Usar como referência de comportamento; não copiar a aparência do Miro por cim
 | Área | Comportamento |
 |---|---|
 | Estrutura | Várias árvores independentes no mesmo quadro. Todo texto sem pai tem opções de ramo inicial. |
-| Criação | Tab cria filho à direita; Enter cria irmão à direita do pai; raiz selecionada não ganha irmão por Enter; Enter sem seleção cria texto independente. |
+| Criação | Tab cria filho à direita; Enter cria um irmão próximo ao ramo selecionado, à direita do pai; Shift+Tab intercala um novo pai e preserva a subárvore, inclusive quando a seleção é uma raiz; raiz selecionada não ganha irmão por Enter; Enter sem seleção cria texto independente. |
 | Mouse | Esquerdo seleciona, desenha retângulo de seleção ou move o bloco; direito move a visualização com cursor de mão. Clique direito sem arrastar no fundo abre criação. |
 | Movimento | Arrastar um ramo leva todos os descendentes, inclusive recolhidos. Selecionar pai e filho não duplica o deslocamento. Item fixado no conjunto impede o movimento inteiro. |
 | Auto | Calcula altura das subárvores, alinha níveis, separa grupos e considera dimensões de texto. Raízes e posições fixadas são preservadas. Arraste manual desativa Auto apenas nas árvores afetadas e explica isso na interface. |

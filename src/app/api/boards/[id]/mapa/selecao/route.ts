@@ -1,9 +1,9 @@
 import { MIND_TITLE_MAX_LENGTH } from "@/lib/mind-title";
-import { ApiError, json, readBody, withUser } from "@/lib/api";
+import { ApiError, json, readBody, withAccess } from "@/lib/api";
 import { parseMindStyle } from "@/lib/mind-style";
 import { editSelection, type SelectionEdit } from "@/lib/mind-selection";
 
-export const POST = withUser(async (user, req: Request, ctx: { params: Promise<{ id: string }> }) => {
+export const POST = withAccess("boards", async (user, req: Request, ctx: { params: Promise<{ id: string }> }) => {
   const { id } = await ctx.params;
   const body = await readBody(req);
   if (!Array.isArray(body.ids) || !body.ids.length || body.ids.length > 5000 ||

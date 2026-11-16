@@ -1,8 +1,17 @@
-import { ApiError, json, optionalPriority, readBody, requireString, withUser } from "@/lib/api";
-import { createRecurring } from "@/lib/repo";
+import { ApiError, json, optionalPriority, readBody, requireString, withAccess } from "@/lib/api";
+import { prisma } from "@/lib/db";
+import { createRecurring, serializeRecurring } from "@/lib/repo";
+
+export const GET = withAccess("boards", async user => {
+  const rules = await prisma.recurringTask.findMany({ where: { userId: user.id }, orderBy: { createdAt: "asc" } });
+  return json(rules.map(rule => ({
+    ...serializeRecurring(rule), description: rule.description, priority: rule.priority,
+    estimatedMinutes: rule.estimatedMinutes, lastSpawnedKey: rule.lastSpawnedKey,
+  })));
+});
 
 /** Cria uma tarefa contínua: { listId, title, priority?, estimatedMinutes?, weekdays: number[] } */
-export const POST = withUser(async (user, req: Request) => {
+export const POST = withAccess("boards", async (user, req: Request) => {
   const body = await readBody(req);
   if (!Array.isArray(body.weekdays)) throw new ApiError(400, "weekdays deve ser uma lista de dias (0=dom … 6=sáb)");
   const est = body.estimatedMinutes === undefined || body.estimatedMinutes === null || body.estimatedMinutes === "" ? null : Number(body.estimatedMinutes);

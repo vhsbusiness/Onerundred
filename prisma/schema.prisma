@@ -27,6 +27,11 @@ model User {
   aiInsights   AiInsight[]
   aiMemory     AiMemory?
   sleepLogs    SleepLog[]
+  apiEnabled Boolean @default(false)
+  apiKeys PersonalApiKey[]
+  financeAccounts FinanceAccount[]
+  financeBudgets FinanceBudget[]
+  diets        DietProject[]
   projects     Project[]
   leisureLogs  LeisureLog[]
   mindUndos    MindUndo[]
@@ -305,6 +310,7 @@ model Project {
   archivedAt  DateTime?
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   restSeconds Int          @default(60)
+  cover       ProjectCover?
   plans       WorkoutPlan[]
   workouts    WorkoutLog[]
   checks      ProjectDay[]
@@ -558,4 +564,96 @@ model BoardEditRequest {
   board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
   @@unique([collaborationId, boardId])
   @@index([boardId])
+}
+
+model FinanceAccount {
+  id           String @id @default(cuid())
+  userId       String
+  space        String
+  name         String
+  openingCents Int @default(0)
+  user         User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  outgoing     FinanceEntry[] @relation("Origin")
+  incoming     FinanceEntry[] @relation("Destination")
+  @@unique([userId, space, name])
+}
+
+model FinanceEntry {
+  id            String @id @default(cuid())
+  accountId     String
+  destinationId String?
+  kind          String
+  title         String
+  category      String
+  dayKey        String
+  cents         Int
+  settled       Boolean
+  account       FinanceAccount @relation("Origin", fields: [accountId], references: [id], onDelete: Cascade)
+  destination   FinanceAccount? @relation("Destination", fields: [destinationId], references: [id], onDelete: SetNull)
+  @@index([accountId, dayKey])
+  @@index([destinationId])
+}
+
+model FinanceBudget {
+  id         String @id @default(cuid())
+  userId     String
+  space      String
+  month      String
+  category   String
+  cents      Int
+  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, space, month, category])
+}
+
+model DietProject {
+  id        String @id @default(cuid())
+  userId    String
+  name      String
+  createdAt DateTime @default(now())
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cover     ProjectCover?
+  days      DietDay[]
+  @@index([userId, createdAt])
+}
+
+model DietDay {
+  id        String @id @default(cuid())
+  projectId String
+  dayKey    String
+  project   DietProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  meals     DietMeal[]
+  @@unique([projectId, dayKey])
+}
+
+model DietMeal {
+  id       String @id @default(cuid())
+  dayId    String
+  name     String
+  time     String
+  foods    String
+  calories Int?
+  eaten    Boolean @default(false)
+  day      DietDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  @@index([dayId, time])
+}
+
+model ProjectCover {
+  id         String @id @default(cuid())
+  trainingId String? @unique
+  dietId     String? @unique
+  imageData  String
+  training   Project? @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  diet       DietProject? @relation(fields: [dietId], references: [id], onDelete: Cascade)
+}
+
+model PersonalApiKey {
+  id        String @id @default(cuid())
+  userId    String
+  name      String
+  digest    String @unique
+  suffix    String
+  grants    Json
+  createdAt DateTime @default(now())
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
 }

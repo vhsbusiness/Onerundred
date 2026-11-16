@@ -1,11 +1,11 @@
-import { ApiError, json, optionalPriority, readBody, requireString, withUser } from "@/lib/api";
+import { ApiError, json, optionalPriority, readBody, requireString, withAccess } from "@/lib/api";
 import { deleteList, moveListToBoard, updateList } from "@/lib/repo";
 import type { ListKind } from "@/lib/types";
 
 type Ctx = { params: Promise<{ id: string }> };
 const KINDS: ListKind[] = ["normal", "today", "tomorrow", "done"];
 
-export const PATCH = withUser(async (user, req: Request, ctx: Ctx) => {
+export const PATCH = withAccess("boards", async (user, req: Request, ctx: Ctx) => {
   const { id } = await ctx.params;
   const body = await readBody(req);
   const kind = body.kind === undefined ? undefined : (body.kind as ListKind);
@@ -26,7 +26,7 @@ export const PATCH = withUser(async (user, req: Request, ctx: Ctx) => {
   return json({ ok: true });
 });
 
-export const DELETE = withUser(async (user, _req: Request, ctx: Ctx) => {
+export const DELETE = withAccess("boards", async (user, _req: Request, ctx: Ctx) => {
   const { id } = await ctx.params;
   await deleteList(id, user.id);
   return json({ ok: true });

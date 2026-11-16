@@ -85,6 +85,7 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [drag, setDrag] = useState<(Point & { ids: Set<string> }) | null>(null);
   const [resize, setResize] = useState<{ id: string; textWidth: number; textHeight: number } | null>(null);
+  const selectTitleOnFocus = useRef<string | null>(null);
   const [editor, edit] = useState<{id: string; title: string} | null>(null);
   const [full, setFull] = useState(false);
   const [light, setLight] = useState(false);
@@ -248,6 +249,7 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
     const pan = mouse && e.button === 1;
     if (!e.isPrimary || gesture.current || (!secondary && !pan && e.button !== 0) ||
         element.closest("button,a,input:not([data-mind-title]),textarea:not([data-mind-title])")) return;
+    if (!secondary && !pan && element.closest("[data-mind-title]")) return;
     setAnimateView(false);
     const target = element.closest<HTMLElement>("[data-node]");
     const node = target && byId.get(target.dataset.node!);
@@ -409,7 +411,8 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
     for (const type of ["pointermove", "pointerup", "pointercancel"] as const) document.addEventListener(type, listener, true);
     return () => { for (const type of ["pointermove", "pointerup", "pointercancel"] as const) document.removeEventListener(type, listener, true); };
   }, []);
-  function rename(n: MindNodeDTO) {
+  function rename(n: MindNodeDTO, selectAll = false) {
+    selectTitleOnFocus.current = selectAll ? n.id : null;
     select(n.id);
     if (onChanged && !n.imageData && !n.drawing) {
       if (canvas.current && canvas.current.clientWidth < 640 && (view.zoom < .7 || widthOf(n) * view.zoom > canvas.current.clientWidth - 60))
@@ -440,6 +443,7 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
         const node = await http.post<MindNodeDTO>(url, { parentId, detached: parentId === null, title: parentId ? "Nova ideia" : "Novo texto", shape, direction, ...point });
         select(node.id);
         if (!point) focus(node, view.zoom);
+        selectTitleOnFocus.current = node.id;
         edit({id:node.id, title:node.title});
       } finally { skipBlur.current = false; }
     });
@@ -573,17 +577,29 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
     document.addEventListener("paste", paste); document.addEventListener("copy", copy);
     return () => { document.removeEventListener("paste", paste); document.removeEventListener("copy", copy); };
   }, []);
+  function relativeBranch(id: string, action: "parent" | "sibling") {
+    const draft = editor;
+    skipBlur.current = true;
+    void save(async () => {
+      try {
+        const node = await http.post<MindNodeDTO>(url+"/estrutura", {action, id, title:draft?.id === id ? draft.title.trim() || undefined : undefined});
+        selectTitleOnFocus.current = node.id;
+        select(node.id); focus(node,view.zoom); edit({id:node.id,title:node.title});
+      } finally { skipBlur.current = false; }
+    });
+  }
+  function branchKey(id: string, key: string, shift: boolean) {
+    if (key === "Tab" && !shift) addBranch(id,{direction:"right"});
+    else if (shift) relativeBranch(id,"parent");
+    else if (byId.get(id)?.parentId) relativeBranch(id,"sibling");
+    else commitTitle();
+  }
   function shortcut(e: React.KeyboardEvent, id: string) {
-    if (!onChanged || byId.get(id)?.imageData || byId.get(id)?.drawing || e.nativeEvent.isComposing || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!onChanged || byId.get(id)?.imageData || byId.get(id)?.drawing || e.nativeEvent.isComposing || (e.shiftKey && e.key !== "Tab") || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === "Tab" || e.key === "Enter") {
       e.preventDefault(); e.stopPropagation();
       if (!e.repeat && !busy) {
-        const parentId = e.key === "Enter" ? byId.get(id)?.parentId : id;
-        if (!parentId) {
-          commitTitle();
-          return;
-        }
-        addBranch(parentId, { direction: "right" });
+        branchKey(id,e.key,e.shiftKey);
       }
     }
   }
@@ -701,7 +717,7 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
       if (!busy && !event.repeat) pasteSelection(copyMindSelection(boardId, nodes, [...mindBranchIds(nodes, colorIds)]));
       return;
     }
-    if (command || event.altKey || event.shiftKey) return;
+    if (command || event.altKey || (event.shiftKey && event.key !== "Tab")) return;
     if (selected && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) {
       event.preventDefault();
       const siblings = shown.filter(n => n.parentId === selected.parentId && !n.drawing && !n.imageData).sort((a, b) => a.y - b.y || a.id.localeCompare(b.id));
@@ -710,11 +726,10 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
       if (next) reveal(next);
       return;
     }
-    if (selected && event.key === "F2" && onChanged) { event.preventDefault(); rename(selected); return; }
+    if (selected && event.key === "F2" && onChanged) { event.preventDefault(); rename(selected, true); return; }
     if (selected && ["Tab", "Enter"].includes(event.key) && onChanged) {
       event.preventDefault();
-      const parentId = event.key === "Tab" ? selected.id : selected.parentId;
-      if (parentId && !selected.drawing && !selected.imageData && !busy && !event.repeat) addBranch(parentId, { direction: "right" });
+      if (!selected.drawing && !selected.imageData && !busy && !event.repeat) branchKey(selected.id,event.key,event.shiftKey);
       return;
     }
     if (["v", "h", "t", "p"].includes(key)) {
@@ -770,7 +785,7 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
           return <div key={n.id} data-ink-object={!!drawing} className="mind-object absolute" style={{ left: n.x, top: n.y }}>
             <div data-node={n.id} data-drop-target={dropTarget === n.id} role="button" tabIndex={0} aria-pressed={marked} title={n.title}
               onClick={event => {
-                if (tool === "hand" || tool === "draw" || suppressedClick.current) return;
+                if ((event.target as Element).closest("[data-mind-title]") || tool === "hand" || tool === "draw" || suppressedClick.current) return;
                 if (event.shiftKey || event.metaKey) {
                   commitTitle(); const ids = new Set(selectedId ? [selectedId] : groupIds);
                   if (ids.has(n.id)) ids.delete(n.id); else ids.add(n.id);
@@ -780,7 +795,7 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
               onKeyDown={e => {
                 if (e.key === "Escape") { dismiss(); return; }
                 if (e.target !== e.currentTarget) return;
-                if (!active && (e.key === " " || e.key === "Enter")) { e.preventDefault(); rename(n); }
+                if (!active && (e.key === " " || e.key === "Enter")) { e.preventDefault(); rename(n, true); }
                 else if (active) shortcut(e, n.id);
               }}
               className="mind-node" data-bold={n.bold} data-shape={n.shape} data-root={central && !n.detached} data-image={!!n.imageData} data-drawing={!!drawing} data-text-size={!!(n.textWidth || n.textHeight)}
@@ -793,8 +808,11 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
                 // eslint-disable-next-line @next/next/no-img-element
                 ? <img src={n.imageData} alt={n.title} draggable={false} style={{ width: n.imageWidth, height: n.imageHeight, objectFit: "contain" }} />
                 : editor?.id === n.id && onChanged
-                ? <textarea rows={1} data-mind-title aria-label="Texto do ramo" autoFocus onFocus={e => e.target.select()} maxLength={MIND_TITLE_MAX_LENGTH} value={editor.title}
-                    className="w-full min-w-0 resize-none select-text bg-transparent text-center outline-none" style={{ backgroundColor: n.highlight || undefined, height: Math.max(n.fontSize * 1.25, textBlockSize(n).height - (central && !n.detached ? 20 : 14)) }}
+                ? <textarea rows={1} data-mind-title aria-label="Texto do ramo" autoFocus onFocus={e => {
+                      if (selectTitleOnFocus.current === n.id) e.target.select();
+                      selectTitleOnFocus.current = null;
+                    }} maxLength={MIND_TITLE_MAX_LENGTH} value={editor.title}
+                    className="w-full min-w-0 cursor-text resize-none select-text bg-transparent text-center outline-none" style={{ backgroundColor: n.highlight || undefined, height: Math.max(n.fontSize * 1.25, textBlockSize(n).height - (central && !n.detached ? 20 : 14)) }}
                     onChange={e => edit({ id: n.id, title: e.target.value })} onBlur={commitTitle}
                     onKeyDown={e => { if (e.key === "Escape") { commitTitle(); select(undefined); e.stopPropagation(); } else shortcut(e, n.id); }} />
                 : <span className="max-h-full w-full overflow-hidden whitespace-pre-wrap [overflow-wrap:anywhere]" style={{ backgroundColor: n.highlight || undefined }}>{n.title}</span>}

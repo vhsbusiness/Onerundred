@@ -1,7 +1,7 @@
-import { json, withUser } from "@/lib/api";
+import { json, withAccess } from "@/lib/api";
 import { deleteAllArchived, listArchived } from "@/lib/repo";
 
-export const GET = withUser(async (user) => json(await listArchived(user.id)));
+export const GET = withAccess("boards", async (user) => json(await listArchived(user.id)));
 
 /** Exclui todas as tarefas arquivadas (definitivo). */
-export const DELETE = withUser(async (user) => json({ deleted: await deleteAllArchived(user.id) }));
+export const DELETE = withAccess("boards", async (user) => json({ deleted: await deleteAllArchived(user.id) }));
