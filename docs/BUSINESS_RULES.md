@@ -247,6 +247,8 @@ A origem é o quadro de criação da tarefa (inclusive de uma cópia, importaç�
 
 Cada usuário possui dois espaços financeiros independentes, Pessoal e Empresa. Contas e limites pertencem a um espaço. Os valores são armazenados em centavos. Apenas lançamentos realizados afetam os saldos. Uma transferência debita a origem e credita o destino no mesmo espaço. Os limites mensais consideram as despesas pagas da categoria.
 
+O Financeiro aceita prints e PDFs lidos por IA e extratos OFX ou CSV em reais. A prévia permite corrigir valores, datas, categorias e transferências. Confirmar contabiliza as linhas selecionadas em uma única operação. O mesmo arquivo pode ser reenviado. Identificadores OFX reconhecem operações em exportações diferentes, e possíveis coincidências por data, valor e descrição aparecem desmarcadas para conferência.
+
 Cada dieta tem um cardápio por data. A cópia preenche um dia vazio e começa com todas as refeições por consumir. A marcação de consumo vale até o dia atual. A imagem de um projeto de dieta ou treino pertence ao usuário do projeto.
 
 ## Chaves de API pessoais

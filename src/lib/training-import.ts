@@ -2,7 +2,8 @@ import OpenAI from "openai";
 import { ApiError } from "./errors";
 import { prisma } from "./db";
 import { requireActiveTraining } from "./training";
-import { PLAN_FILE_LIMIT, PLAN_FILE_TYPES, type ImportedDay } from "./training-types";
+import { documentDataUrl, readUpload } from "./document-upload";
+import { PLAN_FILE_TYPES, type ImportedDay } from "./training-types";
 import { dayRange, todayKey } from "./time";
 
 const schema = {
@@ -45,37 +46,11 @@ function preview(raw: string): ImportedDay[] {
   return result;
 }
 
-async function readFile(req: Request, type: string) {
-  const tooLarge = () => new ApiError(413, "Escolha um arquivo de até 8 MB.");
-  if (Number(req.headers.get("content-length")) > PLAN_FILE_LIMIT) throw tooLarge();
-  const reader = req.body?.getReader();
-  if (!reader) throw invalid();
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  try {
-    for (;;) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      size += value.byteLength;
-      if (size > PLAN_FILE_LIMIT) { await reader.cancel(); throw tooLarge(); }
-      chunks.push(value);
-    }
-  } finally { reader.releaseLock(); }
-  const bytes = Buffer.concat(chunks);
-  const signature = bytes.subarray(0, 12);
-  const matches = type === "application/pdf" ? signature.toString("ascii").startsWith("%PDF-")
-    : type === "image/png" ? signature.subarray(0,8).equals(Buffer.from("89504e470d0a1a0a","hex"))
-    : type === "image/jpeg" ? signature.subarray(0,3).equals(Buffer.from("ffd8ff","hex"))
-    : signature.toString("ascii",0,4) === "RIFF" && signature.toString("ascii",8,12) === "WEBP";
-  if (!matches) throw new ApiError(400, "O conteúdo do arquivo não corresponde ao formato selecionado.");
-  return "data:" + type + ";base64," + bytes.toString("base64");
-}
-
 export async function previewTrainingFile(userId: string, projectId: string, req: Request) {
   await requireActiveTraining(userId, projectId);
   const type = req.headers.get("content-type")?.split(";")[0] ?? "";
   if (!PLAN_FILE_TYPES.includes(type)) throw new ApiError(415, "Envie uma imagem JPG, PNG, WebP ou um PDF.");
-  const url = await readFile(req, type);
+  const url = documentDataUrl(await readUpload(req), type);
   if (!process.env.OPENAI_API_KEY) throw new ApiError(503, "A importação por IA não está disponível no momento.");
   const calls = await prisma.aiUsage.count({ where: { userId, kind: "training-import", createdAt: { gte: dayRange(todayKey()).start } } });
   if (calls >= 12) throw new ApiError(429, "Você atingiu o limite de 12 leituras de ficha por dia.");

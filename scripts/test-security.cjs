@@ -248,4 +248,33 @@ test('inserting a nearby sibling or an intermediate parent preserves tree identi
   }
 });
 
+
+test('statement imports recognize balances, duplicate occurrences, transfers and cross-space writes', async () => {
+  const { parseCsv, parseOfx, identifyRows } = load(path.join(root, 'src/lib/statement-parse.ts'));
+  const { confirmStatement } = load(path.join(root, 'src/lib/statement-import.ts'));
+  const { financeOverview } = load(path.join(root, 'src/lib/finance.ts'));
+  const csv = Buffer.from('Data;Descrição;Valor;Situação\n15/11/2026;Saldo anterior;100;\n15/11/2026;"Pix; feira";-5,10;realizado\n15/11/2026;"Pix; feira";-5,10;realizado\n16/11/2026;Uber;-6,00;agendado');
+  const rows = identifyRows(parseCsv(csv), csv).map(r => ({ ...r, selected: true }));
+  assert.equal(rows.length, 3);
+  assert.equal(rows[2].settled, false);
+  const body = {accountName: 'Importada', rows};
+  const first = await confirmStatement(a.id, 'personal', body);
+  assert.equal(first.added, 3);
+  const state = await financeOverview(a.id, 'personal', '2026-11');
+  const account = state.accounts.find(row => row.name === 'Importada');
+  assert.equal(account.balance, -1020);
+  const retry = await confirmStatement(a.id, 'personal', {...body, accountId:account.id, rows: rows.map(r => ({...r,title:'Nome corrigido'}))});
+  assert.equal(retry.added, 0);
+  await forbidden(confirmStatement(b.id, 'personal', {...body, accountId: account.id}));
+  await forbidden(confirmStatement(a.id, 'business', {...body, accountId: account.id}));
+  const ofx = Buffer.from('<OFX><CURDEF>BRL<BANKTRANLIST><STMTTRN><DTPOSTED>20261114<TRNAMT>12.50<FITID>1<NAME>Transferência</STMTTRN></BANKTRANLIST></OFX>');
+  const [transfer] = identifyRows(parseOfx(ofx), ofx);
+  const peer = await prisma.financeAccount.create({data:{userId:a.id,space:'personal',name:'Reserva de teste',openingCents:1250}});
+  const imported = await confirmStatement(a.id,'personal',{accountId:account.id, rows:[{...transfer,selected:true,peerId:peer.id}]});
+  assert.equal(imported.added,1);
+  const result = await financeOverview(a.id,'personal','2026-11');
+  assert.equal(result.accounts.find(r=>r.id===peer.id).balance,0);
+  assert.equal(result.accounts.find(r=>r.id===account.id).balance,230);
+});
+
 after(async()=>{await prisma.$disconnect();fs.rmSync(dir,{recursive:true,force:true});});

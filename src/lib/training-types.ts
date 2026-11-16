@@ -34,5 +34,4 @@ export function paceSeconds(seconds: number, meters: number) {
 
 /** -1 indica que a ficha não especificou o dia; o usuário escolhe na revisão. */
 export type ImportedDay = DayPlan & { label: string };
-export const PLAN_FILE_LIMIT = 8 * 1024 * 1024;
-export const PLAN_FILE_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+export { DOCUMENT_LIMIT as PLAN_FILE_LIMIT, DOCUMENT_TYPES as PLAN_FILE_TYPES } from "./document-types";

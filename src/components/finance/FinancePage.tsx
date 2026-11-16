@@ -6,6 +6,7 @@ import { useState } from "react";
 import {
   ArrowLeftRight,
   Building2,
+  FileUp,
   ChevronLeft,
   ChevronRight,
   CircleUserRound,
@@ -20,6 +21,7 @@ import { askConfirm, notify } from "@/components/ui/ConfirmProvider";
 import { keyToDate } from "@/lib/time";
 import type { FinanceOverview } from "@/lib/finance";
 import { categoryLabel, kindNames, money, spaceNames, type FinanceSpace } from "@/lib/finance-format";
+import { StatementImport } from "./StatementImport";
 import { FinanceForm, type FinanceFormState } from "./FinanceForm";
 
 export function FinancePage({
@@ -36,6 +38,7 @@ export function FinancePage({
   const { accounts, entries, budgets } = overview;
   const router = useRouter();
   const [form, setForm] = useState<FinanceFormState | null>(null);
+  const [importing, setImporting] = useState(false);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const date = keyToDate(month + "-01");
@@ -122,13 +125,19 @@ export function FinancePage({
             <ChevronRight size={16} />
           </Link>
         </div>
-        <button
-          className="btn btn-primary"
-          onClick={() => setForm({ type: accounts.length ? "lancamentos" : "contas" })}
-        >
-          <Plus size={16} />
-          {accounts.length ? "Novo lançamento" : "Adicionar primeira conta"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button className="btn" onClick={() => setImporting(true)}>
+            <FileUp size={16} />
+            Importar extrato ou print
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={() => setForm({ type: accounts.length ? "lancamentos" : "contas" })}
+          >
+            <Plus size={16} />
+            {accounts.length ? "Novo lançamento" : "Adicionar primeira conta"}
+          </button>
+        </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
         {[
@@ -297,6 +306,22 @@ export function FinancePage({
             </div>
           ))}
         </section>
+      )}
+      {importing && (
+        <StatementImport
+          accounts={accounts}
+          space={space}
+          month={month}
+          onClose={() => setImporting(false)}
+          onSaved={(count, skipped, latest) => {
+            setImporting(false);
+            const saved =
+              count === 1 ? "1 movimentação contabilizada." : count + " movimentações contabilizadas.";
+            notify(saved + (skipped ? " Já registradas: " + skipped + "." : ""));
+            if (latest && latest !== month) router.push(url(space, latest));
+            router.refresh();
+          }}
+        />
       )}
       {form && (
         <FinanceForm
