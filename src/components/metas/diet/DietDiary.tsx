@@ -33,7 +33,7 @@ export function DietDiary({ data, day, today }: { data: DietDetail; day: string;
     try {
       await http.post(api, { ...body, dayKey: day });
       setEditor(null);
-      if (body.action === "deleteProject") router.push("/metas/projetos");
+      if (body.action === "deleteProject") router.push("/metas/projetos?lista=1");
       router.refresh();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Falha ao salvar.";
@@ -67,8 +67,8 @@ export function DietDiary({ data, day, today }: { data: DietDetail; day: string;
     <div className="space-y-4">
       <MetasHeader title={project.name} subtitle="Diário de alimentação" />
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Link className="btn btn-ghost" href="/metas/projetos">
-          <ArrowLeft size={14} /> Projetos
+        <Link className="btn btn-ghost" href="/metas/projetos?lista=1">
+          <ArrowLeft size={14} /> Todos os projetos
         </Link>
         <div className="flex gap-2">
           <button className="btn btn-ghost" onClick={() => open("rename")}>

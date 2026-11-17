@@ -124,12 +124,12 @@ export function NotificationsSection() {
     notify(r.delivered > 0 ? `Enviada para ${r.delivered} aparelho(s)` : "Nenhum aparelho recebeu", r.delivered > 0 ? "info" : "error");
   }
 
-  if (!prefs) return <section className="card h-40 animate-pulse" />;
+  if (!prefs) return <section id="notificacoes" className="card h-40 animate-pulse" />;
 
   const active = prefs.enabled;
 
   return (
-    <section className="card space-y-5 p-5 lg:col-span-2">
+    <section id="notificacoes" className="card space-y-5 p-5 lg:col-span-2">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="flex items-center gap-2 text-base font-semibold">

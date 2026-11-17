@@ -1,3 +1,4 @@
+import { RememberProject } from "@/components/metas/ProjectReturn";
 import { notFound } from "next/navigation";
 import { DietDiary } from "@/components/metas/diet/DietDiary";
 import { requireUserPage } from "@/lib/current-user";
@@ -19,5 +20,5 @@ export default async function Page({
   const day = validDay(dia) ? dia : today;
   const data = await readDiet(user.id, id, day);
   if (!data) notFound();
-  return <DietDiary key={id + day} data={data} day={day} today={today} />;
+  return <><RememberProject userId={user.id} path={"/metas/dietas/" + id} /><DietDiary key={id + day} data={data} day={day} today={today} /></>;
 }

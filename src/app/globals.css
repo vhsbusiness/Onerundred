@@ -956,3 +956,21 @@ body {
 @media (prefers-reduced-motion: reduce) {
   :root [data-task-timer], :root [data-task-timer] .btn.task-timer-control { transition: none; }
 }
+
+/* Keep the editor actions within the visible area above the mobile keyboard. */
+dialog.training-exercise-dialog[open] {
+  position: fixed;
+  inset: auto 0;
+  top: calc(var(--editor-top, 0px) + var(--editor-height, 100dvh) / 2);
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  width: min(32rem, calc(100% - 1.5rem));
+  max-height: calc(var(--editor-height, 100dvh) - 1rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  margin: 0 auto;
+  padding: 0;
+  overflow: hidden;
+  color: var(--color-ink);
+  background-color: var(--color-surface-2);
+}
+.training-exercise-dialog::backdrop { background: rgb(0 0 0 / 60%); }

@@ -1,3 +1,4 @@
+import { RememberProject } from "@/components/metas/ProjectReturn";
 import { notFound } from "next/navigation";
 import { TrainingDiary } from "@/components/metas/training/TrainingDiary";
 import { requireUserPage } from "@/lib/current-user";
@@ -9,5 +10,5 @@ export default async function TrainingPage({ params }: { params: Promise<{ id: s
   const user = await requireUserPage("/metas/treinos/" + id);
   const project = await readTraining(user.id, id);
   if (!project) notFound();
-  return <TrainingDiary key={id} project={project} today={todayKey()} />;
+  return <><RememberProject userId={user.id} path={"/metas/treinos/" + id} /><TrainingDiary key={id} project={project} today={todayKey()} /></>;
 }

@@ -3,15 +3,16 @@
 import { Archive, ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { askConfirm, notify } from "@/components/ui/ConfirmProvider";
 import { http } from "@/lib/client";
 import { keyToDate } from "@/lib/time";
 import { elapsedLabel, paceSeconds, type TrainingDetail, type TrainingLog } from "@/lib/training-types";
-import { workoutLabel, type Workout } from "@/lib/workouts";
+import { isWorkout, workoutLabel, type Workout } from "@/lib/workouts";
 import { ProjectCover } from "../ProjectCover";
 import { MetasHeader } from "../MetasTabs";
 import { SportPicker } from "./SportPicker";
+import { EditableExercises } from "./ExerciseEditor";
 import { ExerciseList } from "./Exercises";
 import { WeeklyPlan } from "./WeeklyPlan";
 import { RestTimer } from "./RestTimer";
@@ -29,6 +30,34 @@ function stats(log: TrainingLog) {
 export function TrainingDiary({ project, today }: { project: TrainingDetail; today: string }) {
   const router = useRouter();
   const [sport, setSport] = useState<Workout>(project.workout);
+  type Section = "plano" | "treino" | "historico";
+  const viewKey = "training-view:" + project.id;
+  const [section, setSection] = useState<Section>(project.workout === "strength" ? "plano" : "historico");
+  const [day, setDay] = useState(keyToDate(today).getDay());
+  useEffect(() => {
+    try {
+      const view = JSON.parse(localStorage.getItem(viewKey) ?? "null");
+      if (new URLSearchParams(location.search).get("aba") === "treino") {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- a rest notification opens the active session.
+        setSection("treino");
+        const weekday = Number.isInteger(view?.day) ? view.day : keyToDate(today).getDay();
+        setDay(weekday); setSport("strength");
+        localStorage.setItem(viewKey, JSON.stringify({section: "treino", day: weekday, sport: "strength"}));
+        const url = new URL(location.href);
+        url.searchParams.delete("aba");
+        window.history.replaceState(null, "", url);
+        return;
+      }
+      if (!view) return;
+      if (["plano", "treino", "historico"].includes(view.section)) setSection(view.section);
+      if (Number.isInteger(view.day) && view.day >= 0 && view.day <= 6) setDay(view.day);
+      if (isWorkout(view.sport)) setSport(view.sport);
+    } catch { /* Default to the project's initial sport. */ }
+  }, [today, viewKey]);
+  function show(next: Section, weekday = day, nextSport = sport) {
+    setSection(next); setDay(weekday); setSport(nextSport);
+    try { localStorage.setItem(viewKey, JSON.stringify({section: next, day: weekday, sport: nextSport})); } catch { /* Optional persistence. */ }
+  }
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [limit, setLimit] = useState(15);
@@ -36,14 +65,14 @@ export function TrainingDiary({ project, today }: { project: TrainingDetail; tod
   async function act(operation: () => Promise<unknown>, remove = false) {
     if (busy) return;
     setBusy(true);
-    try { await operation(); if (remove) router.push("/metas/projetos"); router.refresh(); }
+    try { await operation(); if (remove) router.push("/metas/projetos?lista=1"); router.refresh(); }
     catch (e) { notify(e instanceof Error ? e.message : "Falha ao salvar.", "error"); }
     finally { setBusy(false); }
   }
   return <div className="space-y-4">
     <MetasHeader title={project.name} subtitle={project.description || "Diário de treino"} />
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <Link className="btn btn-ghost" href="/metas/projetos"><ArrowLeft size={14} /> Projetos</Link>
+      <Link className="btn btn-ghost" href="/metas/projetos?lista=1"><ArrowLeft size={14} /> Todos os projetos</Link>
       <div className="flex flex-wrap gap-1">
         <button className="btn btn-ghost" onClick={() => setEditing(true)}><Pencil size={14} /> Editar</button>
         <button className="btn btn-ghost" disabled={busy} onClick={() => act(() => http.patch(url, { archived: !project.archived }))}><Archive size={14} /> {project.archived ? "Reativar" : "Arquivar"}</button>
@@ -53,19 +82,24 @@ export function TrainingDiary({ project, today }: { project: TrainingDetail; tod
       </div>
     </div>
     <ProjectCover path={url+"/imagem"} coverId={project.coverId}/>
+    {!project.archived && <nav aria-label="Seções do treino" className="flex flex-wrap gap-2">
+      {([["plano", "Plano semanal"], ["treino", "Registrar treino"], ["historico", "Histórico"]] as const).map(([tab, title]) =>
+        <button key={tab} type="button" aria-pressed={tab === section} onClick={() => show(tab)}
+          className={"btn " + (tab === section ? "pill-orange" : "btn-ghost")}>{title}</button>)}
+    </nav>}
     <div className="grid items-start gap-4 lg:grid-cols-2">
     {project.archived ? <p className="card p-4 text-sm lg:col-span-2">Projeto arquivado.</p> : <>
-      <section className="card min-w-0 space-y-4 p-4 sm:p-5">
+      {section === "treino" && <section className="card min-w-0 space-y-4 p-4 sm:p-5">
         <h2 className="font-semibold">Registrar treino</h2>
-        <SportPicker value={sport} onChange={setSport} />
-        <TrainingEntry key={sport} projectId={project.id} today={today} sport={sport} plans={project.plans} onSave={() => { router.refresh(); notify("Treino registrado."); }} />
-      </section>
-      {sport === "strength" && <div className="min-w-0 space-y-4">
-        <WeeklyPlan projectId={project.id} plans={project.plans} initialDay={keyToDate(today).getDay()} onSave={() => { router.refresh(); notify("Plano semanal salvo."); }} />
-        <RestTimer projectId={project.id} initialSeconds={project.restSeconds} />
+        <SportPicker value={sport} onChange={v => show("treino", day, v)} />
+        <TrainingEntry key={sport} projectId={project.id} today={today} sport={sport} plans={project.plans} onSave={() => { show("historico"); router.refresh(); notify("Treino registrado."); }} />
+      </section>}
+      {section === "plano" && <div className="min-w-0 space-y-4 lg:col-span-2">
+        <WeeklyPlan projectId={project.id} plans={project.plans} day={day} onDay={d => show("plano", d)} onSave={() => { router.refresh(); notify("Plano semanal salvo."); }} />
       </div>}
+      {section === "treino" && sport === "strength" && <RestTimer projectId={project.id} initialSeconds={project.restSeconds} initialEnd={project.restEndsAt} />}
     </>}
-    <section className={"card min-w-0 space-y-3 p-4 sm:p-5 " + (project.archived || sport === "strength" ? "lg:col-span-2" : "")}>
+    {(section === "historico" || project.archived) && <section className="card min-w-0 space-y-3 p-4 sm:p-5 lg:col-span-2">
       <h2 className="font-semibold">Histórico de treinos</h2>
       {!project.logs.length && <p className="text-sm text-ink-3">Nenhum treino registrado.</p>}
       <ul className="divide-y divide-line">{project.logs.slice(0, limit).map(log => <li className="py-3 first:pt-0" key={log.id}>
@@ -76,10 +110,14 @@ export function TrainingDiary({ project, today }: { project: TrainingDetail; tod
           }}><Trash2 size={14} /></button>
         </div>
         {log.durationSeconds != null && <p className="mt-1 text-sm text-ink-2">{stats(log)}</p>}
-        {!!log.exercises.length && <ExerciseList exercises={log.exercises} />}
+        {!!log.exercises.length && (project.archived ? <ExerciseList exercises={log.exercises} /> :
+          <EditableExercises exercises={log.exercises} allowAdd={false} onChange={async (exercises, _removed, previous) => {
+            await http.patch(url + "/registros/" + log.id, { exercises, previous });
+            router.refresh(); notify("Exercício atualizado.");
+          }} />)}
       </li>)}</ul>
       {project.logs.length > limit && <button className="btn" onClick={() => setLimit(n => n + 15)}>Ver mais registros</button>}
-    </section>
+    </section>}
     </div>
     {(project.previousChecks.length > 0 || project.obligations) && <details className="card p-4 text-sm">
       <summary className="cursor-pointer">Histórico do formato anterior</summary>

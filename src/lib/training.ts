@@ -55,7 +55,7 @@ export async function readTraining(userId: string, id: string): Promise<Training
     checks: { where: { auto: false }, orderBy: { dayKey: "desc" }, select: { dayKey: true, done: true, note: true } },
   } });
   if (!p) return null;
-  return { ...summary(p), restSeconds: p.restSeconds, obligations: p.obligations, previousChecks: p.checks,
+  return { ...summary(p), restSeconds: p.restSeconds, restEndsAt: p.restEndsAt?.getTime() ?? null, obligations: p.obligations, previousChecks: p.checks,
     plans: p.plans.map(day => ({ weekday: day.weekday, exercises: exerciseList(day.exercises) })),
     logs: p.workouts.map(log => ({ id: log.id, sport: sportOf(log.sport), dayKey: log.dayKey, durationSeconds: log.durationSeconds,
       distanceMeters: log.distanceMeters, exercises: exerciseList(log.exercises ?? []) })),
@@ -74,6 +74,7 @@ export async function editTraining(userId: string, id: string, raw: unknown) {
     description: typeof input.description === "string" ? input.description.trim() : undefined,
     workout: input.workout === undefined ? undefined : sportOf(input.workout),
     restSeconds: input.restSeconds === undefined ? undefined : positiveInt(input.restSeconds, "Descanso em segundos"),
+    ...(input.archived === true ? { restEndsAt: null } : {}),
     archivedAt: typeof input.archived === "boolean" ? (input.archived ? new Date() : null) : undefined,
   } });
   if (!changed.count) throw new ApiError(404, "Projeto de treino não encontrado.");
@@ -98,6 +99,22 @@ export async function saveTrainingDay(userId: string, projectId: string, raw: un
   });
   if (new Set(plans.map(d => d.weekday)).size !== plans.length) invalid("Cada dia deve aparecer apenas uma vez.");
   await requireActiveTraining(userId, projectId);
+  if (input.previous !== undefined && plans.length === 1) {
+    const { weekday, exercises } = plans[0];
+    const previous = exerciseList(input.previous);
+    const row = await prisma.workoutPlan.findUnique({ where: { projectId_weekday: { projectId, weekday } } });
+    const current = exerciseList(row?.exercises ?? []);
+    if (sameExercises(current, exercises)) return;
+    if (!sameExercises(current, previous)) throw changedExercises();
+    if (!row) {
+      try { await prisma.workoutPlan.create({data: {projectId, weekday, exercises}}); }
+      catch (err) { if ((err as {code?: string}).code === "P2002") throw changedExercises(); throw err; }
+    } else {
+      const saved = await prisma.workoutPlan.updateMany({where: {projectId, weekday, exercises: {equals: row.exercises as Exercise[]}}, data: {exercises}});
+      if (!saved.count) throw changedExercises();
+    }
+    return;
+  }
   await prisma.$transaction(plans.map(({ weekday, exercises }) => prisma.workoutPlan.upsert({
     where: { projectId_weekday: { projectId, weekday } }, create: { projectId, weekday, exercises }, update: { exercises },
   })));
@@ -125,6 +142,28 @@ export async function recordTraining(userId: string, projectId: string, raw: unk
     throw new ApiError(409, "Este registro já foi salvo. Atualize a página.");
   }
   return result;
+}
+function sameExercises(a: Exercise[], b: Exercise[]) {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+function changedExercises() {
+  return new ApiError(409, "Os exercícios foram alterados. Feche o editor e atualize a página.");
+}
+export async function editLoggedExercises(userId: string, projectId: string, id: string, raw: unknown) {
+  const input = object(raw);
+  await requireActiveTraining(userId, projectId);
+  const where = { projectId, id, sport: "strength", project: owned(userId, projectId) };
+  const row = await prisma.workoutLog.findFirst({ where, select: {exercises: true} });
+  if (!row) throw new ApiError(404, "Registro não encontrado.");
+  const exercises = exerciseList(input.exercises);
+  if (!exercises.length) invalid("Mantenha pelo menos um exercício no registro.");
+  const current = exerciseList(row.exercises);
+  if (sameExercises(current, exercises)) return;
+  if (!sameExercises(current, exerciseList(input.previous))) throw changedExercises();
+  const saved = await prisma.workoutLog.updateMany({
+    where: {...where, exercises: {equals: row.exercises as Exercise[]}}, data: {exercises}
+  });
+  if (!saved.count) throw changedExercises();
 }
 export async function removeTrainingLog(userId: string, projectId: string, logId: string) {
   const result = await prisma.workoutLog.deleteMany({ where: { projectId, id: logId, project: owned(userId, projectId) } });

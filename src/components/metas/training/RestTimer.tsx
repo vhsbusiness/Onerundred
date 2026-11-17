@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { notify } from "@/components/ui/ConfirmProvider";
+import { useEffect, useRef, useState } from "react";
 import { Pause, Play, RotateCcw, Timer } from "lucide-react";
 import { http } from "@/lib/client";
 import { elapsedLabel } from "@/lib/training-types";
@@ -10,11 +12,13 @@ const idle: ClockState = { end: null, left: null };
 function remember(key: string, state: ClockState) {
   try { localStorage.setItem(key, JSON.stringify(state)); } catch { /* O contador funciona mesmo sem armazenamento local. */ }
 }
-export function RestTimer({ projectId, initialSeconds }: { projectId: string; initialSeconds: number }) {
+export function RestTimer({ projectId, initialSeconds, initialEnd }: { projectId: string; initialSeconds: number; initialEnd: number | null }) {
   const router = useRouter();
+  const initial = useRef(initialEnd);
+  const lastAlert = useRef<number | null>(null);
   const key = "training-rest:" + projectId;
   const [seconds, setSeconds] = useState(String(initialSeconds));
-  const [saved, setSaved] = useState(initialSeconds);
+  const url = "/api/treinos/" + projectId + "/descanso";
   const [clock, setClock] = useState<ClockState>(idle);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -23,11 +27,10 @@ export function RestTimer({ projectId, initialSeconds }: { projectId: string; in
   useEffect(() => {
     try {
       const raw = localStorage.getItem(key);
-      if (!raw) return;
-      const value = JSON.parse(raw);
+      const value = initial.current !== null ? { end: initial.current } : raw ? JSON.parse(raw) : {};
+
       if (typeof value.end === "number" && Number.isFinite(value.end)) {
         const left = Math.max(0, Math.ceil((value.end - Date.now()) / 1000));
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- restaura a contagem deste projeto depois da hidratação.
         setClock({ end: left ? value.end : null, left });
       } else if (Number.isInteger(value.left) && value.left >= 0) setClock({ end: null, left: value.left });
     } catch { /* Um valor local inválido começa com o tempo configurado. */ }
@@ -38,7 +41,13 @@ export function RestTimer({ projectId, initialSeconds }: { projectId: string; in
       const left = Math.max(0, Math.ceil((end - Date.now()) / 1000));
       const state = { end: left ? end : null, left };
       setClock(state);
-      if (!left) remember(key, state);
+      if (!left) {
+        remember(key, state);
+        if (lastAlert.current !== end && document.visibilityState === "visible") {
+          lastAlert.current = end;
+          notify("Descanso concluído. Hora da próxima série.");
+        }
+      }
     };
     const interval = window.setInterval(tick, 250);
     document.addEventListener("visibilitychange", tick);
@@ -49,14 +58,21 @@ export function RestTimer({ projectId, initialSeconds }: { projectId: string; in
     if (busy || !Number.isInteger(preset) || preset <= 0) return;
     setBusy(true); setError("");
     try {
-      if (preset !== saved) {
-        await http.patch("/api/treinos/" + projectId, { restSeconds: preset });
-        setSaved(preset);
-        router.refresh();
-      }
       const left = clock.left || preset;
-      update({ end: Date.now() + left * 1000, left });
+      const result = await http.put<{end: number}>(url, { seconds: left, preset });
+      update({ end: result.end, left });
+      router.refresh();
     } catch (e) { setError(e instanceof Error ? e.message : "Erro ao salvar o descanso."); }
+    finally { setBusy(false); }
+  }
+  async function stop(reset: boolean) {
+    if (busy) return;
+    setBusy(true); setError("");
+    try {
+      if (end !== null) await http.put(url, { cancelEnd: end });
+      update(reset ? idle : { end: null, left: Math.max(0, Math.ceil(((end ?? Date.now()) - Date.now()) / 1000)) });
+      router.refresh();
+    } catch (e) { setError(e instanceof Error ? e.message : "Falha ao alterar o descanso."); }
     finally { setBusy(false); }
   }
   return <section className="card space-y-3 p-4 sm:p-5">
@@ -68,10 +84,11 @@ export function RestTimer({ projectId, initialSeconds }: { projectId: string; in
     </div>
     <div className="flex flex-wrap gap-2">{end === null
       ? <button className="btn" disabled={busy || !Number.isInteger(preset) || preset < 1} onClick={start}><Play size={14} />{clock.left ? "Retomar descanso" : "Iniciar descanso"}</button>
-      : <button className="btn" onClick={() => update({ end: null, left: Math.max(0, Math.ceil((end - Date.now()) / 1000)) })}><Pause size={14} /> Pausar</button>}
-      <button className="btn btn-ghost" disabled={busy || clock.left === null} onClick={() => update(idle)} aria-label="Reiniciar descanso"><RotateCcw size={15} /></button>
+      : <button className="btn" disabled={busy} onClick={() => stop(false)}><Pause size={14} /> Pausar</button>}
+      <button className="btn btn-ghost" disabled={busy || clock.left === null} onClick={() => stop(true)} aria-label="Reiniciar descanso"><RotateCcw size={15} /></button>
     </div>
     {clock.left === 0 && <p role="status" className="text-sm text-green">Descanso concluído.</p>}
+    <Link href="/perfil#notificacoes" className="inline-block text-xs text-ink-2 underline">Configurar notificações de descanso</Link>
     {error && <p role="alert" className="text-sm text-red">{error}</p>}
   </section>;
 }

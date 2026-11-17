@@ -310,11 +310,13 @@ model Project {
   archivedAt  DateTime?
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   restSeconds Int          @default(60)
+  restEndsAt  DateTime?
   cover       ProjectCover?
   plans       WorkoutPlan[]
   workouts    WorkoutLog[]
   checks      ProjectDay[]
 
+  @@index([restEndsAt])
   @@index([userId])
 }
 

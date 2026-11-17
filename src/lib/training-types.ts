@@ -11,7 +11,7 @@ export type TrainingSummary = {
   coverId: string | null; archived: boolean; logCount: number;
 };
 export type TrainingDetail = TrainingSummary & {
-  restSeconds: number; plans: DayPlan[]; logs: TrainingLog[]; obligations: string;
+  restSeconds: number; restEndsAt: number | null; plans: DayPlan[]; logs: TrainingLog[]; obligations: string;
   previousChecks: { dayKey: string; done: boolean; note: string }[];
 };
 export const WEEKDAYS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];

@@ -11,8 +11,12 @@ export async function register() {
   if (g.__onerundredScheduler) return;
 
   const { tick } = await import("./lib/notifications");
+  const { restoreRestAlerts } = await import("./lib/training-rest");
+  const restore = () => restoreRestAlerts().catch(() => console.error("Falha ao restaurar avisos de descanso."));
+  void restore();
   const run = async () => {
     try {
+      await restore();
       const r = await tick();
       if (r.sent > 0) console.log(`[notificações] ${r.sent} enviada(s) para ${r.users} usuário(s)`);
     } catch (err) {

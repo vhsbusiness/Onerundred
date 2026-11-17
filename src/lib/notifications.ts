@@ -126,7 +126,7 @@ export interface PushMessage {
 }
 
 /** Envia para todos os aparelhos do usuário; remove inscrições mortas. Devolve quantos receberam. */
-export async function sendToUser(userId: string, msg: PushMessage): Promise<number> {
+export async function sendToUser(userId: string, msg: PushMessage, ttl = 60 * 60): Promise<number> {
   if (!vapidReady()) return 0;
   ensureVapid();
   const subs = await prisma.pushSubscription.findMany({ where: { userId } });
@@ -137,7 +137,7 @@ export async function sendToUser(userId: string, msg: PushMessage): Promise<numb
       await webpush.sendNotification(
         { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
         JSON.stringify(msg),
-        { TTL: 60 * 60, timeout: 10_000, agent: pushAgent },
+        { TTL: ttl, timeout: 10_000, agent: pushAgent },
       );
       delivered += 1;
     } catch (err) {
