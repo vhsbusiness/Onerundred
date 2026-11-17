@@ -79,6 +79,16 @@ export function BoardView({ viewerId, boardId, initialBoard }: { viewerId: strin
     return () => document.removeEventListener("mousedown", onDoc);
   }, [boardMenu]);
 
+  useEffect(() => {
+    const remember = () => {
+      if (document.visibilityState === "visible")
+        void http.post(`/api/boards/${boardId}/abrir`, { viewerId }).catch(() => {});
+    };
+    remember();
+    document.addEventListener("visibilitychange", remember);
+    return () => document.removeEventListener("visibilitychange", remember);
+  }, [boardId, viewerId]);
+
   const loadSequence = useRef(0);
   const load = useCallback(async () => {
     const request = ++loadSequence.current;

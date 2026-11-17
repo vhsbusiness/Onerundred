@@ -1,14 +1,15 @@
 "use client";
 
-import { Archive, ArrowLeft, Pencil, Trash2 } from "lucide-react";
+import { Archive, ArrowLeft, Play, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { askConfirm, notify } from "@/components/ui/ConfirmProvider";
 import { http } from "@/lib/client";
 import { keyToDate } from "@/lib/time";
 import { elapsedLabel, paceSeconds, type TrainingDetail, type TrainingLog } from "@/lib/training-types";
 import { isWorkout, workoutLabel, type Workout } from "@/lib/workouts";
+import { FavoriteProjectButton } from "../FavoriteProjects";
 import { ProjectCover } from "../ProjectCover";
 import { MetasHeader } from "../MetasTabs";
 import { SportPicker } from "./SportPicker";
@@ -17,7 +18,7 @@ import { ExerciseList } from "./Exercises";
 import { WeeklyPlan } from "./WeeklyPlan";
 import { RestTimer } from "./RestTimer";
 import { TrainingProjectForm } from "./TrainingProjects";
-import { TrainingEntry } from "./TrainingEntry";
+import { TrainingEntry, type TrainingEntryHandle, type TrainingClockStatus } from "./TrainingEntry";
 
 function dayLabel(key: string) { return keyToDate(key).toLocaleDateString("pt-BR"); }
 function stats(log: TrainingLog) {
@@ -29,6 +30,8 @@ function stats(log: TrainingLog) {
 }
 export function TrainingDiary({ project, today }: { project: TrainingDetail; today: string }) {
   const router = useRouter();
+  const entry = useRef<TrainingEntryHandle>(null);
+  const [clock, setClock] = useState<TrainingClockStatus>({ ready: false, running: false, paused: false, sport: project.workout });
   const [sport, setSport] = useState<Workout>(project.workout);
   type Section = "plano" | "treino" | "historico";
   const viewKey = "training-view:" + project.id;
@@ -65,7 +68,7 @@ export function TrainingDiary({ project, today }: { project: TrainingDetail; tod
   async function act(operation: () => Promise<unknown>, remove = false) {
     if (busy) return;
     setBusy(true);
-    try { await operation(); if (remove) router.push("/metas/projetos?lista=1"); router.refresh(); }
+    try { await operation(); window.dispatchEvent(new Event("project-changed")); if (remove) router.push("/metas/projetos?lista=1"); router.refresh(); }
     catch (e) { notify(e instanceof Error ? e.message : "Falha ao salvar.", "error"); }
     finally { setBusy(false); }
   }
@@ -73,7 +76,8 @@ export function TrainingDiary({ project, today }: { project: TrainingDetail; tod
     <MetasHeader title={project.name} subtitle={project.description || "Diário de treino"} />
     <div className="flex flex-wrap items-center justify-between gap-2">
       <Link className="btn btn-ghost" href="/metas/projetos?lista=1"><ArrowLeft size={14} /> Todos os projetos</Link>
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap items-center gap-1">
+        {!project.archived && <FavoriteProjectButton id={project.id} kind="training" />}
         <button className="btn btn-ghost" onClick={() => setEditing(true)}><Pencil size={14} /> Editar</button>
         <button className="btn btn-ghost" disabled={busy} onClick={() => act(() => http.patch(url, { archived: !project.archived }))}><Archive size={14} /> {project.archived ? "Reativar" : "Arquivar"}</button>
         <button className="btn btn-ghost text-red" aria-label="Excluir projeto" disabled={busy} onClick={async () => {
@@ -81,6 +85,10 @@ export function TrainingDiary({ project, today }: { project: TrainingDetail; tod
         }}><Trash2 size={14} /></button>
       </div>
     </div>
+    {!project.archived && section !== "treino" && <button type="button" className="btn btn-primary"
+      disabled={!clock.ready || clock.sport !== sport} onClick={() => { show("treino"); entry.current?.start(); }}>
+      <Play size={16} /> {clock.running ? "Abrir treino em andamento" : clock.paused ? "Retomar treino" : "Iniciar treino"}
+    </button>}
     <ProjectCover path={url+"/imagem"} coverId={project.coverId}/>
     {!project.archived && <nav aria-label="Seções do treino" className="flex flex-wrap gap-2">
       {([["plano", "Plano semanal"], ["treino", "Registrar treino"], ["historico", "Histórico"]] as const).map(([tab, title]) =>
@@ -89,11 +97,11 @@ export function TrainingDiary({ project, today }: { project: TrainingDetail; tod
     </nav>}
     <div className="grid items-start gap-4 lg:grid-cols-2">
     {project.archived ? <p className="card p-4 text-sm lg:col-span-2">Projeto arquivado.</p> : <>
-      {section === "treino" && <section className="card min-w-0 space-y-4 p-4 sm:p-5">
+      <div hidden={section !== "treino"} className="min-w-0"><section className="card min-w-0 space-y-4 p-4 sm:p-5">
         <h2 className="font-semibold">Registrar treino</h2>
         <SportPicker value={sport} onChange={v => show("treino", day, v)} />
-        <TrainingEntry key={sport} projectId={project.id} today={today} sport={sport} plans={project.plans} onSave={() => { show("historico"); router.refresh(); notify("Treino registrado."); }} />
-      </section>}
+        <TrainingEntry ref={entry} onClockStatus={setClock} key={sport} projectId={project.id} today={today} sport={sport} plans={project.plans} onSave={() => { show("historico"); router.refresh(); notify("Treino registrado."); }} />
+      </section></div>
       {section === "plano" && <div className="min-w-0 space-y-4 lg:col-span-2">
         <WeeklyPlan projectId={project.id} plans={project.plans} day={day} onDay={d => show("plano", d)} onSave={() => { router.refresh(); notify("Plano semanal salvo."); }} />
       </div>}

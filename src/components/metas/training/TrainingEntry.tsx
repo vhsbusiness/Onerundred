@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useImperativeHandle, useState, type FormEvent, type Ref } from "react";
 import { DateField } from "@/components/ui/DateField";
 import { Pause, Play, Timer } from "lucide-react";
 import { http, useNow } from "@/lib/client";
@@ -16,8 +16,12 @@ function emptySession(date: string): SessionDraft {
     km: "", time: "", byPace: false, requestId: null };
 }
 
-export function TrainingEntry({ projectId, sport, plans, today, onSave }: {
+export type TrainingClockStatus = { ready: boolean; running: boolean; paused: boolean; sport: Workout };
+export type TrainingEntryHandle = { start: () => void };
+
+export function TrainingEntry({ projectId, sport, plans, today, onSave, ref, onClockStatus }: {
   projectId: string; today: string; sport: Workout; plans: DayPlan[]; onSave: () => void;
+  ref?: Ref<TrainingEntryHandle>; onClockStatus?: (state: TrainingClockStatus) => void;
 }) {
   const key = "training-session:" + projectId + ":" + sport;
   const [session, setSession] = useState(() => emptySession(today));
@@ -44,6 +48,14 @@ export function TrainingEntry({ projectId, sport, plans, today, onSave }: {
     setSession(next);
     try { localStorage.setItem(key, JSON.stringify(next)); } catch { /* Keep editing in memory. */ }
   }
+  function startClock() {
+    if (!ready || busy || startedAt !== null) return;
+    update({ startedAt: Date.now(), byPace: false });
+  }
+  useImperativeHandle(ref, () => ({ start: startClock }));
+  useEffect(() => {
+    onClockStatus?.({ ready: ready && !busy, running: startedAt !== null, paused: startedAt === null && elapsedMs > 0, sport });
+  }, [ready, busy, startedAt, elapsedMs, sport, onClockStatus]);
   function stopClock() {
     const ms = elapsedMs + (startedAt ? Math.max(0, Date.now() - startedAt) : 0);
     update({ elapsedMs: ms, startedAt: null, time: elapsedLabel(Math.max(1, Math.floor(ms / 1000))), byPace: false });
@@ -82,7 +94,7 @@ export function TrainingEntry({ projectId, sport, plans, today, onSave }: {
       <Timer size={17} aria-hidden="true" className="text-orange" />
       <span role="timer" aria-label="Cronômetro do treino" className="text-2xl font-semibold tabular-nums">{elapsedLabel(elapsed)}</span>
       {startedAt ? <button type="button" className="btn" onClick={stopClock}><Pause size={15} /> Pausar treino</button>
-        : <button type="button" className="btn" onClick={() => update({ startedAt: Date.now(), byPace: false })}><Play size={15} />
+        : <button type="button" className="btn" onClick={startClock}><Play size={15} />
           {elapsedMs ? "Retomar treino" : "Iniciar treino"}</button>}
     </div>
     <label className="block text-sm">Data do treino<DateField className="mt-1" ariaLabel="Data do treino" value={date} max={today} onChange={v => { if (v !== date) update({ date: v, draft: null, checked: [], requestId: null }); }} /></label>

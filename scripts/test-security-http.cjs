@@ -114,6 +114,41 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   check(!r.headers.get('x-powered-by'),'Framework banner removed');check(r.headers.get('content-security-policy').includes("frame-ancestors 'none'"),'CSP framing restriction');
   check((await request('GET',`/api/cards/${card.id}`,undefined,b)).ok,'Owner still reads private card');
   for(const url of ['/admin','/quadros/'+board.id,'/metas/'+project.id]){r=await request('GET',url,undefined,a);check(r.status===404||[302,303,307,308].includes(r.status),'Page authorization '+url+' '+r.status);}
+  // Reading or prefetching a shared board must never change either account's last visit.
+  const shared=await repo.createBoard(a.id,'SHARED-REMEMBER-TEST');
+  await prisma.boardMember.create({data:{boardId:shared.id,userId:b.id}});
+  check((await request('POST',`/api/boards/${boardA.id}/abrir`,{viewerId:a.id})).ok,'Remember own board visit');
+  check((await request('POST',`/api/boards/${shared.id}/abrir`,{viewerId:b.id},b)).ok,'Remember member visit');
+  check((await request('GET','/api/boards/ultimo')).headers.get('cache-control')==='no-store','Last destination is never cached');
+  check((await (await request('GET','/api/boards/ultimo')).json()).id===boardA.id,'Member visit preserves owner history');
+  check((await (await request('GET','/api/boards/ultimo',undefined,b)).json()).id===shared.id,'Member has own last board');
+  await request('GET',`/api/boards/${shared.id}`);
+  await request('GET',`/quadros/${shared.id}`,undefined,a,{'next-router-prefetch':'1'});
+  check(await repo.lastBoardId(a.id)===boardA.id,'API reads and page prefetch do not count as visits');
+  check((await request('POST',`/api/boards/${shared.id}/abrir`,{viewerId:b.id})).status===403,'Stale tab from different account cannot record a visit');
+  check((await request('POST',`/api/boards/${board.id}/abrir`,{viewerId:a.id})).status===404,'Cannot remember inaccessible board');
+  await prisma.boardMember.deleteMany({where:{boardId:shared.id,userId:b.id}});
+  check(await repo.lastBoardId(b.id)===null,'Revoked board is not returned as last destination');
+  // Favorites are personal, idempotent, and do not overwrite unrelated concurrent favorites.
+  const trainingA=await prisma.project.create({data:{userId:a.id,name:'Favorite training',workout:'strength',startDate:'2026-11-17',days:0}});
+  const dietA=await prisma.dietProject.create({data:{userId:a.id,name:'Favorite diet'}});
+  const saved=await Promise.all([
+    request('PATCH','/api/projetos/favoritos',{id:trainingA.id,kind:'training',favorite:true}),
+    request('PATCH','/api/projetos/favoritos',{id:dietA.id,kind:'diet',favorite:true}),
+  ]);
+  check(saved.every(r=>r.ok),'Concurrent favorites both saved');
+  check((await (await request('GET','/api/projetos/favoritos')).json()).length===2,'Concurrent additions preserved');
+  check((await (await request('GET','/api/projetos/favoritos',undefined,b)).json()).length===0,'Favorites isolated by account');
+  check((await request('PATCH','/api/projetos/favoritos',{id:training.id,kind:'training',favorite:true})).status===404,'Cannot favorite another account project');
+  await request('PATCH','/api/projetos/favoritos',{id:trainingA.id,kind:'training',favorite:true});
+  check((await (await request('GET','/api/projetos/favoritos')).json()).length===2,'Favorite operation is idempotent');
+  await prisma.project.update({where:{id:trainingA.id},data:{name:'Renamed favorite'}});
+  check((await (await request('GET','/api/projetos/favoritos')).json()).some(p=>p.name==='Renamed favorite'),'Favorite name stays current');
+  await prisma.project.update({where:{id:trainingA.id},data:{archivedAt:new Date()}});
+  check((await (await request('GET','/api/projetos/favoritos')).json()).length===1,'Archived project omitted');
+  await request('PATCH','/api/projetos/favoritos',{id:trainingA.id,kind:'training',favorite:false});
+  await prisma.dietProject.delete({where:{id:dietA.id}});
+  check((await (await request('GET','/api/projetos/favoritos')).json()).length===0,'Deleted project omitted');
   // A browser may send an Origin/Host matching its public HTTPS name behind the reverse proxy.
   const loginSession=await request('POST','/api/auth/login',{identifier:a.username,password:'Audit-only-pass-123'},null);
   const freshCookie=loginSession.headers.get('set-cookie').split(';')[0];

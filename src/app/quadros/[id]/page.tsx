@@ -26,5 +26,5 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function QuadroPage({ params }: Props) {
   const { id } = await params;
   const { board, viewerId } = await loadBoard(id);
-  return <BoardView viewerId={viewerId} boardId={id} initialBoard={board} />;
+  return <BoardView key={viewerId + ":" + id} viewerId={viewerId} boardId={id} initialBoard={board} />;
 }

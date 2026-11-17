@@ -11,6 +11,7 @@ import { DateField } from "@/components/ui/DateField";
 import { TimeField } from "@/components/ui/TimeField";
 import { Modal } from "@/components/ui/Modal";
 import { askConfirm, notify } from "@/components/ui/ConfirmProvider";
+import { FavoriteProjectButton } from "../FavoriteProjects";
 import { ProjectCover } from "../ProjectCover";
 
 const displayDate = (day: string) => day.split("-").reverse().join("/");
@@ -32,6 +33,7 @@ export function DietDiary({ data, day, today }: { data: DietDetail; day: string;
     setError("");
     try {
       await http.post(api, { ...body, dayKey: day });
+      window.dispatchEvent(new Event("project-changed"));
       setEditor(null);
       if (body.action === "deleteProject") router.push("/metas/projetos?lista=1");
       router.refresh();
@@ -71,6 +73,7 @@ export function DietDiary({ data, day, today }: { data: DietDetail; day: string;
           <ArrowLeft size={14} /> Todos os projetos
         </Link>
         <div className="flex gap-2">
+          <FavoriteProjectButton id={project.id} kind="diet" />
           <button className="btn btn-ghost" onClick={() => open("rename")}>
             <Pencil size={14} /> Renomear
           </button>

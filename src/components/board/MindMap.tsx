@@ -1,7 +1,7 @@
 "use client";
 
 import { MIND_TITLE_MAX_LENGTH, MIND_TITLE_LIMIT_MESSAGE } from "@/lib/mind-title";
-import { useEffect, useEffectEvent, useRef, useState, useMemo, type PointerEvent, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useEffectEvent, useRef, useState, useMemo, type PointerEvent, type CSSProperties } from "react";
 import { Focus, Minus, Maximize, Minimize, Moon, Sun, Plus, Undo2, ExternalLink, MousePointer2, Hand, ImagePlus, GitBranchPlus, Sparkles, Type, Square, Pencil, ClipboardPaste, Spline, Slash, Redo2, Search, X, ChevronUp, ChevronDown, ChevronsDownUp, Download, ListTree } from "lucide-react";
 import { http } from "@/lib/client";
 import type { MindNodeDTO } from "@/lib/types";
@@ -71,7 +71,7 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
   }, [nodes]);
   const gesture = useRef<Gesture | null>(null);
   const drawings = useMemo(() => new Map(nodes.filter(n => n.drawing).map(n => [n.id, parseDrawing(n.drawing)])), [nodes]);
-  const widthOf = (n: MindNodeDTO) => drawings.get(n.id)?.width ?? nodeWidth(n);
+  const widthOf = (n: MindNodeDTO) => n.id === editor?.id ? editingWidth : drawings.get(n.id)?.width ?? nodeWidth(n);
   const [animateView, setAnimateView] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const [box, setBox] = useState<ReturnType<typeof selectionBox> | null>(null);
@@ -121,6 +121,7 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
     const element = canvas.current;
     if (!element) return;
     function wheel(e: WheelEvent) {
+      if ((e.target as Element).closest("[data-mind-title]")) return;
       e.preventDefault();
       if (gesture.current?.mode === "draw") return;
       setAnimateView(false);
@@ -147,6 +148,69 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
   const undoQueued = useRef(false);
   const canvas = useRef<HTMLDivElement>(null);
   const url = `/api/boards/${boardId}/mapa`;
+  const textField = useRef<HTMLTextAreaElement>(null);
+  const [editingArea, setEditingArea] = useState({ left: 0, top: 0, width: 320, height: 320 });
+  const [measuredText, setMeasuredText] = useState({ id: "", height: 0 });
+  const editingNode = nodes.find(n => n.id === editor?.id);
+  const editingPadding = editingNode ? (!editingNode.parentId && !editingNode.detached ? 20 : 14) + (editingNode.shape === "plain" ? 0 : 3) : 14;
+  const editingWidth = editingNode && editor
+    ? Math.min(nodeWidth({ ...editingNode, title: editor.title }), Math.max(72, editingArea.width / view.zoom))
+    : 120;
+  const maxTextHeight = Math.max(editingNode?.fontSize ?? 14, editingArea.height / view.zoom - editingPadding);
+  const editingHeight = (measuredText.id === editor?.id ? Math.min(measuredText.height, maxTextHeight) : (editingNode?.fontSize ?? 14) * 1.25) + editingPadding;
+  const heightOf = (n: MindNodeDTO) => editor?.id === n.id ? editingHeight : textBlockSize(n).height;
+  useLayoutEffect(() => {
+    const element = canvas.current;
+    if (!editor?.id || !element) return;
+    const measure = () => {
+      const rect = element.getBoundingClientRect(), viewport = window.visualViewport;
+      const mobile = rect.width < 640;
+      const toolbar = section.current?.querySelector(".mind-context")?.getBoundingClientRect();
+      const tools = section.current?.querySelector(".mind-sidebar")?.getBoundingClientRect();
+      const left = Math.max(rect.left, viewport?.offsetLeft ?? 0) + (mobile ? 16 : 64);
+      const top = Math.max(Math.max(rect.top, viewport?.offsetTop ?? 0) + 100, mobile && toolbar ? toolbar.bottom + 12 : 0);
+      const right = Math.min(rect.right, (viewport?.offsetLeft ?? 0) + (viewport?.width ?? innerWidth)) - 24;
+      const bottom = Math.min(
+        Math.min(rect.bottom, (viewport?.offsetTop ?? 0) + (viewport?.height ?? innerHeight)) - 50,
+        mobile && tools ? tools.top - 12 : Infinity,
+      );
+      const next = { left, top, width: Math.max(72, right - left), height: Math.max(48, bottom - top) };
+      setEditingArea(old => Object.keys(next).every(key => old[key as keyof typeof old] === next[key as keyof typeof next]) ? old : next);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    section.current?.querySelectorAll(".mind-context,.mind-sidebar").forEach(toolbar => observer.observe(toolbar));
+    window.visualViewport?.addEventListener("resize", measure);
+    window.visualViewport?.addEventListener("scroll", measure);
+    window.addEventListener("scroll", measure, true);
+    return () => {
+      observer.disconnect();
+      window.visualViewport?.removeEventListener("resize", measure);
+      window.visualViewport?.removeEventListener("scroll", measure);
+      window.removeEventListener("scroll", measure, true);
+    };
+  }, [editor?.id]);
+  useLayoutEffect(() => {
+    const field = textField.current;
+    if (!field || !editor) return;
+    // Measure actual wrapping (including bold and pasted newlines); cap to the visible canvas.
+    field.style.height = "0px";
+    const height = Math.min(maxTextHeight, Math.max((editingNode?.fontSize ?? 14) * 1.25, field.scrollHeight));
+    field.style.height = height + "px";
+    setMeasuredText(old => old.id === editor.id && old.height === height ? old : { id: editor.id, height });
+  }, [editor, editingWidth, maxTextHeight, editingNode?.fontSize, editingNode?.bold]);
+  useLayoutEffect(() => {
+    const node = textField.current?.closest("[data-node]");
+    if (!editor || !node || gesture.current) return;
+    const rect = node.getBoundingClientRect();
+    const dx = rect.left < editingArea.left ? editingArea.left - rect.left : Math.min(0, editingArea.left + editingArea.width - rect.right);
+    const dy = rect.top < editingArea.top ? editingArea.top - rect.top : Math.min(0, editingArea.top + editingArea.height - rect.bottom);
+    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+      setView(old => ({ ...old, x: old.x + dx, y: old.y + dy }));
+    }
+  }, [editor, editingArea, editingHeight, editingWidth, view.zoom]);
+
   const visible = nodes.map(node => {
     let next = resize?.id === node.id ? { ...node, textWidth: resize.textWidth, textHeight: resize.textHeight } : node;
     if (drag?.ids.has(node.id)) next = { ...node, x: node.x + drag.x, y: node.y + drag.y };
@@ -747,7 +811,7 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
   const groupAnchor = groupNodes.find(n => !n.imageData) ?? groupNodes[0];
   const mixed = groupAnchor ? (["shape", "fontSize", "bold", "locked", "link", "strokeWidth", "textWidth", "textHeight"] as const).filter(key => groupNodes.some(n => n[key] !== groupAnchor[key])) : [];
   return <section ref={section} data-interacting={!!drag || !!resize || grabbing || !!ink} aria-label="Mapa mental" className={`card mind-map relative isolate min-h-64 flex-1 overflow-hidden bg-surface text-ink ${light ? "mind-canvas-light" : ""} ${full ? "!fixed inset-0 !z-[100] !rounded-none" : ""}`}>
-    <div ref={canvas} data-mind-canvas tabIndex={0} aria-label="Área do mapa" onPointerDown={start} onPointerMove={move} onPointerUp={finish} onPointerCancel={finish} onLostPointerCapture={e => { if (gesture.current?.mode !== "draw") finish(e); }} data-grabbing={grabbing}
+    <div ref={canvas} data-mind-canvas data-editing={!!editor} tabIndex={0} aria-label="Área do mapa" onPointerDown={start} onPointerMove={move} onPointerUp={finish} onPointerCancel={finish} onLostPointerCapture={e => { if (gesture.current?.mode !== "draw") finish(e); }} data-grabbing={grabbing}
       onContextMenu={event => event.preventDefault()}
       onClick={event => {
         if (suppressedClick.current || (event.target as Element).closest("[data-node],button,a,input")) return;
@@ -761,7 +825,7 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
         "--mind-grid-step": `${grid.step}px`, "--mind-grid-major-step": `${grid.majorStep}px`,
         "--mind-grid-fade": grid.fade, "--mind-grid-x": `${view.x}px`, "--mind-grid-y": `${view.y}px`,
       } as CSSProperties} />
-      <div data-animate-view={animateView} className="mind-world absolute left-1/2 top-1/2 origin-top-left" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}>
+      <div data-animate-view={animateView && !editor} className="mind-world absolute left-1/2 top-1/2 origin-top-left" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}>
         <svg aria-hidden="true" width="1" height="1" className="mind-connections pointer-events-none absolute overflow-visible">
           {shown.map(n => {
             const parent = n.parentId && byId.get(n.parentId);
@@ -799,7 +863,7 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
                 else if (active) shortcut(e, n.id);
               }}
               className="mind-node" data-bold={n.bold} data-shape={n.shape} data-root={central && !n.detached} data-image={!!n.imageData} data-drawing={!!drawing} data-text-size={!!(n.textWidth || n.textHeight)}
-              style={{ width, height: drawing?.height ?? (n.imageData ? undefined : textBlockSize(n).height), borderColor: branchColor(n.color), textDecoration: central && !n.detached && n.shape === "plain" && n.color.startsWith("#") ? "underline" : undefined, textDecorationColor: branchColor(n.color), color: n.textColor || undefined, fontSize: n.fontSize }}>
+              style={{ width, height: drawing?.height ?? (n.imageData ? undefined : heightOf(n)), borderColor: branchColor(n.color), textDecoration: central && !n.detached && n.shape === "plain" && n.color.startsWith("#") ? "underline" : undefined, textDecorationColor: branchColor(n.color), color: n.textColor || undefined, fontSize: n.fontSize }}>
               {drawing ? <svg width={drawing.width} height={drawing.height} className="mind-ink" aria-label="Desenho livre">
                 <path d={inkPath(drawing.points)} stroke={branchColor(n.color)} strokeWidth={n.strokeWidth} strokeLinecap="round" strokeLinejoin="round" fill="none" />
                 <path className="mind-ink-hit" d={inkPath(drawing.points)} stroke="transparent" strokeWidth={Math.max(n.strokeWidth + 8, 12 / view.zoom)} strokeLinecap="round" fill="none" />
@@ -808,11 +872,11 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
                 // eslint-disable-next-line @next/next/no-img-element
                 ? <img src={n.imageData} alt={n.title} draggable={false} style={{ width: n.imageWidth, height: n.imageHeight, objectFit: "contain" }} />
                 : editor?.id === n.id && onChanged
-                ? <textarea rows={1} data-mind-title aria-label="Texto do ramo" autoFocus onFocus={e => {
+                ? <textarea ref={textField} rows={1} data-mind-title aria-label="Texto do ramo" autoFocus onFocus={e => {
                       if (selectTitleOnFocus.current === n.id) e.target.select();
                       selectTitleOnFocus.current = null;
                     }} maxLength={MIND_TITLE_MAX_LENGTH} value={editor.title}
-                    className="w-full min-w-0 cursor-text resize-none select-text bg-transparent text-center outline-none" style={{ backgroundColor: n.highlight || undefined, height: Math.max(n.fontSize * 1.25, textBlockSize(n).height - (central && !n.detached ? 20 : 14)) }}
+                    className="w-full min-w-0 cursor-text resize-none select-text bg-transparent text-center outline-none" style={{ backgroundColor: n.highlight || undefined, height: Math.max(n.fontSize * 1.25, editingHeight - editingPadding) }}
                     onChange={e => edit({ id: n.id, title: e.target.value })} onBlur={commitTitle}
                     onKeyDown={e => { if (e.key === "Escape") { commitTitle(); select(undefined); e.stopPropagation(); } else shortcut(e, n.id); }} />
                 : <span className="max-h-full w-full overflow-hidden whitespace-pre-wrap [overflow-wrap:anywhere]" style={{ backgroundColor: n.highlight || undefined }}>{n.title}</span>}
@@ -825,7 +889,7 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
                 void save(async () => { await http.patch(url, { id: n.id,
                   textWidth: Math.min(1200, Math.max(72, size.width + (e.key === "ArrowRight" ? step : e.key === "ArrowLeft" ? -step : 0))),
                   textHeight: Math.min(1200, Math.max(24, size.height + (e.key === "ArrowDown" ? step : e.key === "ArrowUp" ? -step : 0))) }); });
-              }} style={{ left: width / 2, top: textBlockSize(n).height / 2 }} />}
+              }} style={{ left: width / 2, top: heightOf(n) / 2 }} />}
             {active && central && onChanged && <div className="mind-handles" style={{ right: width / 2 + 6 }}><button className="mind-handle" aria-label="Adicionar ramo à esquerda" title="Adicionar ramo à esquerda" disabled={busy} onClick={() => addBranch(n.id, { direction: "left" })}><Plus size={14} /></button></div>}
             {!n.imageData && !n.drawing && (active || folded.has(n.id)) && <div className="mind-handles" style={isLeft && !central ? { right: width / 2 + 4 } : { left: width / 2 + 4 }}>
               {active && onChanged && <button className="mind-handle" aria-label={central ? "Adicionar ramo à direita" : "Adicionar ramo"} title="Adicionar sub-ramo (Tab)" disabled={busy} onClick={() => addBranch(n.id, { direction: "right" })}><Plus size={14} /></button>}
@@ -852,7 +916,7 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
     </div>}
     {anchor && onChanged && tool !== "draw" && !drag && !box && !menu && !searchOpen && <div className="mind-context" style={{
       "--mind-x": `${view.x + anchor.x * view.zoom}px`,
-      "--mind-y": `${view.y + anchor.y * view.zoom}px`,
+      "--mind-y": `${view.y + (anchor.y - heightOf(anchor) / 2) * view.zoom + 20}px`,
     } as React.CSSProperties}>
       <MindFormat key={anchor.id} node={anchor}
         organize={() => organize(anchor.id)}

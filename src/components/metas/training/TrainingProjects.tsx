@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, ArrowUpRight, Dumbbell, Plus } from "lucide-react";
+import { Archive, Dumbbell, Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
@@ -8,6 +8,7 @@ import { Modal } from "@/components/ui/Modal";
 import { http } from "@/lib/client";
 import type { TrainingSummary } from "@/lib/training-types";
 import { workoutLabel, type Workout } from "@/lib/workouts";
+import { FavoriteProjectButton, FavoriteProjectLinks } from "../FavoriteProjects";
 import { MetasHeader } from "../MetasTabs";
 import { CoverPicker, CoverImage } from "../ProjectCover";
 import { DietProjects } from "../diet/DietProjects";
@@ -30,6 +31,7 @@ export function TrainingProjectForm({ initial, onClose }: { initial?: TrainingSu
       const payload = { name, description, workout: sport, image };
       if (initial) {
         await http.patch("/api/treinos/" + initial.id, payload);
+        window.dispatchEvent(new Event("project-changed"));
         router.refresh();
       } else {
         const created = await http.post<TrainingSummary>("/api/treinos", payload);
@@ -55,21 +57,25 @@ export function TrainingProjects({ projects, diets }: { projects: TrainingSummar
   const [creating, setCreating] = useState(false);
   return <div className="space-y-5">
     <MetasHeader title="Projetos" subtitle="Organize seus treinos e sua alimentação." />
+    <FavoriteProjectLinks />
     <div className="flex flex-wrap items-center justify-between gap-3">
       <h2 className="flex items-center gap-2 font-semibold"><Dumbbell size={18} className="text-orange" /> Meus treinos</h2>
       <button className="btn btn-primary" onClick={() => setCreating(true)}><Plus size={15} /> Novo projeto de treino</button>
     </div>
     {!projects.length && <p className="card p-6 text-sm text-ink-2">Seu primeiro projeto de treino aparecerá aqui.</p>}
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{projects.map(p =>
-      <Link key={p.id} href={"/metas/treinos/" + p.id} className="card space-y-3 p-5 hover:border-line-3">
+      <div key={p.id} className="relative">
+      {!p.archived && <div className="absolute right-3 top-3 z-10"><FavoriteProjectButton id={p.id} kind="training" /></div>}
+      <Link href={"/metas/treinos/" + p.id} className="card block h-full space-y-3 p-5 hover:border-line-3">
         {p.coverId && <CoverImage preview url={"/api/treinos/"+p.id+"/imagem?v="+p.coverId}/>}
-        <div className="flex justify-between gap-2"><h3 className="break-words text-lg font-semibold">{p.name}</h3><ArrowUpRight size={16} className="shrink-0 text-ink-3" /></div>
+        <div className="flex justify-between gap-2 pr-9"><h3 className="break-words text-lg font-semibold">{p.name}</h3></div>
         {p.description && <p className="line-clamp-2 text-sm text-ink-2">{p.description}</p>}
         <div className="flex flex-wrap items-center gap-2 text-xs text-ink-2"><span className="pill">{workoutLabel(p.workout)}</span>
           <span>{p.logCount} {p.logCount === 1 ? "treino registrado" : "treinos registrados"}</span>
           {p.archived && <span className="pill"><Archive size={12} /> Arquivado</span>}
         </div>
       </Link>
+      </div>
     )}</div>
     <DietProjects diets={diets} />
     {creating && <TrainingProjectForm onClose={() => setCreating(false)} />}

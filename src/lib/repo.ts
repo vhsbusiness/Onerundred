@@ -469,6 +469,17 @@ export async function lastBoardId(userId: string): Promise<string | null> {
   return board?.id ?? null;
 }
 
+/** Only an explicit visit may change this account's destination; reads/prefetches must not. */
+export async function rememberBoardVisit(id: string, userId: string) {
+  const board = await prisma.board.findFirst({ where: { id, ...boardAccess(userId) }, select: { id: true } });
+  if (!board) throw new ApiError(404, "Quadro não encontrado");
+  await prisma.setting.upsert({
+    where: { userId_key: { userId, key: "lastBoardId" } },
+    create: { userId, key: "lastBoardId", value: board.id },
+    update: { value: board.id },
+  });
+}
+
 const FAVORITE_BOARDS_KEY = "favoriteBoardIds";
 
 export async function listFavoriteBoards(userId: string) {
@@ -626,11 +637,6 @@ export async function getBoard(id: string, userId: string): Promise<BoardDTO> {
     },
   });
   if (!board) throw new ApiError(404, "Quadro não encontrado");
-  await prisma.setting.upsert({
-    where: { userId_key: { userId, key: "lastBoardId" } },
-    create: { userId, key: "lastBoardId", value: board.id },
-    update: { value: board.id },
-  });
   return {
     id: board.id,
     type: board.type as BoardType,

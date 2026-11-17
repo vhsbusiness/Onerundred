@@ -1,11 +1,12 @@
 "use client";
 
-import { ArrowUpRight, Plus, Utensils } from "lucide-react";
+import { Plus, Utensils } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { http } from "@/lib/client";
+import { FavoriteProjectButton } from "../FavoriteProjects";
 import { CoverImage, CoverPicker } from "../ProjectCover";
 
 export function DietProjects({
@@ -58,14 +59,16 @@ export function DietProjects({
       {diets.length ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {diets.map((p) => (
-            <Link key={p.id} className="card space-y-3 p-5" href={"/metas/dietas/" + p.id}>
+            <div key={p.id} className="relative">
+            <div className="absolute right-3 top-3 z-10"><FavoriteProjectButton id={p.id} kind="diet" /></div>
+            <Link className="card block h-full space-y-3 p-5" href={"/metas/dietas/" + p.id}>
               {p.cover && <CoverImage preview url={"/api/dietas/" + p.id + "/imagem?v=" + p.cover.id} />}
-              <div className="flex justify-between gap-2">
+              <div className="flex justify-between gap-2 pr-9">
                 <h3 className="break-words text-lg font-semibold">{p.name}</h3>
-                <ArrowUpRight size={16} />
               </div>
               <span className="text-sm text-ink-2">Cardápio diário</span>
             </Link>
+            </div>
           ))}
         </div>
       ) : (

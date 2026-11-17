@@ -868,7 +868,8 @@ body {
 .mind-search { position: absolute; top: 12px; right: 12px; display: flex; align-items: center; padding: 4px 8px; gap: 4px; width: min(360px, calc(100% - 24px)); }
 .mind-search input { min-width: 0; width: 100%; color: inherit; background: transparent; border: 0; outline: none; font-size: 13px; }
 .mind-search > span { font-size: 11px; flex-shrink: 0; }
-.mind-node textarea[data-mind-title] { display: block; font: inherit; line-height: 1.25; margin: 0; padding: 0; border: 0; border-radius: 0; overflow: auto; }
+.mind-canvas[data-editing="true"] { touch-action: pan-y; }
+.mind-node textarea[data-mind-title] { display: block; font: inherit; line-height: 1.25; margin: 0; padding: 0; border: 0; border-radius: 0; overflow: auto; overflow-wrap: anywhere; overscroll-behavior: contain; touch-action: pan-y; }
 @media(max-width: 639px) { .mind-search { top: 62px; z-index: 8; } .mind-sidebar { flex-wrap: wrap; justify-content: center; max-height: calc(100% - 140px); overflow-y: auto; } .mind-sidebar .mind-divider { display: none; } }
 
 .mind-export { position: absolute; z-index: 4; left: 66px; top: 40%; flex-direction: column; align-items: stretch; font-size: 12px; max-width: calc(100% - 80px); }

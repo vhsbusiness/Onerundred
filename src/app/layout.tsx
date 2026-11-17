@@ -5,6 +5,7 @@ import "./globals.css";
 import { getCurrentUser } from "@/lib/current-user";
 import { getSettings } from "@/lib/repo";
 import { FavoriteBoardsProvider } from "@/components/boards/FavoriteBoards";
+import { FavoriteProjectsProvider } from "@/components/metas/FavoriteProjects";
 import { Nav } from "@/components/Nav";
 import { ConfirmProvider } from "@/components/ui/ConfirmProvider";
 import { DEFAULT_DESIGN, DEFAULT_THEME, isTheme, THEME_COOKIE, themeColorFor, type Design, type Theme } from "@/lib/theme";
@@ -62,7 +63,7 @@ const viewportBase: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [theme, design] = await Promise.all([themeFromCookie(), designFromCookie()]);
+  const [theme, design, user] = await Promise.all([themeFromCookie(), designFromCookie(), getCurrentUser()]);
   return (
     <html
       lang="pt-BR"
@@ -80,10 +81,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
         <div id="app" className="mx-auto flex min-h-dvh w-full max-w-[1480px] flex-col px-4 pb-24 sm:px-6 md:pb-10"
           style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
+          <FavoriteProjectsProvider key={user?.id ?? "anonymous"} enabled={!!user}>
           <FavoriteBoardsProvider>
             <Nav />
             <main className="flex-1">{children}</main>
           </FavoriteBoardsProvider>
+          </FavoriteProjectsProvider>
         </div>
         <ConfirmProvider />
       </body>

@@ -1,13 +1,14 @@
 "use client";
 
-import { Archive, Bell, ChevronDown, ChevronsLeft, ChevronsRight, Gamepad2, LayoutDashboard, LogOut, Moon, Settings, ShieldCheck, SquareKanban, Wallet, Sun, Target, UserRound } from "lucide-react";
+import { Archive, Dumbbell, Utensils, Bell, ChevronDown, ChevronsLeft, ChevronsRight, Gamepad2, LayoutDashboard, LogOut, Moon, Settings, ShieldCheck, SquareKanban, Wallet, Sun, Target, UserRound } from "lucide-react";
 import { useFavoriteBoards } from "@/components/boards/FavoriteBoards";
+import { useFavoriteProjects } from "@/components/metas/FavoriteProjects";
 import { BoardIcon } from "@/components/boards/BoardIcon";
 import { Avatar } from "@/components/profile/ProfilePage";
 import { InviteBell } from "@/components/InviteBell";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ComponentProps } from "react";
 import { formatDayLong, todayKey } from "@/lib/time";
 import { isTheme, type Theme, isDesign } from "@/lib/theme";
 import { applyDesign, applyTheme, currentDesign, currentTheme } from "@/lib/theme-client";
@@ -26,6 +27,21 @@ const tabs = [
   { href: "/configuracoes", label: "Configurações", short: "Config.", icon: Settings },
 ];
 
+
+/** Resolve the account's current destination at click time, never from a prefetched redirect. */
+function NavLink({ href, ...props }: ComponentProps<typeof Link>) {
+  const router = useRouter();
+  return <Link {...props} href={href} prefetch={href === "/quadros" ? false : undefined}
+    onNavigate={href === "/quadros" ? async event => {
+      event.preventDefault();
+      try {
+        const response = await fetch("/api/boards/ultimo", { cache: "no-store" });
+        if (!response.ok) throw new Error("Não foi possível carregar o último quadro.");
+        const { id } = await response.json();
+        router.push(id ? `/quadros/${encodeURIComponent(id)}` : "/quadros?lista=1");
+      } catch { router.push("/quadros"); }
+    } : undefined} />;
+}
 
 export function Logo({ compact = false }: { compact?: boolean }) {
   return (
@@ -189,7 +205,7 @@ function BottomNav({
           const active = isActive(t.href);
           return (
             <li key={t.href} className="min-w-0 flex-1">
-              <Link
+              <NavLink
                 href={t.href}
                 className={`flex flex-col items-center gap-0.5 rounded-xl py-1 text-[10px] min-[390px]:text-[11px] transition ${
                   active ? "text-ink" : "text-ink-3"
@@ -199,7 +215,7 @@ function BottomNav({
                   <Icon size={20} strokeWidth={active ? 2.2 : 1.8} />
                 </span>
                 {t.short}
-              </Link>
+              </NavLink>
             </li>
           );
         })}
@@ -240,6 +256,7 @@ const RAIL_KEY = "onerundred_rail";
  */
 function Rail({ tabs: items, isActive, me }: { tabs: Tab[]; isActive: (href: string) => boolean; me: MeDTO | null }) {
   const { boards: favorites } = useFavoriteBoards();
+  const { projects: favoriteProjects } = useFavoriteProjects();
   const pathname = usePathname();
   function toggle() {
     const html = document.documentElement;
@@ -263,12 +280,12 @@ function Rail({ tabs: items, isActive, me }: { tabs: Tab[]; isActive: (href: str
           {items.map((t) => {
             const active = isActive(t.href);
             return (
-              <li key={t.href} className={t.href === "/quadros" ? "rail-boards-group" : undefined}>
-                <Link href={t.href} title={t.label} aria-current={active ? "page" : undefined} className={`v2-rail-item ${active ? "is-active" : ""}`}>
+              <li key={t.href} className={["/quadros", "/metas"].includes(t.href) ? "rail-boards-group" : undefined}>
+                <NavLink href={t.href} title={t.label} aria-current={active ? "page" : undefined} className={`v2-rail-item ${active ? "is-active" : ""}`}>
                   <t.icon size={18} strokeWidth={active ? 2.2 : 1.8} />
                   <span className="v2-rail-label">{t.label}</span>
-                  {t.href === "/quadros" && favorites.length > 0 && <ChevronDown size={12} className="rail-favorites-chevron" aria-hidden="true" />}
-                </Link>
+                  {((t.href === "/quadros" && favorites.length > 0) || (t.href === "/metas" && favoriteProjects.length > 0)) && <ChevronDown size={12} className="rail-favorites-chevron" aria-hidden="true" />}
+                </NavLink>
                 {t.href === "/quadros" && favorites.length > 0 && <div className="rail-board-favorites"><div className="rail-board-favorites-clip"><ul className="rail-board-favorites-list" aria-label="Quadros favoritos">
                   {favorites.map((board) => <li key={board.id}>
                     <Link href={`/quadros/${board.id}`} title={board.name}
@@ -279,6 +296,17 @@ function Rail({ tabs: items, isActive, me }: { tabs: Tab[]; isActive: (href: str
                     </Link>
                   </li>)}
                 </ul></div></div>}
+                {t.href === "/metas" && favoriteProjects.length > 0 && <div className="rail-board-favorites"><div className="rail-board-favorites-clip">
+                  <ul className="rail-board-favorites-list" aria-label="Projetos favoritos">
+                    {favoriteProjects.map(project => <li key={project.href}>
+                      <Link href={project.href} title={project.name} aria-current={pathname === project.href ? "page" : undefined}
+                        className={`v2-rail-item ${pathname === project.href ? "is-active" : ""}`}>
+                        {project.kind === "training" ? <Dumbbell size={15} /> : <Utensils size={15} />}
+                        <span className="v2-rail-label truncate">{project.name}</span>
+                      </Link>
+                    </li>)}
+                  </ul>
+                </div></div>}
               </li>
             );
           })}
@@ -364,7 +392,7 @@ export function Nav() {
           {allTabs.map((t) => {
             const active = t.href === "/" ? pathname === "/" : pathname.startsWith(t.href);
             return (
-              <Link
+              <NavLink
                 key={t.href}
                 href={t.href}
                 title={t.label}
@@ -375,7 +403,7 @@ export function Nav() {
                 <t.icon size={15} className={active ? "text-orange" : "text-ink-3"} strokeWidth={active ? 2.2 : 1.9} />
                 {/* Tablet: só o ícone (nome no tooltip); a partir de lg: ícone + nome curto. */}
                 <span className="hidden lg:inline">{t.short}</span>
-              </Link>
+              </NavLink>
             );
           })}
         </nav>
