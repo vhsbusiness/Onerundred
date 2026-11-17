@@ -93,7 +93,7 @@ function ColorInput({ field, value, preview, commit, label }: {
         : field === "textColor" ? <Type size={16} style={{ borderBottom: "2px solid " + (swatch || "currentColor") }} />
         : <Highlighter size={16} style={{ borderBottom: "2px solid " + (swatch || "transparent") }} />}
     </button>
-    {open && createPortal(<div ref={panel} role="dialog" aria-label={title} className="mind-tools mind-color-popover" style={{ left: open.left, top: open.top }}
+    {open && createPortal(<div ref={panel} role="dialog" aria-label={title} className="mind-tools mind-color-popover" onMouseDown={event => { if ((event.target as Element).closest("button")) event.preventDefault(); }} style={{ left: open.left, top: open.top }}
       onKeyDown={event => {
         event.stopPropagation();
         if (event.key === "Escape") { event.preventDefault(); close(true); }

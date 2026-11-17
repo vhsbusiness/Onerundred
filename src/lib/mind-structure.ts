@@ -19,7 +19,7 @@ export function organizeMindTree(boardId: string, userId: string, id?: string) {
     return { changed: edits.length };
   });
 }
-export function reconnectMindBranch(boardId: string, userId: string, id: string, parentId: string | null, title?: string) {
+export function reconnectMindBranch(boardId: string, userId: string, id: string, parentId: string | null, title?: string, textSpans?: string) {
   return writeMap(boardId, userId, async tx => {
     const nodes = await tx.mindNode.findMany({ where: { boardId } });
     let node = nodes.find(n => n.id === id);
@@ -29,11 +29,14 @@ export function reconnectMindBranch(boardId: string, userId: string, id: string,
     const ids = mindBranchIds(nodes, [id]), branch = nodes.filter(n => ids.has(n.id));
     if (parentId && ids.has(parentId)) throw new ApiError(400, "Um ramo não pode se conectar a si mesmo ou a um dos seus filhos.");
     if (branch.some(n => n.locked)) throw new ApiError(409, "Desfixe os itens deste ramo antes de mudar a conexão.");
-    if (node.parentId === parentId && (title === undefined || title === node.title)) return { ok: true };
+    if (node.parentId === parentId && (title === undefined || title === node.title) && (textSpans === undefined || textSpans === node.textSpans)) return { ok: true };
     const after: NodePatch = { parentId, detached: parentId === null, autoLayout: false };
     const before: NodePatch = { parentId: node.parentId, detached: node.detached, autoLayout: node.autoLayout };
     if (title !== undefined && title !== node.title) {
       before.title = node.title; after.title = title; node = { ...node, title };
+    }
+    if (textSpans !== undefined || before.title !== undefined) {
+      before.textSpans = node.textSpans; after.textSpans = textSpans ?? "";
     }
     let dx = 0, dy = 0;
     if (parent) {

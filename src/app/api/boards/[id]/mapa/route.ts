@@ -1,3 +1,4 @@
+import { parseTextSpans, encodeTextSpans, clearInlineFields } from "@/lib/mind-rich-text";
 import { MIND_TITLE_MAX_LENGTH, MIND_TITLE_LIMIT_MESSAGE } from "@/lib/mind-title";
 import { parseMindPicture, mindImageDimension } from "@/lib/mind-picture";
 import { ApiError, json, readBody, requireString, withAccess } from "@/lib/api";
@@ -79,12 +80,18 @@ export const PATCH = withAccess("boards", async (user, req: Request, ctx: Contex
     if (!coordinate(body.x) || !coordinate(body.y)) throw new ApiError(400, "Posição inválida.");
     data.x = body.x; data.y = body.y;
   }
-  if (!Object.keys(data).length) throw new ApiError(400, "Escolha uma alteração.");
+  if (!Object.keys(data).length && body.textSpans === undefined) throw new ApiError(400, "Escolha uma alteração.");
   await writeMap(boardId, user.id, async tx => {
     const node = await tx.mindNode.findFirst({ where: { id, boardId } });
     if (!node || (data.x !== undefined && node.locked)) throw new ApiError(404, "Ideia indisponível.");
     if (data.autoLayout !== undefined && !isMindRoot(node)) throw new ApiError(400, "O Auto pertence à ideia central.");
     if (data.imageWidth !== undefined && !node.imageData) throw new ApiError(400, "Selecione uma imagem.");
+    if (body.textSpans !== undefined) data.textSpans = encodeTextSpans(parseTextSpans(data.title ?? node.title, body.textSpans));
+    else if (data.title !== undefined && data.title !== node.title) data.textSpans = "";
+    else {
+      const spans = clearInlineFields(node.title, node.textSpans, data);
+      if (spans !== node.textSpans) data.textSpans = spans;
+    }
     const changed = (Object.keys(data) as (keyof NodePatch)[]).filter(key => node[key] !== data[key]);
     if (!changed.length) return;
     const before = Object.fromEntries(changed.map(key => [key, node[key]]));

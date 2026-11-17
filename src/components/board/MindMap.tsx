@@ -1,6 +1,8 @@
 "use client";
 
-import { MIND_TITLE_MAX_LENGTH, MIND_TITLE_LIMIT_MESSAGE } from "@/lib/mind-title";
+import { MIND_TITLE_MAX_LENGTH } from "@/lib/mind-title";
+import { textRuns, inlineStyle, trimMindText, type InlineStyle, type MindTextValue } from "@/lib/mind-rich-text";
+import { MindRichEditor, type MindRichHandle, type MindTextSelection } from "./MindRichEditor";
 import { useEffect, useLayoutEffect, useEffectEvent, useRef, useState, useMemo, type PointerEvent, type CSSProperties } from "react";
 import { Focus, Minus, Maximize, Minimize, Moon, Sun, Plus, Undo2, ExternalLink, MousePointer2, Hand, ImagePlus, GitBranchPlus, Sparkles, Type, Square, Pencil, ClipboardPaste, Spline, Slash, Redo2, Search, X, ChevronUp, ChevronDown, ChevronsDownUp, Download, ListTree } from "lucide-react";
 import { http } from "@/lib/client";
@@ -14,7 +16,6 @@ import { mindBranchIds } from "@/lib/mind-tree";
 import { mindDropTarget } from "@/lib/mind-drop";
 import { mindGrid } from "@/lib/mind-grid";
 import { useMindFolds } from "./useMindFolds";
-import { readMindText, writeMindText, safeMindTextStyle } from "@/lib/mind-text-clipboard";
 import { isMindRoot } from "@/lib/mind-root";
 import { parseDrawing, normalizeDrawing, inkPath } from "@/lib/mind-drawing";
 import { fadeMindItems } from "./mind-motion";
@@ -35,7 +36,7 @@ type Gesture = {
   pointer: number; start: Point; origin: Point; moved: boolean;
   mode: "click" | "pan" | "box" | "move" | "draw" | "resize";
   size?: { width: number; height: number };
-  draft?: { id: string; title: string };
+  draft?: { id: string; title: string; textSpans: string };
   ink?: Point[]; color?: string; strokeWidth?: number; ids: string[]; boxes: HitBox[];
   node?: string; roots: string[]; secondary: boolean;
   drop?: { id: string; parentId: string } | null;
@@ -86,7 +87,7 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
   const [drag, setDrag] = useState<(Point & { ids: Set<string> }) | null>(null);
   const [resize, setResize] = useState<{ id: string; textWidth: number; textHeight: number } | null>(null);
   const selectTitleOnFocus = useRef<string | null>(null);
-  const [editor, edit] = useState<{id: string; title: string} | null>(null);
+  const [editor, edit] = useState<({ id: string; selectAll?: boolean } & MindTextValue) | null>(null);
   const [full, setFull] = useState(false);
   const [light, setLight] = useState(false);
   const [straightLines, setStraightLines] = useState(false);
@@ -121,7 +122,7 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
     const element = canvas.current;
     if (!element) return;
     function wheel(e: WheelEvent) {
-      if ((e.target as Element).closest("[data-mind-title]")) return;
+      if ((e.target as Element).closest("[data-mind-title],[data-mind-text-scroll]")) return;
       e.preventDefault();
       if (gesture.current?.mode === "draw") return;
       setAnimateView(false);
@@ -148,7 +149,9 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
   const undoQueued = useRef(false);
   const canvas = useRef<HTMLDivElement>(null);
   const url = `/api/boards/${boardId}/mapa`;
-  const textField = useRef<HTMLTextAreaElement>(null);
+  const textField = useRef<HTMLDivElement>(null);
+  const richEditor = useRef<MindRichHandle>(null);
+  const [textSelection, setTextSelection] = useState<MindTextSelection>({ from: 0, to: 0 });
   const [editingArea, setEditingArea] = useState({ left: 0, top: 0, width: 320, height: 320 });
   const [measuredText, setMeasuredText] = useState({ id: "", height: 0 });
   const editingNode = nodes.find(n => n.id === editor?.id);
@@ -313,7 +316,7 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
     const pan = mouse && e.button === 1;
     if (!e.isPrimary || gesture.current || (!secondary && !pan && e.button !== 0) ||
         element.closest("button,a,input:not([data-mind-title]),textarea:not([data-mind-title])")) return;
-    if (!secondary && !pan && element.closest("[data-mind-title]")) return;
+    if (!secondary && !pan && element.closest("[data-mind-title],[data-mind-text-scroll]")) return;
     setAnimateView(false);
     const target = element.closest<HTMLElement>("[data-node]");
     const node = target && byId.get(target.dataset.node!);
@@ -439,7 +442,7 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
     if (drop) {
       void save(async () => {
         try {
-          await http.post(url + "/estrutura", { action: "connect", ...drop, ...(g.draft?.title.trim() && { title: g.draft.title.trim() }) });
+          await http.post(url + "/estrutura", { action: "connect", ...drop, ...(g.draft?.title.trim() && trimMindText(g.draft)) });
         } catch (error) {
           if (g.draft) edit(previous => previous ?? g.draft!);
           throw error;
@@ -452,7 +455,7 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
     const dx = Math.round((e.clientX - g.start.x) / view.zoom);
     const dy = Math.round((e.clientY - g.start.y) / view.zoom);
     void save(async () => {
-      const result = await http.post<{ autoDisabled?: number }>(url + "/selecao", { action: "move", ids: g.roots, dx, dy, ...(g.draft?.title.trim() && { titleEdit: g.draft }) });
+      const result = await http.post<{ autoDisabled?: number }>(url + "/selecao", { action: "move", ids: g.roots, dx, dy, ...(g.draft?.title.trim() && { titleEdit: { id: g.draft.id, ...trimMindText(g.draft) } }) });
       if (result.autoDisabled) notify("Auto desativado nesta árvore para manter a posição escolhida. Você pode reativá-lo no ramo inicial.", "info");
     }).finally(() => setDrag(null));
   }
@@ -481,15 +484,16 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
     if (onChanged && !n.imageData && !n.drawing) {
       if (canvas.current && canvas.current.clientWidth < 640 && (view.zoom < .7 || widthOf(n) * view.zoom > canvas.current.clientWidth - 60))
         focus(n, Math.max(.05, Math.min(1, (canvas.current.clientWidth - 60) / widthOf(n))));
-      edit({ id: n.id, title: n.title });
+      edit({ id: n.id, title: n.title, textSpans: n.textSpans ?? "", selectAll });
     }
   }
   function commitTitle() {
     if (skipBlur.current || !editor) return;
     const draft = editor;
     edit(null);
-    if (draft.title.trim() && draft.title.trim() !== byId.get(draft.id)?.title)
-      void save(async () => { await http.patch(url, {id:draft.id, title:draft.title.trim()}); });
+    const value = trimMindText(draft), original = byId.get(draft.id);
+    if (value.title && (value.title !== original?.title || value.textSpans !== (original?.textSpans ?? "")))
+      void save(async () => { await http.patch(url, {id:draft.id, ...value}); });
   }
   function addBranch(parentId: string | null, options: { point?: Point; shape?: "plain" | "rounded"; direction?: "right" | "left" } = {}) {
     const { point, shape = "plain", direction } = options;
@@ -502,13 +506,12 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
     edit(null);
     void save(async () => {
       try {
-        if (draft?.title.trim() && draft.title.trim() !== byId.get(draft.id)?.title)
-          await http.patch(url, {id:draft.id, title:draft.title.trim()});
+        if (draft?.title.trim()) await http.patch(url, {id:draft.id, ...trimMindText(draft)});
         const node = await http.post<MindNodeDTO>(url, { parentId, detached: parentId === null, title: parentId ? "Nova ideia" : "Novo texto", shape, direction, ...point });
         select(node.id);
         if (!point) focus(node, view.zoom);
         selectTitleOnFocus.current = node.id;
-        edit({id:node.id, title:node.title});
+        edit({id:node.id, title:node.title, textSpans: node.textSpans ?? "", selectAll: true});
       } finally { skipBlur.current = false; }
     });
   }
@@ -535,7 +538,7 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
   const [hasCopy, setHasCopy] = useState(false);
   function copySelection(event?: ClipboardEvent) {
     try {
-      const data = copyMindSelection(boardId, nodes.map(n => n.id === editor?.id && editor.title.trim() ? { ...n, title: editor.title.trim() } : n), selectedId ? [selectedId] : groupIds);
+      const data = copyMindSelection(boardId, nodes.map(n => n.id === editor?.id && editor.title.trim() ? { ...n, ...trimMindText(editor) } : n), selectedId ? [selectedId] : groupIds);
       const text = MIND_CLIPBOARD_PREFIX + JSON.stringify(data);
       copied.current = data; pasteNumber.current = 0; setHasCopy(true);
       if (event?.clipboardData) {
@@ -583,14 +586,6 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
   const copyItems = useEffectEvent((event: ClipboardEvent) => {
     const target = event.target as HTMLElement;
     if (event.defaultPrevented || !acceptsClipboard(target) || !event.clipboardData) return;
-    if (target instanceof HTMLTextAreaElement && target.matches("[data-mind-title]") && selected) {
-      const text = target.value.slice(target.selectionStart, target.selectionEnd);
-      if (!text) return;
-      if (!editingText(target)) copySelection(event);
-      writeMindText(event.clipboardData, text, byId.get(selected.id) ?? selected);
-      event.preventDefault();
-      return;
-    }
     if (!editingText(target) && (selectedId || groupIds.length)) copySelection(event);
   });
   const pasteItems = useEffectEvent((event: ClipboardEvent) => {
@@ -601,30 +596,6 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
     try {
       const text = event.clipboardData?.getData(MIND_CLIPBOARD_MIME) || event.clipboardData?.getData("text/plain") || "";
       const data = readMindClipboard(text);
-      if (target instanceof HTMLTextAreaElement && target.matches("[data-mind-title]") && editor && event.clipboardData) {
-        const single = data?.nodes.length === 1 && !data.nodes[0].imageData && !data.nodes[0].drawing ? data.nodes[0] : null;
-        const phrase = readMindText(event.clipboardData) ?? (single ? { text: single.title, style: safeMindTextStyle(single) } : null);
-        if (phrase) {
-          event.preventDefault();
-          const start = target.selectionStart;
-          const title = target.value.slice(0, start) + phrase.text + target.value.slice(target.selectionEnd);
-          if (title.length > MIND_TITLE_MAX_LENGTH) { notify(MIND_TITLE_LIMIT_MESSAGE, "error"); return; }
-          if (!title.trim()) return;
-          const id = editor.id;
-          edit({ id, title });
-          void save(async () => { await http.patch(url, { id, title, ...phrase.style }); });
-          requestAnimationFrame(() => { if (target.isConnected) target.setSelectionRange(start + phrase.text.length, start + phrase.text.length); });
-          return;
-        }
-        if (data) { event.preventDefault(); notify("Para colar vários itens, clique primeiro no fundo do mapa.", "info"); return; }
-        const plainText = event.clipboardData.getData("text/plain").replace(/\r\n?/g, "\n");
-        const retainedLength = target.value.length - (target.selectionEnd - target.selectionStart);
-        if (plainText.length + retainedLength > MIND_TITLE_MAX_LENGTH) {
-          event.preventDefault();
-          notify(MIND_TITLE_LIMIT_MESSAGE, "error");
-          return;
-        }
-      }
       if (data && !editingText(target)) {
         event.preventDefault();
         const previous = copied.current;
@@ -646,9 +617,9 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
     skipBlur.current = true;
     void save(async () => {
       try {
-        const node = await http.post<MindNodeDTO>(url+"/estrutura", {action, id, title:draft?.id === id ? draft.title.trim() || undefined : undefined});
+        const node = await http.post<MindNodeDTO>(url+"/estrutura", {action, id, ...(draft?.id === id && draft.title.trim() ? trimMindText(draft) : {})});
         selectTitleOnFocus.current = node.id;
-        select(node.id); focus(node,view.zoom); edit({id:node.id,title:node.title});
+        select(node.id); focus(node,view.zoom); edit({id:node.id,title:node.title,textSpans:node.textSpans ?? "",selectAll:true});
       } finally { skipBlur.current = false; }
     });
   }
@@ -668,10 +639,26 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
     }
   }
   const colorIds = selected ? [selected.id] : groupIds;
+  function formatText(patch: InlineStyle, persist = true) {
+    if (!editor || !Object.keys(patch).length) return false;
+    const value = richEditor.current?.format(patch);
+    if (!value) return false;
+    edit({ id: editor.id, ...value });
+    if (persist && value.title.trim()) void save(async () => { await http.patch(url, { id: editor.id, ...trimMindText(value) }); });
+    return true;
+  }
+  function changeFormat(patch: Partial<MindNodeDTO>) {
+    if (formatText(inlineStyle(patch))) return;
+    const value = richEditor.current?.clearOverrides(inlineStyle(patch));
+    void save(async () => { await http.patch(url, { id: selectedId, ...patch, ...(value?.title.trim() ? trimMindText(value) : {}) }); });
+  }
   function previewColor(field: ColorField, value: string) {
+    if (field !== "color" && formatText({ [field]: value }, false)) return;
     setPaints(previous => ({ ...previous, [field]: { ids: new Set(colorIds), value } }));
   }
   function commitColor(field: ColorField, value: string) {
+    if (field !== "color" && formatText({ [field]: value })) return;
+    if (editor && field !== "color") { changeFormat({ [field]: value }); return; }
     const paint = { ids: new Set(colorIds), value };
     setPaints(previous => ({ ...previous, [field]: paint }));
     void save(async () => {
@@ -737,8 +724,9 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
     }
     if (!onChanged || !["Delete", "Backspace"].includes(event.key) || event.altKey || event.ctrlKey || event.metaKey || !colorIds.length) return;
     if (target.closest("input,textarea,select,[contenteditable=true]")) {
-      if (!((target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) && target.hasAttribute("data-mind-title") && editor?.title === selected?.title &&
-          target.selectionStart === 0 && target.selectionEnd === target.value.length)) return;
+      const range = richEditor.current?.selection();
+      if (!target.closest("[data-mind-title]") || !editor || editor.title !== selected?.title ||
+          editor.textSpans !== (selected?.textSpans ?? "") || range?.from !== 0 || range.to !== editor.title.length) return;
     }
     if (!colorIds.some(id => byId.has(id))) return;
     event.preventDefault();
@@ -872,14 +860,28 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
                 // eslint-disable-next-line @next/next/no-img-element
                 ? <img src={n.imageData} alt={n.title} draggable={false} style={{ width: n.imageWidth, height: n.imageHeight, objectFit: "contain" }} />
                 : editor?.id === n.id && onChanged
-                ? <textarea ref={textField} rows={1} data-mind-title aria-label="Texto do ramo" autoFocus onFocus={e => {
-                      if (selectTitleOnFocus.current === n.id) e.target.select();
-                      selectTitleOnFocus.current = null;
-                    }} maxLength={MIND_TITLE_MAX_LENGTH} value={editor.title}
-                    className="w-full min-w-0 cursor-text resize-none select-text bg-transparent text-center outline-none" style={{ backgroundColor: n.highlight || undefined, height: Math.max(n.fontSize * 1.25, editingHeight - editingPadding) }}
-                    onChange={e => edit({ id: n.id, title: e.target.value })} onBlur={commitTitle}
-                    onKeyDown={e => { if (e.key === "Escape") { commitTitle(); select(undefined); e.stopPropagation(); } else shortcut(e, n.id); }} />
-                : <span className="max-h-full w-full overflow-hidden whitespace-pre-wrap [overflow-wrap:anywhere]" style={{ backgroundColor: n.highlight || undefined }}>{n.title}</span>}
+                ? <MindRichEditor key={n.id} ref={richEditor} fieldRef={textField} node={n} value={editor}
+                    selectAll={editor.selectAll ?? false}
+                    style={{ backgroundColor: n.highlight || undefined, height: Math.max(n.fontSize * 1.25, editingHeight - editingPadding) }}
+                    onChange={value => { selectTitleOnFocus.current = null; edit({ id: n.id, ...value }); }}
+                    onSelection={setTextSelection} onBlur={commitTitle} onCopyItems={copySelection}
+                    onKeyDown={e => {
+                      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
+                        e.preventDefault(); e.stopPropagation();
+                        const range = richEditor.current?.selection();
+                        if (range && range.to > range.from) formatText({ bold: !range.bold });
+                        else changeFormat({ bold: !n.bold });
+                      } else if (e.key === "Escape") { commitTitle(); select(undefined); e.stopPropagation(); }
+                      else shortcut(e, n.id);
+                    }} />
+                : <span className="max-h-full w-full overflow-hidden whitespace-pre-wrap [overflow-wrap:anywhere]" style={{ backgroundColor: n.highlight || undefined }}>
+                    {textRuns(n.title, n.textSpans).map(run => <span key={run.from} style={{
+                      ...(run.bold !== undefined && { fontWeight: run.bold ? 700 : 500, WebkitTextStroke: run.bold ? ".18px currentColor" : "0 currentColor" }),
+                      ...(run.textColor !== undefined && { color: run.textColor || "var(--color-ink)" }),
+                      ...(run.highlight !== undefined && { backgroundColor: run.highlight || "transparent" }),
+                    }}>{run.text}</span>)}
+                  </span>}
+
             </div>
             {active && onChanged && !n.imageData && !n.drawing && <button className="mind-resize" aria-label="Redimensionar bloco" title="Arraste para ajustar o bloco de texto" onPointerDown={e => startResize(e, n)}
               onKeyDown={e => {
@@ -918,10 +920,11 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
       "--mind-x": `${view.x + anchor.x * view.zoom}px`,
       "--mind-y": `${view.y + (anchor.y - heightOf(anchor) / 2) * view.zoom + 20}px`,
     } as React.CSSProperties}>
-      <MindFormat key={anchor.id} node={anchor}
+      <MindFormat key={anchor.id} node={editor?.id === anchor.id && textSelection.to > textSelection.from ? { ...anchor, ...inlineStyle(textSelection) } : anchor}
+        mixed={editor?.id === anchor.id && textSelection.mixedBold ? ["bold"] : []}
         organize={() => organize(anchor.id)}
         structure={!anchor.imageData && !anchor.drawing ? <MindConnect key={anchor.id} node={anchor} nodes={nodes} busy={busy} connect={parentId => { commitTitle(); void save(async () => { await http.post(url + "/estrutura", { action: "connect", id: anchor.id, parentId }); }); }} /> : undefined} imageOnly={!!anchor.imageData} drawingOnly={!!anchor.drawing} copy={() => copySelection()} busy={busy} preview={previewColor} commit={commitColor}
-        change={patch => void save(async () => { await http.patch(url, { id: anchor.id, ...patch }); })} remove={remove} />
+        change={changeFormat} remove={remove} />
     </div>}
     {group.size > 1 && groupAnchor && !box && !drag && !menu && !searchOpen && <div className="mind-group" aria-label="Seleção de ramos">
       {onChanged ? <MindFormat key={groupIds.join(":")} node={groupAnchor} copy={() => copySelection()} count={group.size} mixed={mixed} imageOnly={groupNodes.every(n => !!n.imageData)} drawingOnly={groupNodes.every(n => !!n.drawing)} busy={busy}

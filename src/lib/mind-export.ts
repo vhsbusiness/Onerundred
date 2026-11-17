@@ -1,3 +1,4 @@
+import { textRuns, inlineStyle, type InlineStyle } from "./mind-rich-text";
 import type { MindNodeDTO } from "./types";
 import { textBlockSize } from "./mind-size";
 import { inkPath, parseDrawing } from "./mind-drawing";
@@ -45,17 +46,33 @@ export async function exportMindMap(nodes: MindNodeDTO[], host: HTMLElement, str
     if (n.imageData) { group.appendChild(element("image", { x, y, width: size.width, height: size.height, href: n.imageData })); continue; }
     if (n.shape !== "plain") group.appendChild(element("rect", { x, y, width: size.width, height: size.height, rx: n.shape === "pill" ? size.height / 2 : n.shape === "rectangle" ? 0 : 8, fill: panel, stroke: colors.get(n.id)!, "stroke-width": 1.5 }));
     const clip = element("clipPath", { id: "text-" + i }); clip.appendChild(element("rect", { x: x + 9, y: y + 5, width: size.width - 18, height: size.height - 10 })); svg.appendChild(clip);
-    const bold = n.bold || (!n.parentId && !n.detached), lines: string[] = [];
-    measure.font = `${bold ? 700 : 400} ${n.fontSize}px Arial`;
-    for (const paragraph of n.title.split("\n")) {
-      let line = "";
-      for (const char of Array.from(paragraph)) { if (line && measure.measureText(line + char).width > size.width - 20) { lines.push(line); line = ""; } line += char; }
-      lines.push(line);
+    type Segment = { text: string; width: number; style: InlineStyle };
+    const lines: Segment[][] = [[]];
+    let used = 0;
+    const base = { bold: n.bold || (!n.parentId && !n.detached), textColor: n.textColor, highlight: n.highlight };
+    for (const run of textRuns(n.title, n.textSpans)) {
+      const style = { ...base, ...inlineStyle(run) };
+      measure.font = `${style.bold ? 700 : 500} ${n.fontSize}px Arial`;
+      for (const char of Array.from(run.text)) {
+        if (char === "\n") { lines.push([]); used = 0; continue; }
+        const width = measure.measureText(char).width;
+        if (used && used + width > size.width - 20) { lines.push([]); used = 0; }
+        const line = lines[lines.length - 1], last = line.at(-1);
+        if (last && JSON.stringify(last.style) === JSON.stringify(style)) { last.text += char; last.width += width; }
+        else line.push({ text: char, width, style });
+        used += width;
+      }
     }
     const lineHeight = n.fontSize * 1.25, origin = n.y - Math.min(lines.length * lineHeight, size.height - 14) / 2 + n.fontSize;
     const textGroup = element("g", { "clip-path": `url(#text-${i})` }); group.appendChild(textGroup);
-    if (n.highlight) textGroup.appendChild(element("rect", { x: x + 9, y: origin - n.fontSize, width: size.width - 18, height: lines.length * lineHeight, fill: n.highlight }));
-    for (const [j, line] of lines.entries()) { const text = element("text", { x: n.x, y: origin + j * lineHeight, "text-anchor": "middle", "font-family": "Arial, sans-serif", "font-size": n.fontSize, "font-weight": bold ? 700 : 400, fill: n.textColor || ink }); text.textContent = line; textGroup.appendChild(text); }
+    for (const [j, line] of lines.entries()) {
+      let cursor = n.x - line.reduce((sum, segment) => sum + segment.width, 0) / 2;
+      for (const segment of line) {
+        if (segment.style.highlight) textGroup.appendChild(element("rect", { x: cursor, y: origin + j * lineHeight - n.fontSize, width: segment.width, height: lineHeight, fill: segment.style.highlight }));
+        const text = element("text", { x: cursor, y: origin + j * lineHeight, "font-family": "Arial, sans-serif", "font-size": n.fontSize, "font-weight": segment.style.bold ? 700 : 500, fill: segment.style.textColor || ink });
+        text.textContent = segment.text; textGroup.appendChild(text); cursor += segment.width;
+      }
+    }
   }
   const blob = new Blob([new XMLSerializer().serializeToString(svg)], { type: "image/svg+xml;charset=utf-8" });
   if (format === "svg") { download(blob, "mapa-mental.svg"); return; }

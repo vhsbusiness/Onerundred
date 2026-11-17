@@ -33,7 +33,7 @@ export function MindFormat({ node, change, remove, copy, busy, preview, commit, 
     if (Number.isInteger(value) && value >= 8 && value <= 72) change({ fontSize: value });
     setSize(null);
   }
-  return <div className="mind-tools mind-format" aria-label={count > 1 ? "Formatação da seleção" : "Formatação do ramo"} role="group">
+  return <div className="mind-tools mind-format" aria-label={count > 1 ? "Formatação da seleção" : "Formatação do ramo"} role="group" onMouseDown={event => { if ((event.target as Element).closest("button")) event.preventDefault(); }}>
     {count > 1 && <span className="mind-selection-count">{count} selecionados</span>}
     {!imageOnly && !drawingOnly && <>
       <select aria-label="Forma do ramo" value={mixed.includes("shape") ? "mixed" : node.shape} onChange={e => change({ shape: e.target.value })}>

@@ -1,3 +1,4 @@
+import { parseTextSpans, encodeTextSpans } from "./mind-rich-text";
 import { MIND_TITLE_MAX_LENGTH } from "./mind-title";
 import { randomUUID } from "node:crypto";
 import { ApiError } from "./errors";
@@ -24,7 +25,7 @@ export function pasteMindSelection(boardId: string, userId: string, body: Record
     if (n.drawing && !drawing) throw new ApiError(400, "Desenho inválido.");
     const image = n.imageData ? parseMindPicture(n) : {};
     if ((drawing || image.imageData) && n.parentId || drawing && image.imageData) throw new ApiError(400, "Ligação inválida.");
-    return { oldId: n.id, parentId: n.parentId as string | null, title: n.title, x: n.x + dx, y: n.y + dy,
+    return { oldId: n.id, parentId: n.parentId as string | null, title: n.title, textSpans: encodeTextSpans(parseTextSpans(n.title, n.textSpans)), x: n.x + dx, y: n.y + dy,
       ...parseMindStyle(n), ...image, drawing: drawing ? JSON.stringify(drawing) : "", autoLayout: n.autoLayout,
       detached: n.detached as boolean };
   });

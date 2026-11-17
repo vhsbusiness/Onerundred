@@ -53,6 +53,7 @@ export function insertRelative(
   id: string,
   mode: "parent" | "sibling",
   draft?: string,
+  textSpans?: string,
 ) {
   return writeMap(boardId, userId, async (tx) => {
     const nodes = await tx.mindNode.findMany({ where: { boardId } });
@@ -106,6 +107,10 @@ export function insertRelative(
     if (draft && draft !== originalTitle) {
       before.title = originalTitle;
       after.title = draft;
+    }
+    if (textSpans !== undefined || (draft && originalTitle !== draft)) {
+      before.textSpans = anchor.textSpans;
+      after.textSpans = textSpans ?? "";
     }
     if (Object.keys(after).length) edits.push({ id, before, after });
     for (const edit of edits) await tx.mindNode.update({ where: { id: edit.id }, data: edit.after });

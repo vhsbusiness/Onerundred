@@ -1,9 +1,10 @@
 import { MIND_TITLE_MAX_LENGTH } from "./mind-title";
+import { textRuns, inlineStyle, parseTextSpans, encodeTextSpans, type TextSpan } from "./mind-rich-text";
 import type { MindNodeDTO } from "./types";
 
 export const MIND_TEXT_MIME = "application/x-onerundred-mind-text+json";
 export type MindTextStyle = Pick<MindNodeDTO, "bold" | "textColor" | "highlight" | "fontSize" | "link">;
-export type MindText = { text: string; style: Partial<MindTextStyle> };
+export type MindText = { text: string; style: Partial<MindTextStyle>; textSpans?: string };
 const hex = /^#[0-9a-f]{6}$/i;
 export function safeMindTextStyle(value: unknown): Partial<MindTextStyle> {
   if (!value || typeof value !== "object") return {};
@@ -17,14 +18,19 @@ export function safeMindTextStyle(value: unknown): Partial<MindTextStyle> {
   }
   return style;
 }
-export function writeMindText(clipboard: DataTransfer, text: string, node: MindTextStyle) {
+export function writeMindText(clipboard: DataTransfer, text: string, node: MindTextStyle, textSpans = "") {
   const style = safeMindTextStyle(node);
   clipboard.setData("text/plain", text);
-  clipboard.setData(MIND_TEXT_MIME, JSON.stringify({ version: 1, text, style }));
-  const escaped = text.replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]!);
-  const css = `font-weight:${style.bold ? 700 : 400};font-size:${style.fontSize ?? 14}px;${style.textColor ? `color:${style.textColor};` : ""}${style.highlight ? `background-color:${style.highlight};` : ""}`;
-  clipboard.setData("text/html", `<span style="${css}">${escaped.replace(/\n/g, "<br>")}</span>`);
+  clipboard.setData(MIND_TEXT_MIME, JSON.stringify({ version: 2, text, style, textSpans: encodeTextSpans(parseTextSpans(text, textSpans)) }));
+  const escaped = (value: string) => value.replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]!);
+  const html = textRuns(text, textSpans).map(run => {
+    const current = { ...style, ...inlineStyle(run) };
+    const css = `font-weight:${current.bold ? 700 : 500};font-size:${current.fontSize ?? 14}px;${current.textColor ? `color:${current.textColor};` : ""}${current.highlight ? `background-color:${current.highlight};` : ""}`;
+    return `<span style="${css}">${escaped(run.text).replace(/\n/g, "<br>")}</span>`;
+  }).join("");
+  clipboard.setData("text/html", html);
 }
+
 function cssColor(value: string) {
   if (hex.test(value)) return value;
   if (/^#[\da-f]{3}$/i.test(value)) return "#" + [...value.slice(1)].map(c => c + c).join("");
@@ -34,11 +40,11 @@ function cssColor(value: string) {
 }
 export function readMindText(clipboard: DataTransfer): MindText | null {
   const raw = clipboard.getData(MIND_TEXT_MIME);
-  if (raw && raw.length < 20_000) {
+  if (raw && raw.length < 250_000) {
     try {
       const data = JSON.parse(raw);
-      if (data.version === 1 && typeof data.text === "string" && data.text.length <= MIND_TITLE_MAX_LENGTH)
-        return { text: data.text, style: safeMindTextStyle(data.style) };
+      if ([1, 2].includes(data.version) && typeof data.text === "string" && data.text.length <= MIND_TITLE_MAX_LENGTH)
+        return { text: data.text, style: safeMindTextStyle(data.style), textSpans: encodeTextSpans(parseTextSpans(data.text, data.textSpans)) };
     } catch { /* fall through to safe HTML/text parsing */ }
   }
   const text = clipboard.getData("text/plain"), html = clipboard.getData("text/html");
@@ -63,6 +69,33 @@ export function readMindText(clipboard: DataTransfer): MindText | null {
     if (highlight) style.highlight = highlight;
     if (/^\d+(\.\d+)?(px|pt)$/.test(css.fontSize)) style.fontSize = Math.max(8, Math.min(72, Math.round(parseFloat(css.fontSize) * (css.fontSize.endsWith("pt") ? 4 / 3 : 1))));
     if (el.tagName === "A") style.link = el.getAttribute("href") ?? "";
+  }
+  let extracted = "";
+  const spans: TextSpan[] = [];
+  function visit(node: Node, inherited: Partial<MindTextStyle>) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const from = extracted.length;
+      extracted += node.textContent ?? "";
+      if (extracted.length > from) spans.push({ from, to: extracted.length, ...inlineStyle(inherited) });
+      return;
+    }
+    if (!(node instanceof HTMLElement)) return;
+    if (node.tagName === "BR") { extracted += "\n"; return; }
+    const next = { ...inherited }, css = node.style;
+    if (["B", "STRONG"].includes(node.tagName)) next.bold = true;
+    if (css.fontWeight) next.bold = css.fontWeight === "bold" || Number(css.fontWeight) >= 600;
+    const color = cssColor(css.color), highlight = cssColor(css.backgroundColor);
+    if (color) next.textColor = color;
+    if (highlight) next.highlight = highlight;
+    node.childNodes.forEach(child => visit(child, next));
+    if (["P", "DIV", "LI"].includes(node.tagName) && !extracted.endsWith("\n")) extracted += "\n";
+  }
+  template.content.childNodes.forEach(node => visit(node, {}));
+  if (extracted.trim() === text.trim() && extracted.includes(text)) {
+    const from = extracted.indexOf(text);
+    const clipped = spans.filter(s => s.to > from && s.from < from + text.length)
+      .map(s => ({ ...s, from: Math.max(from, s.from) - from, to: Math.min(from + text.length, s.to) - from }));
+    return { text, style: {}, textSpans: encodeTextSpans(parseTextSpans(text, encodeTextSpans(clipped))) };
   }
   return { text, style: safeMindTextStyle(style) };
 }

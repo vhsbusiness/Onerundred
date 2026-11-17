@@ -82,6 +82,7 @@ export interface MindImportTopic {
 }
 
 export interface MindNodeDTO {
+  textSpans?: string;
   textWidth: number | null;
   textHeight: number | null;
   drawing: string;

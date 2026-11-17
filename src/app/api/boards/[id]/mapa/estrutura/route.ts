@@ -1,3 +1,4 @@
+import { parseTextSpans, encodeTextSpans } from "@/lib/mind-rich-text";
 import { MIND_TITLE_MAX_LENGTH, MIND_TITLE_LIMIT_MESSAGE } from "@/lib/mind-title";
 import { ApiError, json, readBody, requireString, withAccess } from "@/lib/api";
 import { insertRelative } from "@/lib/mind-insert";
@@ -12,8 +13,9 @@ export const POST = withAccess("boards", async (user, req: Request, ctx: { param
   const id = requireString(body.id, "Ramo");
   const title = body.title === undefined ? undefined : requireString(body.title, "Ideia");
   if (title && title.length > MIND_TITLE_MAX_LENGTH) throw new ApiError(400, MIND_TITLE_LIMIT_MESSAGE);
-  if (body.action === "parent" || body.action === "sibling") return json(await insertRelative(boardId,user.id,id,body.action,title),{status:201});
+  const textSpans = body.textSpans === undefined ? undefined : encodeTextSpans(parseTextSpans(title ?? "", body.textSpans));
+  if (body.action === "parent" || body.action === "sibling") return json(await insertRelative(boardId,user.id,id,body.action,title,textSpans),{status:201});
   if (body.action !== "connect") throw new ApiError(400, "Ação inválida.");
   const parentId = body.parentId === null ? null : requireString(body.parentId, "Ramo de destino");
-  return json(await reconnectMindBranch(boardId, user.id, id, parentId, title));
+  return json(await reconnectMindBranch(boardId, user.id, id, parentId, title, textSpans));
 });

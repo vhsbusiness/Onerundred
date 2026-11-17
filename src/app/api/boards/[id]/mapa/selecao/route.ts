@@ -1,3 +1,4 @@
+import { parseTextSpans, encodeTextSpans } from "@/lib/mind-rich-text";
 import { MIND_TITLE_MAX_LENGTH } from "@/lib/mind-title";
 import { ApiError, json, readBody, withAccess } from "@/lib/api";
 import { parseMindStyle } from "@/lib/mind-style";
@@ -22,7 +23,7 @@ export const POST = withAccess("boards", async (user, req: Request, ctx: { param
     if (body.titleEdit !== undefined) {
       const draft = body.titleEdit as Record<string, unknown> | null;
       if (!draft || typeof draft !== "object" || typeof draft.id !== "string" || typeof draft.title !== "string" || !draft.title.trim() || draft.title.trim().length > MIND_TITLE_MAX_LENGTH) throw new ApiError(400, "Texto inválido.");
-      edit.titleEdit = { id: draft.id, title: draft.title.trim() };
+      edit.titleEdit = { id: draft.id, title: draft.title.trim(), ...(draft.textSpans !== undefined && { textSpans: encodeTextSpans(parseTextSpans(draft.title.trim(), draft.textSpans)) }) };
     }
   } else if (body.action === "paint" && (body.field === "color" || body.field === "textColor" || body.field === "highlight") &&
       typeof body.value === "string" && /^#[0-9a-f]{6}$/i.test(body.value)) {

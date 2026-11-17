@@ -975,3 +975,9 @@ dialog.training-exercise-dialog[open] {
   background-color: var(--color-surface-2);
 }
 .training-exercise-dialog::backdrop { background: rgb(0 0 0 / 60%); }
+
+
+.mind-rich-editor { overflow: auto; overscroll-behavior: contain; touch-action: pan-y; }
+.mind-rich-content { outline: none; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; -webkit-user-select: text; min-height: 1.25em; }
+.mind-rich-content p { margin: 0; }
+:root[data-design] .mind-rich-content:focus-visible { outline: none; box-shadow: none; }

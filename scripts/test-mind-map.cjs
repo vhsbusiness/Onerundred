@@ -16,6 +16,24 @@ function load(name) {
 }
 const { arrangeMindMap } = load("mind-auto");
 const { textBlockSize } = load("mind-size");
+const { parseTextSpans, textRuns, trimMindText, sliceMindText, clearInlineFields } = load("mind-rich-text");
+test("Inline text keeps UTF-16 ranges, trims safely and overrides only the chosen field", () => {
+  const title = '  Olá 😀 mundo  ';
+  const spans = JSON.stringify([{ from: 6, to: 8, bold: true, textColor: '#FF0000' }, { from: 8, to: 14, textColor: '#008000' }]);
+  const trimmed = trimMindText({ title, textSpans: spans });
+  assert.equal(trimmed.title, 'Olá 😀 mundo');
+  assert.deepEqual(parseTextSpans(trimmed.title, trimmed.textSpans), [{ from: 4, to: 6, bold: true, textColor: '#ff0000' }, { from: 6, to: 12, textColor: '#008000' }]);
+  assert.equal(textRuns(title, spans).map(run => run.text).join(''), title);
+  assert.deepEqual(sliceMindText({ title, textSpans: spans }, 6, 8), { title: '😀', textSpans: '[{"from":0,"to":2,"bold":true,"textColor":"#ff0000"}]' });
+  const cleared = clearInlineFields(title, spans, { textColor: '#000000' });
+  assert.deepEqual(parseTextSpans(title, cleared), [{ from: 6, to: 8, bold: true }]);
+  assert.equal(clearInlineFields(title, cleared, { bold: false }), '');
+  assert.deepEqual(parseTextSpans('ab', '[{"from":0,"to":1,"bold":true},{"from":1,"to":2,"bold":true}]'), [{ from: 0, to: 2, bold: true }]);
+  assert.deepEqual(parseTextSpans('ab', '[{"from":0,"to":2,"bold":false,"textColor":"url(evil)","html":"<script>bad</script>"}]'), [{ from: 0, to: 2, bold: false }]);
+  for (const raw of ['null', '{}', '[{"from":0,"to":3,"bold":true}]', '[{"from":0,"to":2,"bold":true},{"from":1,"to":2,"bold":false}]']) assert.throws(() => parseTextSpans('ab', raw));
+  const long = 'a'.repeat(2000);
+  assert.equal(textRuns(long, '[{"from":1,"to":1999,"textColor":"#123456"}]').map(r => r.text).join(''), long);
+});
 const { mindBranchIds } = load("mind-tree");
 const { positionBranch } = load("mind-layout");
 const n = (id, parentId, x, y, extra = {}) => ({ id, parentId, x, y, title: id, fontSize: 14, shape: "plain", color: "blue", detached: false, locked: false, autoLayout: false, imageData: "", imageWidth: 240, imageHeight: 160, ...extra });

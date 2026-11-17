@@ -116,3 +116,7 @@ Na descrição das tarefas, `-` ou `.` seguido de espaço no início do parágra
 Cada conta pode favoritar até três quadros, inclusive compartilhados, usando a estrela na grade ou no cabeçalho do quadro. Os atalhos aparecem abaixo de Quadros na barra lateral enquanto o mouse está sobre o grupo; também ficam acessíveis pelo foco do teclado. A barra recolhida mostra os ícones com os nomes no tooltip. No celular, as estrelas continuam acessíveis na grade e no quadro.
 
 Favoritos usam `Setting.favoriteBoardIds`, sem migration, com limite e acesso validados na API `GET/PUT /api/boards/favoritos`. Quadros excluídos ou sem acesso são filtrados e deixam de ocupar vagas na próxima leitura. Falhas ao salvar preservam a seleção confirmada. Alteração local, sem publicação.
+
+## Formatação de trechos do mapa mental — 17/11/2026
+
+Durante a edição, selecione palavras para aplicar negrito, cor do texto ou realce apenas ao trecho. Sem seleção de texto, a barra continua formatando o bloco inteiro. Os trechos são salvos junto do texto, preservados ao copiar/colar e exportar SVG/PNG e participam do desfazer/refazer. O limite continua em 2.000 caracteres; o banco armazena intervalos validados em `MindNode.textSpans`, sem HTML arbitrário.

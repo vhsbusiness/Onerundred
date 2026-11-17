@@ -114,6 +114,38 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   check(!r.headers.get('x-powered-by'),'Framework banner removed');check(r.headers.get('content-security-policy').includes("frame-ancestors 'none'"),'CSP framing restriction');
   check((await request('GET',`/api/cards/${card.id}`,undefined,b)).ok,'Owner still reads private card');
   for(const url of ['/admin','/quadros/'+board.id,'/metas/'+project.id]){r=await request('GET',url,undefined,a);check(r.status===404||[302,303,307,308].includes(r.status),'Page authorization '+url+' '+r.status);}
+  // Rich mind text persists, is scoped to the board, and survives copy / undo / structural edits.
+  const richUrl='/api/boards/'+mapA.id+'/mapa';
+  const richNode=(await repo.getBoard(mapA.id,a.id)).mindNodes[0];
+  const richTitle='Normal trecho final 😀', richSpans=JSON.stringify([{from:7,to:13,bold:true,textColor:'#b91c1c'}]);
+  const currentRich=async()=>(await repo.getBoard(mapA.id,a.id)).mindNodes.find(n=>n.id===richNode.id);
+  check((await request('PATCH',richUrl,{id:richNode.id,title:richTitle,textSpans:richSpans})).ok,'Save selected text format');
+  check((await currentRich()).title===richTitle&&(await currentRich()).textSpans===richSpans,'Text and ranges persist together');
+  check((await request('PATCH',richUrl,{id:richNode.id,textSpans:''},b)).status===404,'Another account cannot format rich text');
+  for(const invalid of [null,'bad','{}',JSON.stringify([{from:0,to:9999,bold:true}]),JSON.stringify([{from:0,to:8,bold:true},{from:7,to:10,bold:false}])]){
+    check((await request('PATCH',richUrl,{id:richNode.id,textSpans:invalid})).status===400,'Invalid inline range rejected');
+    check((await currentRich()).textSpans===richSpans,'Invalid edit is atomic');
+  }
+  let richBoard=await repo.getBoard(mapA.id,a.id);
+  check((await request('POST',richUrl+'/desfazer',{actionId:richBoard.mindUndoId})).ok,'Undo rich text');
+  check((await currentRich()).textSpans===''&&(await currentRich()).title===richNode.title,'Undo restores original text');
+  richBoard=await repo.getBoard(mapA.id,a.id);
+  check((await request('POST',richUrl+'/refazer',{actionId:richBoard.mindRedoId})).ok,'Redo rich text');
+  check((await currentRich()).textSpans===richSpans,'Redo preserves ranges');
+  r=await request('POST',richUrl+'/colar',{clipboard:{version:1,boardId:mapA.id,nodes:[await currentRich()]},dx:200,dy:200});
+  check(r.ok,'Copy rich node');const duplicate=(await r.json()).ids[0];
+  check((await prisma.mindNode.findUnique({where:{id:duplicate}})).textSpans===richSpans,'Copied node retains selected style');
+  check((await request('POST',richUrl+'/selecao',{action:'paint',ids:[richNode.id,duplicate],field:'textColor',value:'#1d4ed8'})).ok,'Batch color overrides inline color');
+  check((await currentRich()).textSpans===JSON.stringify([{from:7,to:13,bold:true}]),'Batch color preserves inline bold');
+  richBoard=await repo.getBoard(mapA.id,a.id);
+  check((await request('POST',richUrl+'/desfazer',{actionId:richBoard.mindUndoId})).ok,'Undo batch formatting');
+  check((await currentRich()).textSpans===richSpans,'Undo batch restores selected color');
+  check((await request('PATCH',richUrl,{id:richNode.id,title:'Changed plain text'})).ok,'Legacy plain title edit accepted');
+  check((await currentRich()).textSpans==='','Plain title edit does not leave invalid ranges');
+  const longTitle='a'.repeat(2000),longSpans=JSON.stringify([{from:1990,to:2000,bold:true}]);
+  check((await request('PATCH',richUrl,{id:richNode.id,title:longTitle,textSpans:longSpans})).ok,'2000 characters with styles accepted');
+  check((await request('PATCH',richUrl,{id:richNode.id,title:longTitle+'a'})).status===400,'2001 characters rejected');
+  check((await currentRich()).textSpans===longSpans,'Oversized title leaves existing styles intact');
   // Reading or prefetching a shared board must never change either account's last visit.
   const shared=await repo.createBoard(a.id,'SHARED-REMEMBER-TEST');
   await prisma.boardMember.create({data:{boardId:shared.id,userId:b.id}});

@@ -1,10 +1,11 @@
 import { mindBranchIds } from "./mind-tree";
+import { clearInlineFields } from "./mind-rich-text";
 import { isMindRoot } from "./mind-root";
 import type { MindStyle } from "./mind-style";
 import { ApiError } from "./errors";
 import { remember, writeMap, type ColorField, type NodePatch } from "./mind-undo";
 
-export type SelectionEdit = { action: "format"; patch: MindStyle } | { action: "delete" } | { action: "move"; dx: number; dy: number; titleEdit?: { id: string; title: string } } |
+export type SelectionEdit = { action: "format"; patch: MindStyle } | { action: "delete" } | { action: "move"; dx: number; dy: number; titleEdit?: { id: string; title: string; textSpans?: string } } |
   { action: "paint"; field: ColorField; value: string };
 
 export function editSelection(boardId: string, userId: string, ids: string[], edit: SelectionEdit) {
@@ -33,9 +34,11 @@ export function editSelection(boardId: string, userId: string, ids: string[], ed
       if (edit.titleEdit) {
         const original = selected.find(n => n.id === edit.titleEdit!.id);
         if (!original || original.imageData || original.drawing) throw new ApiError(400, "Texto fora da seleção.");
-        if (original.title !== edit.titleEdit.title) {
-          await tx.mindNode.update({ where: { id: original.id }, data: { title: edit.titleEdit.title } });
-          edits.push({ id: original.id, before: { title: original.title }, after: { title: edit.titleEdit.title } });
+        const textSpans = edit.titleEdit.textSpans ?? (original.title === edit.titleEdit.title ? original.textSpans : "");
+        if (original.title !== edit.titleEdit.title || original.textSpans !== textSpans) {
+          const after = { title: edit.titleEdit.title, textSpans };
+          await tx.mindNode.update({ where: { id: original.id }, data: after });
+          edits.push({ id: original.id, before: { title: original.title, textSpans: original.textSpans }, after });
         }
       }
       const positions = moving.map(n => ({ id: n.id, x: n.x + dx, y: n.y + dy }));
@@ -48,23 +51,17 @@ export function editSelection(boardId: string, userId: string, ids: string[], ed
         { kind: "move", dx, dy, positions },
       ] }, false);
       return { autoDisabled: roots.size };
-    } else if (edit.action === "format") {
-      const keys = Object.keys(edit.patch) as (keyof MindStyle)[];
+    } else if (edit.action === "format" || edit.action === "paint") {
+      const patch: MindStyle = edit.action === "format" ? edit.patch : { [edit.field]: edit.value };
       const edits = selected.flatMap(n => {
-        const changed = keys.filter(key => n[key] !== edit.patch[key]);
+        const next: NodePatch = { ...patch, textSpans: clearInlineFields(n.title, n.textSpans, patch) };
+        const changed = (Object.keys(next) as (keyof NodePatch)[]).filter(key => n[key] !== next[key]);
         if (!changed.length) return [];
-        return [{ id: n.id, before: Object.fromEntries(changed.map(k => [k, n[k]])) as NodePatch, after: Object.fromEntries(changed.map(k => [k, edit.patch[k]])) as NodePatch }];
+        return [{ id: n.id, before: Object.fromEntries(changed.map(k => [k, n[k]])) as NodePatch, after: Object.fromEntries(changed.map(k => [k, next[k]])) as NodePatch }];
       });
       if (!edits.length) return;
-      await tx.mindNode.updateMany({ where, data: edit.patch });
+      for (const change of edits) await tx.mindNode.update({ where: { id: change.id }, data: change.after });
       await remember(tx, boardId, userId, { kind: "batch", edits });
-    } else if (edit.action === "paint") {
-      const { field, value } = edit;
-      const changed = selected.filter(n => n[field] !== value);
-      if (!changed.length) return;
-      const previous = changed.map(n => ({ id: n.id, value: n[field] }));
-      await tx.mindNode.updateMany({ where, data: { [field]: value } });
-      await remember(tx, boardId, userId, { kind: "paint", field, value, previous });
     } else {
       const all = await tx.mindNode.findMany({ where: { boardId } });
       const children = new Map<string, typeof selected>();

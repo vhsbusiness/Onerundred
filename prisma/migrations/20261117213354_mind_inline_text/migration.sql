@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "MindNode" ADD COLUMN     "textSpans" TEXT NOT NULL DEFAULT '';

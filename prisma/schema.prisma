@@ -96,6 +96,7 @@ model MindUndo {
 }
 
 model MindNode {
+  textSpans String @default("")
   textWidth Int?
   textHeight Int?
   drawing String @default("")
