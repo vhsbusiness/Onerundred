@@ -3,7 +3,7 @@ import { ApiError } from "./errors";
 import { prisma } from "./db";
 import { requireActiveTraining } from "./training";
 import { documentDataUrl, readUpload } from "./document-upload";
-import { PLAN_FILE_TYPES, type ImportedDay } from "./training-types";
+import { PLAN_FILE_TYPES, TRAINING_ORDER, type ImportedDay } from "./training-types";
 import { dayRange, todayKey } from "./time";
 
 const schema = {
@@ -31,8 +31,9 @@ function preview(raw: string): ImportedDay[] {
   if (!Array.isArray(days) || days.length > 28) throw invalid();
   const result = days.map(d => {
     if (!d || typeof d.label !== "string" || !Array.isArray(d.exercises) || d.exercises.length > 100) throw invalid();
+    const letter = /^(?:treino|divisão|ficha)?\s*([a-g])(?:$|[\s:–-])/i.exec(d.label.trim())?.[1]?.toUpperCase();
     return {
-      label: d.label.slice(0,100), weekday: Number.isInteger(d.weekday) && d.weekday! >= 0 && d.weekday! <= 6 ? d.weekday! : -1,
+      label: d.label.slice(0,100), weekday: letter ? TRAINING_ORDER[letter.charCodeAt(0) - 65] : Number.isInteger(d.weekday) && d.weekday! >= 0 && d.weekday! <= 6 ? d.weekday! : -1,
       exercises: d.exercises.map(e => {
         if (!e || typeof e.name !== "string" || !e.name.trim()) throw invalid();
         return { name: e.name.trim(), sets: Number.isInteger(e.sets) && e.sets! > 0 ? e.sets! : 0,

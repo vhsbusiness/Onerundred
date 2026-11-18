@@ -407,6 +407,8 @@ export interface AiSchedule {
 }
 
 export interface AiInsightContent {
+  /** Snapshot of recorded evidence; absent on older analyses. */
+  activitySummary?: { label: string; value: string }[];
   score: number;
   headline: string;
   assessment: string;
@@ -440,6 +442,7 @@ export interface AiInsightDTO extends AiInsightContent {
 }
 
 export interface AiStatusDTO {
+  hasDayActivity?: boolean;
   enabled: boolean;
   insight: AiInsightDTO | null;
   remainingToday: number;

@@ -126,21 +126,20 @@ export async function autoStopForgottenLeisure(): Promise<void> {
   }
 }
 
-export async function listLeisure(userId: string, days = 60): Promise<LeisureLogDTO[]> {
+export async function listLeisure(userId: string, days = 60, untilDay = todayKey()): Promise<LeisureLogDTO[]> {
   await autoStopForgottenLeisure();
-  const since = subDays(dayRange(todayKey()).start, days);
+  const since = subDays(dayRange(untilDay).start, days);
   const rows = await prisma.leisureLog.findMany({
-    where: { userId, startAt: { gte: since } },
+    where: { userId, startAt: { gte: since, lt: dayRange(untilDay).end } },
     orderBy: { startAt: "desc" },
   });
   const now = new Date();
   return rows.map((r) => serialize(r, now));
 }
 
-export function computeLeisureStats(logs: LeisureLogDTO[]): LeisureStats {
-  const today = todayKey();
+export function computeLeisureStats(logs: LeisureLogDTO[], today = todayKey()): LeisureStats {
   const base = keyToDate(today);
-  const week = weekRange(new Date());
+  const week = weekRange(base);
   const weekStartKey = dayKey(week.start);
   const cut7 = dayKey(subDays(base, 6));
   const cut14 = dayKey(subDays(base, 13));

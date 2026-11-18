@@ -2,19 +2,11 @@ import { useEffect, useImperativeHandle, useState, type FormEvent, type Ref } fr
 import { DateField } from "@/components/ui/DateField";
 import { Pause, Play, Timer } from "lucide-react";
 import { http, useNow } from "@/lib/client";
-import { keyToDate } from "@/lib/time";
-import { elapsedLabel, paceSeconds, parseElapsed, type DayPlan, type Exercise } from "@/lib/training-types";
+import { askConfirm } from "@/components/ui/ConfirmProvider";
+import { emptyTrainingSession, restoreTrainingSession, type SessionDraft } from "@/lib/training-session";
+import { elapsedLabel, paceSeconds, parseElapsed, trainingPlanLabel, TRAINING_ORDER, type DayPlan } from "@/lib/training-types";
 import { isFightStyle, type Workout } from "@/lib/workouts";
 import { EditableExercises } from "./ExerciseEditor";
-
-type SessionDraft = {
-  version: 1; date: string; draft: Exercise[] | null; checked: number[]; startedAt: number | null;
-  elapsedMs: number; km: string; time: string; byPace: boolean; requestId: string | null;
-};
-function emptySession(date: string): SessionDraft {
-  return { version: 1, date, draft: null, checked: [], startedAt: null, elapsedMs: 0,
-    km: "", time: "", byPace: false, requestId: null };
-}
 
 export type TrainingClockStatus = { ready: boolean; running: boolean; paused: boolean; sport: Workout };
 export type TrainingEntryHandle = { start: () => void };
@@ -24,33 +16,38 @@ export function TrainingEntry({ projectId, sport, plans, today, onSave, ref, onC
   ref?: Ref<TrainingEntryHandle>; onClockStatus?: (state: TrainingClockStatus) => void;
 }) {
   const key = "training-session:" + projectId + ":" + sport;
-  const [session, setSession] = useState(() => emptySession(today));
+  const [session, setSession] = useState(() => emptyTrainingSession(today));
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const { date, km, time, byPace, draft, checked, startedAt, elapsedMs } = session;
+  const { date, planSlot, km, time, byPace, draft, checked, startedAt, elapsedMs } = session;
   const now = useNow(startedAt !== null, 500);
   const elapsed = Math.floor((elapsedMs + (startedAt ? Math.max(0, now - startedAt) : 0)) / 1000);
   useEffect(() => {
     try {
       const raw = localStorage.getItem(key);
       if (raw) {
-        const stored = JSON.parse(raw);
-        if (stored.version === 1 && Array.isArray(stored.checked))
-          // eslint-disable-next-line react-hooks/set-state-in-effect -- restore this device's unfinished workout after hydration.
-          setSession(stored);
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- restore the unfinished workout on this device.
+        setSession(restoreTrainingSession(raw, today, plans));
       }
     } catch { /* The form also works without local storage. */ }
     setReady(true);
+  // Initial restore only: refreshing the plan must not overwrite an active checklist.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
   function update(patch: Partial<SessionDraft>) {
     const next = { ...session, ...patch };
     setSession(next);
     try { localStorage.setItem(key, JSON.stringify(next)); } catch { /* Keep editing in memory. */ }
   }
+  const planned = plans.find(p => p.weekday === planSlot);
+  const exercises = draft ?? planned?.exercises ?? [];
   function startClock() {
     if (!ready || busy || startedAt !== null) return;
-    update({ startedAt: Date.now(), byPace: false });
+    if (sport === "strength" && planSlot === null) { setError("Escolha o treino que você vai fazer."); return; }
+    if (sport === "strength" && !exercises.length) { setError("Adicione exercícios ao treino antes de iniciar."); return; }
+    setError("");
+    update({ startedAt: Date.now(), byPace: false, draft: sport === "strength" ? exercises : draft });
   }
   useImperativeHandle(ref, () => ({ start: startClock }));
   useEffect(() => {
@@ -64,12 +61,20 @@ export function TrainingEntry({ projectId, sport, plans, today, onSave, ref, onC
   const meters = Math.round(Number(km.replace(",", ".")) * 1000);
   const rawTime = parseElapsed(time);
   const seconds = startedAt ? elapsed : byPace ? Math.round(rawTime * meters / 1000) : rawTime;
-  const planned = plans.find(p => p.weekday === keyToDate(date).getDay());
-  const exercises = draft ?? planned?.exercises ?? [];
+  async function choosePlan(value: string) {
+    const slot = value === "" ? null : Number(value);
+    if (slot === planSlot || startedAt !== null || busy) return;
+    if ((draft !== null || checked.length || elapsedMs || time) && !await askConfirm({
+      title: "Trocar o treino?", message: "As marcações e o cronômetro deste treino serão reiniciados. Os treinos já salvos permanecem no histórico.", confirmLabel: "Trocar treino",
+    })) return;
+    setError("");
+    update({ ...emptyTrainingSession(date), planSlot: slot });
+  }
   async function save(event: FormEvent, finishedAt: number) {
     event.preventDefault();
     if (busy) return;
     setError("");
+    if (sport === "strength" && planSlot === null) { setError("Escolha o treino realizado."); return; }
     const duration = startedAt ? Math.max(1, Math.floor((elapsedMs + Math.max(0, finishedAt - startedAt)) / 1000)) : seconds;
     if ((sport !== "strength" || time.trim()) && !(duration > 0)) { setError("Informe uma duração válida."); return; }
     if (distanceSport && !(meters > 0)) { setError("Informe a distância em quilômetros."); return; }
@@ -80,16 +85,23 @@ export function TrainingEntry({ projectId, sport, plans, today, onSave, ref, onC
       const id = session.requestId ?? crypto.randomUUID();
       update({ requestId: id, ...(startedAt ? { startedAt: null, elapsedMs: duration * 1000, time: elapsedLabel(duration), byPace: false } : {}) });
       await http.post("/api/treinos/" + projectId + "/registros", {
-        id, sport, dayKey: date, durationSeconds: duration || null,
+        id, sport, planSlot: sport === "strength" ? planSlot : null, dayKey: date, durationSeconds: duration || null,
         distanceMeters: distanceSport ? meters : null, exercises: sport === "strength" ? completed : [],
       });
-      setSession(emptySession(today));
+      setSession(emptyTrainingSession(today));
       try { localStorage.removeItem(key); } catch { /* Already reset in memory. */ }
       onSave();
     } catch (e) { setError(e instanceof Error ? e.message : "Falha ao registrar."); }
     finally { setBusy(false); }
   }
   return <form onSubmit={e => void save(e, performance.timeOrigin + e.timeStamp)}><fieldset disabled={!ready || busy} className="min-w-0 space-y-4">
+    {sport === "strength" && <label className="block text-sm">Treino
+      <select className="input mt-1" aria-label="Selecionar treino" value={planSlot ?? ""} disabled={startedAt !== null} onChange={e => void choosePlan(e.target.value)}>
+        <option value="">Selecione um treino</option>
+        {TRAINING_ORDER.map(slot => <option key={slot} value={slot}>{trainingPlanLabel(slot)}{plans.find(p => p.weekday === slot)?.exercises.length ? "" : " · sem exercícios"}</option>)}
+      </select>
+      {startedAt !== null && <span className="mt-1 block text-xs text-ink-3">Pause o treino para trocar a seleção.</span>}
+    </label>}
     <div className="flex flex-wrap items-center gap-3">
       <Timer size={17} aria-hidden="true" className="text-orange" />
       <span role="timer" aria-label="Cronômetro do treino" className="text-2xl font-semibold tabular-nums">{elapsedLabel(elapsed)}</span>
@@ -97,9 +109,9 @@ export function TrainingEntry({ projectId, sport, plans, today, onSave, ref, onC
         : <button type="button" className="btn" onClick={startClock}><Play size={15} />
           {elapsedMs ? "Retomar treino" : "Iniciar treino"}</button>}
     </div>
-    <label className="block text-sm">Data do treino<DateField className="mt-1" ariaLabel="Data do treino" value={date} max={today} onChange={v => { if (v !== date) update({ date: v, draft: null, checked: [], requestId: null }); }} /></label>
-    {sport === "strength" && <div className="space-y-2">
-      <h3 className="text-sm font-medium">Checklist do treino <span className="ml-1 text-ink-2">{checked.length} de {exercises.length}</span></h3>
+    <label className="block text-sm">Data do treino<DateField className="mt-1" ariaLabel="Data do treino" value={date} max={today} onChange={v => { if (v !== date) update({ date: v, requestId: null }); }} /></label>
+    {sport === "strength" && planSlot !== null && <div className="space-y-2">
+      <h3 className="text-sm font-medium">Checklist · {trainingPlanLabel(planSlot)} <span className="ml-1 text-ink-2">{checked.length} de {exercises.length}</span></h3>
       <EditableExercises exercises={exercises} checked={checked} onCheck={i => update({ draft: exercises,
         checked: checked.includes(i) ? checked.filter(n => n !== i) : [...checked, i] })}
         onChange={(rows, removed) => update({ draft: rows, checked: removed === undefined ? checked :

@@ -331,6 +331,8 @@ model WorkoutPlan {
 }
 
 model WorkoutLog {
+  /// Divisão A–G, com chaves compatíveis com os planos existentes.
+  planSlot        Int?
   id              String
   projectId       String
   dayKey          String

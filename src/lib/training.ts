@@ -2,6 +2,7 @@ import { coverData } from "./project-cover";
 import { prisma } from "./db";
 import { ApiError } from "./errors";
 import { dayKey, keyToDate, todayKey } from "./time";
+import { isTrainingSlot } from "./training-types";
 import { isWorkout } from "./workouts";
 import type { DayPlan, Exercise, TrainingDetail, TrainingLog, TrainingSummary } from "./training-types";
 
@@ -57,7 +58,7 @@ export async function readTraining(userId: string, id: string): Promise<Training
   if (!p) return null;
   return { ...summary(p), restSeconds: p.restSeconds, restEndsAt: p.restEndsAt?.getTime() ?? null, obligations: p.obligations, previousChecks: p.checks,
     plans: p.plans.map(day => ({ weekday: day.weekday, exercises: exerciseList(day.exercises) })),
-    logs: p.workouts.map(log => ({ id: log.id, sport: sportOf(log.sport), dayKey: log.dayKey, durationSeconds: log.durationSeconds,
+    logs: p.workouts.map(log => ({ id: log.id, planSlot: log.planSlot, sport: sportOf(log.sport), dayKey: log.dayKey, durationSeconds: log.durationSeconds,
       distanceMeters: log.distanceMeters, exercises: exerciseList(log.exercises ?? []) })),
   };
 }
@@ -91,13 +92,13 @@ export async function requireActiveTraining(userId: string, id: string) {
 export async function saveTrainingDay(userId: string, projectId: string, raw: unknown) {
   const input = object(raw);
   const days: unknown[] = Array.isArray(input.days) ? input.days : [input];
-  if (!days.length || days.length > 7) invalid("Selecione de um a sete dias.");
+  if (!days.length || days.length > 7) invalid("Selecione de um a sete treinos.");
   const plans: DayPlan[] = days.map(rawDay => {
     const d = object(rawDay);
-    if (typeof d.weekday !== "number" || !Number.isInteger(d.weekday) || d.weekday < 0 || d.weekday > 6) invalid("Dia da semana inválido.");
+    if (typeof d.weekday !== "number" || !Number.isInteger(d.weekday) || d.weekday < 0 || d.weekday > 6) invalid("Treino inválido.");
     return { weekday: d.weekday, exercises: exerciseList(d.exercises) };
   });
-  if (new Set(plans.map(d => d.weekday)).size !== plans.length) invalid("Cada dia deve aparecer apenas uma vez.");
+  if (new Set(plans.map(d => d.weekday)).size !== plans.length) invalid("Cada treino deve aparecer apenas uma vez.");
   await requireActiveTraining(userId, projectId);
   if (input.previous !== undefined && plans.length === 1) {
     const { weekday, exercises } = plans[0];
@@ -126,6 +127,8 @@ export async function recordTraining(userId: string, projectId: string, raw: unk
   const date = input.dayKey;
   if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(keyToDate(date).getTime()) || dayKey(keyToDate(date)) !== date || date > todayKey()) invalid("Escolha uma data válida até hoje.");
   const sport = sportOf(input.sport);
+  const planSlot = sport === "strength" ? input.planSlot ?? null : null;
+  if (planSlot !== null && !isTrainingSlot(planSlot)) invalid("Selecione um treino válido.");
   const distance = sport === "running" || sport === "cycling";
   const durationSeconds = sport === "strength" && input.durationSeconds == null ? null : positiveInt(input.durationSeconds, "Tempo do treino");
   const distanceMeters = distance ? positiveInt(input.distanceMeters, "Distância") : null;
@@ -134,10 +137,10 @@ export async function recordTraining(userId: string, projectId: string, raw: unk
   await requireActiveTraining(userId, projectId);
   // A mesma tentativa reenviada após uma falha de rede não soma duas sessões.
   const row = await prisma.workoutLog.upsert({ where: { projectId_id: { projectId, id } }, update: {},
-    create: { id, projectId, sport, dayKey: date, durationSeconds, distanceMeters, exercises } });
-  const result: TrainingLog = { id, sport: sportOf(row.sport), dayKey: row.dayKey, durationSeconds: row.durationSeconds,
+    create: { id, projectId, sport, planSlot, dayKey: date, durationSeconds, distanceMeters, exercises } });
+  const result: TrainingLog = { id, planSlot: row.planSlot, sport: sportOf(row.sport), dayKey: row.dayKey, durationSeconds: row.durationSeconds,
     distanceMeters: row.distanceMeters, exercises: exerciseList(row.exercises ?? []) };
-  if (result.sport !== sport || result.dayKey !== date || result.durationSeconds !== durationSeconds ||
+  if (result.planSlot !== planSlot || result.sport !== sport || result.dayKey !== date || result.durationSeconds !== durationSeconds ||
       result.distanceMeters !== distanceMeters || JSON.stringify(result.exercises) !== JSON.stringify(exercises)) {
     throw new ApiError(409, "Este registro já foi salvo. Atualize a página.");
   }

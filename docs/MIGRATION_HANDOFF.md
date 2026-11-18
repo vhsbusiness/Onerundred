@@ -224,3 +224,15 @@ Verificação local: atualização de SQLite com dados de exemplo, TypeScript, E
 A versão publicada com a escolha de modalidade (0b1b6d2) utilizava marcações diárias para treino. Esta correção reserva /metas aos compromissos diários, /metas/projetos aos projetos esportivos e /metas/basicas às Configurações das metas. Os links antigos de treino passam pelo controle de proprietário e abrem o diário correspondente. Project.workout distingue os dois fluxos. As consultas de metas usadas por manutenção, notificações, IA e performance filtram workout nulo.
 
 A migration aditiva 20261111015019_training_diary guarda planos por dia da semana, o intervalo de descanso e sessões esportivas datadas. As marcações manuais antigas ficam consultáveis no diário. Validado com atualização de banco SQLite temporário, TypeScript, ESLint, build e Chrome em 375/1440 px. O teste incluiu as quatro modalidades, atualização do plano depois de registrar o treino, recarga durante o descanso, cálculo de tempo/pace e isolamento entre contas. A correção aguarda publicação.
+
+## Análise completa do dia e planos de treino A–G — 18/11/2026, local
+
+Pedidos: incluir na análise as atividades do dia (treino, metas etc.); substituir dias da semana por Treino A/B/C; escolher um treino no registro, iniciar o cronômetro e marcar seus exercícios.
+
+Implementado contexto por conta/data para treinos realizados, metas, dieta e finanças Pessoal/Empresa, além de tarefas/trabalho/sono/lazer. O resumo de evidências é salvo pelo servidor junto da análise. Planejamento não vira conclusão e marcações tardias respeitam a data original. Retrospectivas limitam histórico de sono/lazer/trabalho ao dia escolhido. Notas determinísticas de tarefas/performance não mudam.
+
+Planos usam as chaves existentes (segunda → A … domingo → G), preservando exercícios. Seleção independe da data; cronômetro, checklist e rascunho sobrevivem à recarga. Trocar com progresso pede confirmação; salvar guarda apenas exercícios marcados e a divisão. Migration aditiva `20261118174258_workout_plan_slot` para PostgreSQL/SQLite acrescenta `WorkoutLog.planSlot`, sem presumir divisão para registros antigos. Aplicada apenas no banco temporário de QA; upgrade SQLite preservou planos e histórico. SQL PostgreSQL gerado por diff, ainda não aplicado em produção.
+
+Validação: seis testes de integração novos (`npm run test:day-training`), 17 testes de recorrências/sessões, TypeScript, ESLint e build. Chrome em 375/1440 e WebKit 375: letras/seleção B, início, checklist, recarga, pausa/cancelamento da troca, salvar e histórico; análise com evidências de treino, meta, dieta e financeiro. IA simulada nos testes para conferir payload, gravação e interface sem chamadas pagas; não avalia a qualidade de uma resposta real do modelo. Banco e contas descartáveis, sem dados de produção. QA em `/private/tmp/onerundred-day-training.5u8rh74o`.
+
+Sem push/deploy desta etapa. O deploy anterior `c01ec15` foi confirmado SUCCESS no Railway e por hash no domínio público.

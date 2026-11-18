@@ -419,3 +419,9 @@ O visual atual Atelier v2 permanece padrão para usuários. Studio v3 é uma pr�
 Por instrução explícita do proprietário, Studio v3 deixa de ser uma prévia privada e passa a ser `DEFAULT_DESIGN` para todas as contas e para o login. Esta decisão substitui as restrições de prévia descritas acima. Contas comuns recebem v3 mesmo com cookies/preferências antigas; admins podem salvar uma escolha de comparação v2/v3 em `Setting.designPreview`, apenas na própria conta. O Atelier v2 e o clássico v1 continuam preservados. Nenhuma alteração de schema ou de dados de produção é necessária.
 
 A tipografia do v3 foi unificada em Instrument Sans: texto, títulos, métricas, etiquetas e cronômetros de trabalho/lazer/tarefa usam a mesma família, mantendo os números tabulares. O cabeçalho com data e hora e o fundo pontilhado permanecem. Implementação preparada localmente; publicar somente mediante pedido explícito.
+
+## Análise completa e planos A–G — 18/11/2026
+
+`ai-day-activities.ts` reúne os registros privados pelo proprietário e data da atividade. `ai.ts` acrescenta treinos, metas diárias, dieta e resumo financeiro ao contexto, preservando tarefas, trabalho, sono e lazer. `AiInsight.content.activitySummary` guarda evidências legíveis geradas pelo servidor; registros antigos sem esse campo continuam compatíveis. `AiStatusDTO.hasDayActivity` permite geração inicial sem tarefas quando já há outra atividade e a observação está liberada.
+
+`WorkoutPlan.weekday` permanece a chave compatível [1,2,3,4,5,6,0] para A–G. A migration `workout_plan_slot` adiciona `WorkoutLog.planSlot` opcional; POST de registros aceita o campo, valida 0–6 e protege retries com o mesmo id. O histórico salva a divisão e o snapshot dos exercícios feitos. `training-session.ts` migra rascunhos locais antigos preservando progresso e usa a divisão independentemente da data.

@@ -63,8 +63,8 @@ export function AiInsightCard({ todayCards, initialStatus, dayKey }: { todayCard
     try {
       const s = await http.get<AiStatusDTO>(`/api/ai/insight${query}`);
       setStatus(s);
-      // A primeira análise do dia é gerada sozinha quando há tarefas e ainda não existe análise.
-      if (!retro && !autoTried.current && s.enabled && s.observation.coreReady && !s.insight && s.remainingToday > 0 && cardsCount.current > 0) {
+      // A primeira análise do dia é gerada sozinha quando há tarefas/atividades e ainda não existe análise.
+      if (!retro && !autoTried.current && s.enabled && s.observation.coreReady && !s.insight && s.remainingToday > 0 && (cardsCount.current > 0 || s.hasDayActivity)) {
         autoTried.current = true;
         await generate();
       }
@@ -78,7 +78,7 @@ export function AiInsightCard({ todayCards, initialStatus, dayKey }: { todayCard
     // (o setState ocorre após o await, não de forma síncrona)
     const s = initialStatus;
     if (s) {
-      if (!retro && !autoTried.current && s.enabled && s.observation.coreReady && !s.insight && s.remainingToday > 0 && cardsCount.current > 0) {
+      if (!retro && !autoTried.current && s.enabled && s.observation.coreReady && !s.insight && s.remainingToday > 0 && (cardsCount.current > 0 || s.hasDayActivity)) {
         autoTried.current = true;
         generate();
       }
@@ -180,11 +180,11 @@ export function AiInsightCard({ todayCards, initialStatus, dayKey }: { todayCard
       {!insight && !error && !collapsed && !observing && (
         <p className="mt-3 text-sm text-ink-3">
           {busy
-            ? "A IA está lendo suas tarefas, prioridades e tempo de trabalho…"
+            ? "A IA está analisando tarefas, trabalho, treinos, metas e os demais registros do dia…"
             : retro
               ? "Clique em “Gerar análise deste dia” para a IA fazer a retrospectiva."
               : todayCards.length === 0
-                ? "Crie tarefas para hoje e a IA analisa seu dia."
+                ? "Registre suas atividades e clique em “Gerar análise” para avaliar o dia completo."
                 : "Clique em “Gerar análise” para a IA avaliar seu dia."}
         </p>
       )}
@@ -194,6 +194,15 @@ export function AiInsightCard({ todayCards, initialStatus, dayKey }: { todayCard
           <div className="space-y-3">
             <p className={`text-base font-semibold leading-snug ${TONE_TEXT[tone]}`}>{insight.headline}</p>
             <p className="text-sm leading-relaxed text-ink-2">{insight.assessment}</p>
+            {!!insight.activitySummary?.length && <div>
+              <p className="mb-2 text-xs font-medium text-ink-3">Registros considerados nesta análise</p>
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {insight.activitySummary.map(item => <li key={item.label} className="min-w-0 rounded-lg border border-line bg-well px-3 py-2 text-xs">
+                  <span className="font-medium">{item.label}</span>
+                  <span className="mt-1 block break-words text-ink-2">{item.value}</span>
+                </li>)}
+              </ul>
+            </div>}
             {insight.suggestions.length > 0 && (
               <ul className="space-y-1 text-sm text-ink-2">
                 {insight.suggestions.map((s, i) => (
@@ -245,7 +254,7 @@ export function AiInsightCard({ todayCards, initialStatus, dayKey }: { todayCard
               </div>
             )}
 
-            <div>
+            {!retro && <div>
               <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-ink-3">
                 Horários sugeridos
               </div>
@@ -270,7 +279,7 @@ export function AiInsightCard({ todayCards, initialStatus, dayKey }: { todayCard
                 )}
               </div>
               {insight.schedule.note && <p className="mt-1.5 text-[11px] text-ink-3">{insight.schedule.note}</p>}
-            </div>
+            </div>}
           </div>
         </div>
       )}

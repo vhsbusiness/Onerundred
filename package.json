@@ -15,7 +15,8 @@
     "test:mind": "node --test scripts/test-mind-map.cjs",
     "test:recurring": "node --test scripts/test-recurring-work.cjs",
     "test:security": "node --test scripts/test-security.cjs",
-    "test:security:http": "node scripts/test-security-http.cjs"
+    "test:security:http": "node scripts/test-security-http.cjs",
+    "test:day-training": "node --test scripts/test-day-training.cjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

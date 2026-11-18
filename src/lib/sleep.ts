@@ -114,10 +114,10 @@ export async function deleteSleep(userId: string, id: string) {
   await prisma.sleepLog.delete({ where: { id } });
 }
 
-export async function listSleep(userId: string, days = 60): Promise<SleepLogDTO[]> {
-  const since = subDays(dayRange(todayKey()).start, days);
+export async function listSleep(userId: string, days = 60, untilDay = todayKey()): Promise<SleepLogDTO[]> {
+  const since = subDays(dayRange(untilDay).start, days);
   const rows = await prisma.sleepLog.findMany({
-    where: { userId, wakeAt: { gte: since } },
+    where: { userId, wakeAt: { gte: since, lt: dayRange(untilDay).end } },
     orderBy: { wakeAt: "desc" },
   });
   return rows.map(serialize);
@@ -128,8 +128,7 @@ function avg(nums: number[]): number | null {
   return Math.round(nums.reduce((a, b) => a + b, 0) / nums.length);
 }
 
-export function computeStats(logs: SleepLogDTO[]): SleepStats {
-  const today = todayKey();
+export function computeStats(logs: SleepLogDTO[], today = todayKey()): SleepStats {
   const key7 = keyToDate(today);
   const cut7 = subDays(key7, 7);
   const cut30 = subDays(key7, 30);

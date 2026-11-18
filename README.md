@@ -244,3 +244,9 @@ Na descrição das tarefas, `-` ou `.` seguido de espaço no início do parágra
 Cada conta pode favoritar até três quadros, inclusive compartilhados, usando a estrela na grade ou no cabeçalho do quadro. Os atalhos aparecem abaixo de Quadros na barra lateral enquanto o mouse está sobre o grupo; também ficam acessíveis pelo foco do teclado. A barra recolhida mostra os ícones com os nomes no tooltip. No celular, as estrelas continuam acessíveis na grade e no quadro.
 
 Favoritos usam `Setting.favoriteBoardIds`, sem migration, com limite e acesso validados na API `GET/PUT /api/boards/favoritos`. Quadros excluídos ou sem acesso são filtrados e deixam de ocupar vagas na próxima leitura. Falhas ao salvar preservam a seleção confirmada. Alteração local, sem publicação.
+
+## Análise completa do dia e treinos por divisão — 18/11/2026
+
+A Análise do dia considera tarefas concluídas, sessões de trabalho, treinos efetivamente registrados, metas do dia, refeições marcadas como consumidas, sono, lazer e um resumo financeiro separado entre Pessoal e Empresa. A lista de registros considerados fica salva com a análise; clique em Atualizar para incorporar novas atividades. Planos não contam como realizados e ausência de registro não prova que uma atividade foi esquecida. As notas fixas de tarefas e performance continuam com as mesmas fórmulas.
+
+Os planos de musculação usam Treino A até G. Os exercícios existentes são preservados na ordem anterior (segunda → A, terça → B, …, domingo → G). Em Registrar treino, escolha a divisão, inicie o cronômetro e marque os exercícios realizados. A data é independente da divisão. O histórico guarda o treino escolhido e uma cópia dos exercícios marcados; alterar o plano não muda os registros anteriores.

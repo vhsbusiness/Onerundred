@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { askConfirm, notify } from "@/components/ui/ConfirmProvider";
 import { http } from "@/lib/client";
 import { keyToDate } from "@/lib/time";
-import { elapsedLabel, paceSeconds, type TrainingDetail, type TrainingLog } from "@/lib/training-types";
+import { elapsedLabel, paceSeconds, trainingPlanLabel, type TrainingDetail, type TrainingLog } from "@/lib/training-types";
 import { isWorkout, workoutLabel, type Workout } from "@/lib/workouts";
 import { FavoriteProjectButton } from "../FavoriteProjects";
 import { ProjectCover } from "../ProjectCover";
@@ -36,14 +36,14 @@ export function TrainingDiary({ project, today }: { project: TrainingDetail; tod
   type Section = "plano" | "treino" | "historico";
   const viewKey = "training-view:" + project.id;
   const [section, setSection] = useState<Section>(project.workout === "strength" ? "plano" : "historico");
-  const [day, setDay] = useState(keyToDate(today).getDay());
+  const [day, setDay] = useState(1);
   useEffect(() => {
     try {
       const view = JSON.parse(localStorage.getItem(viewKey) ?? "null");
       if (new URLSearchParams(location.search).get("aba") === "treino") {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- a rest notification opens the active session.
         setSection("treino");
-        const weekday = Number.isInteger(view?.day) ? view.day : keyToDate(today).getDay();
+        const weekday = Number.isInteger(view?.day) ? view.day : 1;
         setDay(weekday); setSport("strength");
         localStorage.setItem(viewKey, JSON.stringify({section: "treino", day: weekday, sport: "strength"}));
         const url = new URL(location.href);
@@ -91,7 +91,7 @@ export function TrainingDiary({ project, today }: { project: TrainingDetail; tod
     </button>}
     <ProjectCover path={url+"/imagem"} coverId={project.coverId}/>
     {!project.archived && <nav aria-label="Seções do treino" className="flex flex-wrap gap-2">
-      {([["plano", "Plano semanal"], ["treino", "Registrar treino"], ["historico", "Histórico"]] as const).map(([tab, title]) =>
+      {([["plano", "Plano de treino"], ["treino", "Registrar treino"], ["historico", "Histórico"]] as const).map(([tab, title]) =>
         <button key={tab} type="button" aria-pressed={tab === section} onClick={() => show(tab)}
           className={"btn " + (tab === section ? "pill-orange" : "btn-ghost")}>{title}</button>)}
     </nav>}
@@ -103,7 +103,7 @@ export function TrainingDiary({ project, today }: { project: TrainingDetail; tod
         <TrainingEntry ref={entry} onClockStatus={setClock} key={sport} projectId={project.id} today={today} sport={sport} plans={project.plans} onSave={() => { show("historico"); router.refresh(); notify("Treino registrado."); }} />
       </section></div>
       {section === "plano" && <div className="min-w-0 space-y-4 lg:col-span-2">
-        <WeeklyPlan projectId={project.id} plans={project.plans} day={day} onDay={d => show("plano", d)} onSave={() => { router.refresh(); notify("Plano semanal salvo."); }} />
+        <WeeklyPlan projectId={project.id} plans={project.plans} day={day} onDay={d => show("plano", d)} onSave={() => { router.refresh(); notify("Plano de treino salvo."); }} />
       </div>}
       {section === "treino" && sport === "strength" && <RestTimer projectId={project.id} initialSeconds={project.restSeconds} initialEnd={project.restEndsAt} />}
     </>}
@@ -112,7 +112,7 @@ export function TrainingDiary({ project, today }: { project: TrainingDetail; tod
       {!project.logs.length && <p className="text-sm text-ink-3">Nenhum treino registrado.</p>}
       <ul className="divide-y divide-line">{project.logs.slice(0, limit).map(log => <li className="py-3 first:pt-0" key={log.id}>
         <div className="flex items-start justify-between gap-2">
-          <div><div className="font-medium">{workoutLabel(log.sport)}</div><time className="text-xs text-ink-3">{dayLabel(log.dayKey)}</time></div>
+          <div><div className="font-medium">{log.planSlot == null ? workoutLabel(log.sport) : trainingPlanLabel(log.planSlot)}</div><time className="text-xs text-ink-3">{dayLabel(log.dayKey)}</time></div>
           <button className="btn btn-ghost h-8 w-8 p-0" disabled={busy} aria-label="Excluir registro" onClick={async () => {
             if (await askConfirm({ title: "Excluir registro?", message: workoutLabel(log.sport) + " de " + dayLabel(log.dayKey), confirmLabel: "Excluir", danger: true })) await act(() => http.del(url + "/registros/" + log.id));
           }}><Trash2 size={14} /></button>
