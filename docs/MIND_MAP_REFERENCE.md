@@ -26,13 +26,13 @@ Usar como referência de comportamento; não copiar a aparência do Miro por cim
 | Seleção | Retângulo, Shift/⌘+clique para alternar itens, Ctrl/⌘+A fora do editor para selecionar os itens visíveis. |
 | Navegação | Setas entre pai/filho/irmãos fora do campo de texto, F2 para editar, V/H/T/P para selecionar/mover/criar texto/desenhar. Tecla 1 enquadra o mapa. |
 | Busca | Ctrl/⌘+F ou botão. Busca títulos, percorre resultados e expande os ancestrais de um item recolhido. |
-| Recolhimento | Recolher/expandir um ramo com contagem de descendentes; controle para recolher até os ramos principais ou expandir tudo. Salvo por conta/quadro neste navegador, inclusive ramos aninhados. |
+| Recolhimento | Recolher/expandir um ramo com contagem de descendentes; controle para recolher até os ramos principais ou expandir tudo. A visualização do dono é salva para iniciar os mapas compartilhados com os mesmos ramos abertos/fechados. Cada convidado pode ajustar sua visualização pessoal, salva por conta/quadro neste navegador, inclusive ramos aninhados. |
 | Cópia | Clipboard interno fiel para os itens selecionados; Ctrl/⌘+D duplica as subárvores selecionadas. Formatação, ligações internas, mídia e dimensões preservadas. |
 | Histórico | Desfazer e refazer, botões e Ctrl/⌘+Z, Ctrl/⌘+Shift+Z ou Ctrl+Y. Até 30 ações por usuário/quadro. Nova edição invalida o refazer somente desse usuário; conflitos com outro editor são rejeitados. |
 | Mídia | Imagens coladas/anexadas, lápis, espessura/cor e recuperação de traços com resposta perdida. |
 | Importação | Prints do Miro pela IA, prévia antes de salvar, negrito/emojis e ramos novos à direita. |
 | Exportação | Mapa completo em SVG, PNG (até 4096 px no lado maior) e texto com hierarquia. Inclui ramos recolhidos. Exportação ocorre no navegador; não envia os dados a outro serviço. |
-| Tela | Zoom, enquadramento, tela cheia, claro/escuro com grade quadrada; ferramentas adaptadas a celular e computador. |
+| Tela | Zoom, enquadramento, tela cheia, fundo claro por padrão e opção escura com grade quadrada; ferramentas adaptadas a celular e computador. |
 | Acesso | Dono/membros editam; colaboradores com leitura consultam. Novas rotas verificam o acesso novamente. |
 
 ## Diferenças ainda existentes
@@ -93,3 +93,9 @@ Validação local: TypeScript, ESLint, oito testes puros e build. Chrome 375/144
 O botão Tela cheia expande o mapa dentro da área visível da página com posicionamento fixo, sem chamar a Fullscreen API. Abas, endereço e barras do navegador permanecem disponíveis; o app não controla tela cheia ativada manualmente pelo próprio navegador/sistema. Sair da tela cheia ou Esc restaura o quadro. Ferramentas, tema e conteúdo continuam no mesmo componente, sem remontar o mapa. Não há alteração de schema.
 
 Validação: tipos, lint, oito testes do mapa e build; Chrome local 375/1440 px, claro/escuro, área ampliada ocupando o viewport, ausência de chamadas a requestFullscreen, ferramentas visíveis e saída por botão/Esc. Banco temporário de QA, sem dados de produção. Roteiro `/private/tmp/onerundred-browser-full-qa.cjs`. Publicação autorizada pelo pedido de deploy em andamento, junto da animação/seta dos favoritos.
+
+## Visualização inicial compartilhada — 17/11/2026
+
+O dono salva os IDs recolhidos em `Setting` (`mind-folds:<boardId>`), sem migration. `getBoard` fornece essa visualização apenas a quem tem acesso ao quadro. Preferências anteriores do dono no navegador são sincronizadas ao abrir o mapa; o envio do convite aguarda a sincronização. O endpoint de gravação exige o dono e o ID da conta que abriu a aba. Recolher/expandir continua sem alterar nós ou histórico de edição. Os IDs temporariamente removidos são mantidos para desfazer/refazer.
+
+Convidados sem preferência nova iniciam com o estado do dono; quando alteram, usam uma preferência local própria (v2), isolada por conta/quadro. Abas da mesma conta continuam sincronizadas. O padrão visual do canvas é claro desde o primeiro HTML; uma escolha explícita pelo escuro é respeitada.

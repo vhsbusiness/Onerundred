@@ -48,8 +48,8 @@ type Paint = { ids: Set<string>; value: string };
 function selectionBox(start: Point, end: Point) {
   return { left: Math.min(start.x, end.x), top: Math.min(start.y, end.y), width: Math.abs(end.x - start.x), height: Math.abs(end.y - start.y) };
 }
-export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null, onChanged, onImport }: {
-  viewerId: string; boardId: string; nodes: MindNodeDTO[]; undoId?: number | null; redoId?: number | null; onChanged?: () => Promise<void>; onImport?: () => void;
+export function MindMap({ viewerId, boardId, ownerView = [], isOwner = false, nodes, undoId = null, redoId = null, onChanged, onImport }: {
+  viewerId: string; boardId: string; ownerView?: string[]; isOwner?: boolean; nodes: MindNodeDTO[]; undoId?: number | null; redoId?: number | null; onChanged?: () => Promise<void>; onImport?: () => void;
 }) {
   const root = nodes.find(isMindRoot);
   const [selectedId, setSelectedId] = useState<string>();
@@ -89,7 +89,7 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
   const selectTitleOnFocus = useRef<string | null>(null);
   const [editor, edit] = useState<({ id: string; selectAll?: boolean } & MindTextValue) | null>(null);
   const [full, setFull] = useState(false);
-  const [light, setLight] = useState(false);
+  const [light, setLight] = useState(true);
   const [straightLines, setStraightLines] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportMenu, setExportMenu] = useState(false);
@@ -114,9 +114,11 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
   const skipBlur = useRef(false);
   const suppressedClick = useRef(false);
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLight(localStorage.getItem("mind-light:" + boardId) === "true");
-    setStraightLines(localStorage.getItem("mind-lines:" + boardId) === "straight");
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLight(localStorage.getItem("mind-light:" + boardId) !== "false");
+      setStraightLines(localStorage.getItem("mind-lines:" + boardId) === "straight");
+    } catch { /* White remains the default when browser storage is unavailable. */ }
   }, [boardId]);
   useEffect(() => {
     const element = canvas.current;
@@ -223,7 +225,7 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
     }
     return next;
   });
-  const [savedFolds, setFolded] = useMindFolds(viewerId, boardId);
+  const [savedFolds, setFolded] = useMindFolds(viewerId, boardId, ownerView, isOwner);
   // Ignore deleted nodes in the view; retain their preference for undo/redo.
   const folded = new Set(nodes.filter(n => savedFolds.has(n.id)).map(n => n.id));
   const children = new Map<string, string[]>();
@@ -983,7 +985,7 @@ export function MindMap({ viewerId, boardId, nodes, undoId = null, redoId = null
         setStraightLines(!straightLines);
         localStorage.setItem("mind-lines:" + boardId, straightLines ? "curved" : "straight");
       }}>{straightLines ? <Slash size={16} /> : <Spline size={16} />}</button>
-      <button className="mind-tool" aria-label="Fundo claro" title="Fundo claro" aria-pressed={light} onClick={() => { setLight(!light); localStorage.setItem("mind-light:" + boardId, String(!light)); }}>{light ? <Moon size={16} /> : <Sun size={16} />}</button>
+      <button className="mind-tool" aria-label="Fundo claro" title="Fundo claro" aria-pressed={light} onClick={() => { setLight(!light); try { localStorage.setItem("mind-light:" + boardId, String(!light)); } catch { /* Keep the chosen theme for this visit. */ } }}>{light ? <Moon size={16} /> : <Sun size={16} />}</button>
       <button className="mind-tool" aria-label={full ? "Sair da tela cheia" : "Tela cheia"} title={full ? "Sair da tela cheia" : "Tela cheia"} onClick={toggleFull}>{full ? <Minimize size={16} /> : <Maximize size={16} />}</button>
     </div>
     <div className="mind-tools mind-zoom">

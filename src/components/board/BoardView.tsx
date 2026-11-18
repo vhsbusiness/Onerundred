@@ -486,7 +486,7 @@ export function BoardView({ viewerId, boardId, initialBoard }: { viewerId: strin
         </div>
       </div>
 
-      {isMap ? <MindMap key={board.id} viewerId={viewerId} boardId={board.id} nodes={board.mindNodes} undoId={board.mindUndoId} redoId={board.mindRedoId} onChanged={load} onImport={() => setImporting(true)} /> : <DndContext
+      {isMap ? <MindMap key={board.id} viewerId={viewerId} boardId={board.id} ownerView={board.mindFoldedIds} isOwner={board.isOwner} nodes={board.mindNodes} undoId={board.mindUndoId} redoId={board.mindRedoId} onChanged={load} onImport={() => setImporting(true)} /> : <DndContext
         id={`board-${boardId}`}
         sensors={sensors}
         collisionDetection={collision}

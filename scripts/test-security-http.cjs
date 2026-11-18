@@ -146,6 +146,28 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   check((await request('PATCH',richUrl,{id:richNode.id,title:longTitle,textSpans:longSpans})).ok,'2000 characters with styles accepted');
   check((await request('PATCH',richUrl,{id:richNode.id,title:longTitle+'a'})).status===400,'2001 characters rejected');
   check((await currentRich()).textSpans===longSpans,'Oversized title leaves existing styles intact');
+  // Only the owner publishes the initial fold state; collaborators receive it with board access.
+  const foldsUrl=richUrl+'/recolhimento';
+  const setFolds=(ids,user=a,viewerId=user.id)=>request('PUT',foldsUrl,{viewerId,foldedIds:ids},user);
+  check((await setFolds([richNode.id,duplicate,richNode.id])).ok,'Owner stores shared fold state');
+  const ownerFolds=(await repo.getBoard(mapA.id,a.id)).mindFoldedIds;
+  check(ownerFolds.length===2&&ownerFolds.includes(richNode.id)&&ownerFolds.includes(duplicate),'Fold IDs deduplicated');
+  check((await request('GET','/api/boards/'+mapA.id,undefined,b)).status===404,'Private fold state is not exposed');
+  await prisma.boardMember.create({data:{boardId:mapA.id,userId:b.id}});
+  check(JSON.stringify((await (await request('GET','/api/boards/'+mapA.id,undefined,b)).json()).mindFoldedIds)===JSON.stringify(ownerFolds),'Collaborator receives the owner view');
+  check((await setFolds([],b)).status===404,'Collaborator cannot overwrite owner folds');
+  check((await setFolds([],a,b.id)).status===403,'Stale account tab cannot publish another view');
+  for(const invalid of [null,'[]',[1],[''],['a'.repeat(201)],Array(5001).fill(richNode.id)]) check((await setFolds(invalid)).status===400,'Malformed folds rejected');
+  check(JSON.stringify((await repo.getBoard(mapA.id,a.id)).mindFoldedIds)===JSON.stringify(ownerFolds),'Failed writes preserve fold state');
+  check((await request('PUT','/api/boards/'+boardA.id+'/mapa/recolhimento',{viewerId:a.id,foldedIds:[]})).status===404,'Task boards do not accept map fold state');
+  check((await setFolds([])).ok,'Expand all is saved explicitly');
+  check((await repo.getBoard(mapA.id,b.id)).mindFoldedIds.length===0,'Collaborator receives expanded state');
+  await prisma.boardMember.deleteMany({where:{boardId:mapA.id,userId:b.id}});
+  check((await request('GET','/api/boards/'+mapA.id,undefined,b)).status===404,'Revoking access hides shared folds');
+  const disposableMap=await repo.createBoard(a.id,'Fold cleanup','mindmap');
+  await repo.saveMindFolds(disposableMap.id,a.id,[]);
+  check((await request('DELETE','/api/boards/'+disposableMap.id)).ok,'Owner deletes map with stored view');
+  check(await prisma.setting.count({where:{userId:a.id,key:'mind-folds:'+disposableMap.id}})===0,'Deleting map clears its stored view');
   // Reading or prefetching a shared board must never change either account's last visit.
   const shared=await repo.createBoard(a.id,'SHARED-REMEMBER-TEST');
   await prisma.boardMember.create({data:{boardId:shared.id,userId:b.id}});

@@ -1,3 +1,4 @@
+import { mindFoldKey, readMindFolds } from "./mind-fold-state";
 import { MIND_TITLE_MAX_LENGTH } from "./mind-title";
 import { Prisma } from "@/generated/prisma/client";
 import { breakError, sortedBreaks, storedBreaks, totalWorkedMs, workedMs } from "./work-breaks";
@@ -645,6 +646,7 @@ export async function getBoard(id: string, userId: string): Promise<BoardDTO> {
     position: board.position,
     createdAt: board.createdAt.toISOString(),
     mindNodes: board.mindNodes,
+    mindFoldedIds: board.type === "mindmap" ? readMindFolds((await prisma.setting.findUnique({ where: { userId_key: { userId: board.userId, key: mindFoldKey(id) } } }))?.value) : [],
     mindUndoId: board.mindUndos.find(action => !action.undone)?.id ?? null,
     mindRedoId: board.mindUndos.filter(action => action.undone).at(-1)?.id ?? null,
     lastUndo: await getLastUndo(userId),
@@ -686,10 +688,23 @@ export async function updateBoard(id: string, userId: string, data: { name?: str
   });
 }
 
+/** The owner's saved presentation is the starting view for new collaborators. */
+export async function saveMindFolds(boardId: string, userId: string, foldedIds: string[]) {
+  await prisma.$transaction(async tx => {
+    const board = await tx.board.findFirst({ where: { id: boardId, userId, type: "mindmap" }, select: { id: true } });
+    if (!board) throw new ApiError(404, "Mapa mental indisponível.");
+    const key = mindFoldKey(boardId), value = JSON.stringify(foldedIds);
+    await tx.setting.upsert({ where: { userId_key: { userId, key } }, create: { userId, key, value }, update: { value } });
+  });
+}
+
 export async function deleteBoard(id: string, userId: string) {
   const board = await prisma.board.findFirst({ where: { id, userId } });
   if (!board) throw new ApiError(403, "Só o dono pode excluir o quadro");
-  await prisma.board.delete({ where: { id } });
+  await prisma.$transaction([
+    prisma.board.delete({ where: { id } }),
+    prisma.setting.deleteMany({ where: { userId, key: mindFoldKey(id) } }),
+  ]);
 }
 
 /* ───────────────────────── Listas ───────────────────────── */

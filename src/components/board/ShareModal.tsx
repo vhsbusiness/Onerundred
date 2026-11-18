@@ -3,6 +3,7 @@
 import { Clock, Send, Trash2, UserPlus, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { http } from "@/lib/client";
+import { syncMindFoldsForSharing } from "./useMindFolds";
 import { askConfirm, notify } from "@/components/ui/ConfirmProvider";
 import { Modal } from "@/components/ui/Modal";
 import { Avatar } from "@/components/profile/ProfilePage";
@@ -42,6 +43,7 @@ export function ShareModal({
   async function invite(username: string) {
     setBusy(true);
     try {
+      if (board.type === "mindmap") await syncMindFoldsForSharing(board.owner.id, board.id, board.mindFoldedIds);
       const u = await http.post<UserBrief>(`/api/boards/${board.id}/compartilhar`, { username });
       notify(`Convite enviado para @${u.username}`);
       setQuery("");
