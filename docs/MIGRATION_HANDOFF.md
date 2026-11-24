@@ -236,3 +236,11 @@ Planos usam as chaves existentes (segunda → A … domingo → G), preservando 
 Validação: seis testes de integração novos (`npm run test:day-training`), 17 testes de recorrências/sessões, TypeScript, ESLint e build. Chrome em 375/1440 e WebKit 375: letras/seleção B, início, checklist, recarga, pausa/cancelamento da troca, salvar e histórico; análise com evidências de treino, meta, dieta e financeiro. IA simulada nos testes para conferir payload, gravação e interface sem chamadas pagas; não avalia a qualidade de uma resposta real do modelo. Banco e contas descartáveis, sem dados de produção. QA em `/private/tmp/onerundred-day-training.5u8rh74o`.
 
 Sem push/deploy desta etapa. O deploy anterior `c01ec15` foi confirmado SUCCESS no Railway e por hash no domínio público.
+
+## Checklist por vírgulas — 24/11/2026, local
+
+Campo de inclusão cria um item por vírgula e aceita colagem em lote incluindo o último nome sem delimitador final. Preserva rascunho durante digitação rápida e itens pendentes em erros; reenvio com IDs estáveis evita duplicação após resposta perdida. API mantém `text` e aceita `items`; transação serializável protege limite/ordem, sem migration nova. Editar texto existente não o divide.
+
+Cinco testes de backend/parser em SQLite temporário cobrem ordem, vazios, limites sem gravação parcial, isolamento e retries. Tipos, lint e build passaram. Conferência de navegador usa contas descartáveis e Chrome em 375/1440 px: digitação durante rede lenta, colagem real, Enter, falha simulada, resposta perdida/retry, edição e recarga. QA local em `/private/tmp/onerundred-checklist.0cd5tc6x`.
+
+Sem push/deploy. O commit anterior de análise diária/treinos (`22a28d1`) também permanecia local no início desta etapa; seu schema e migrations deverão acompanhar a próxima publicação autorizada.

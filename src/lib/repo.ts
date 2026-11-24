@@ -1,3 +1,4 @@
+import { MAX_CHECKLIST_ITEMS, MAX_CHECKLIST_TEXT, type NewChecklistItem } from "./checklist-input";
 import { mindFoldKey, readMindFolds } from "./mind-fold-state";
 import { MIND_TITLE_MAX_LENGTH } from "./mind-title";
 import { Prisma } from "@/generated/prisma/client";
@@ -1193,16 +1194,44 @@ export const MAX_CARD_IMAGES = 10;
 
 /* ───────────────────────── Checklist ───────────────────────── */
 
-const MAX_CHECKLIST_ITEMS = 50;
+export async function addChecklistItems(userId: string, cardId: string, raw: unknown): Promise<CardDTO> {
+  if (!Array.isArray(raw) || !raw.length || raw.length > MAX_CHECKLIST_ITEMS)
+    throw new ApiError(400, `Envie de 1 a ${MAX_CHECKLIST_ITEMS} itens.`);
+  const items: NewChecklistItem[] = raw.map(item => {
+    if (!item || typeof item.id !== "string" || !/^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(item.id) ||
+        typeof item.text !== "string" || !item.text.trim() || item.text.trim().length > MAX_CHECKLIST_TEXT)
+      throw new ApiError(400, `Cada item precisa de um texto de até ${MAX_CHECKLIST_TEXT} caracteres.`);
+    return { id: item.id, text: item.text.trim() };
+  });
+  if (new Set(items.map(i => i.id)).size !== items.length) throw new ApiError(400, "Identificadores de itens repetidos.");
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await prisma.$transaction(async tx => {
+        const card = await tx.card.findFirst({ where: { id: cardId, list: { board: boardAccess(userId) } }, select: { id: true } });
+        if (!card) throw new ApiError(404, "Tarefa não encontrada");
+        const existing = await tx.checklistItem.findMany({ where: { id: { in: items.map(i => i.id) } } });
+        if (existing.some(i => i.cardId !== cardId || i.text !== items.find(n => n.id === i.id)!.text))
+          throw new ApiError(409, "Os itens já foram alterados. Atualize a tarefa.");
+        const known = new Set(existing.map(i => i.id));
+        const pending = items.filter(i => !known.has(i.id));
+        if (!pending.length) return; // A retry after a lost response must not duplicate the batch.
+        const stats = await tx.checklistItem.aggregate({ where: { cardId }, _count: { id: true }, _max: { position: true } });
+        if (stats._count.id + pending.length > MAX_CHECKLIST_ITEMS)
+          throw new ApiError(400, `No máximo ${MAX_CHECKLIST_ITEMS} itens por tarefa. Nenhum item deste envio foi adicionado.`);
+        const start = (stats._max.position ?? -1) + 1;
+        await tx.checklistItem.createMany({ data: pending.map((item, index) => ({ ...item, cardId, position: start + index })) });
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+      break;
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034" && attempt < 2) continue;
+      throw error;
+    }
+  }
+  return getCard(cardId, userId);
+}
 
 export async function addChecklistItem(userId: string, cardId: string, text: string): Promise<CardDTO> {
-  await ownedCard(cardId, userId);
-  const clean = text.trim().slice(0, 200);
-  if (!clean) throw new ApiError(400, "Escreva o item");
-  const count = await prisma.checklistItem.count({ where: { cardId } });
-  if (count >= MAX_CHECKLIST_ITEMS) throw new ApiError(400, `No máximo ${MAX_CHECKLIST_ITEMS} itens por tarefa`);
-  await prisma.checklistItem.create({ data: { cardId, text: clean, position: count } });
-  return getCard(cardId, userId);
+  return addChecklistItems(userId, cardId, [{ id: crypto.randomUUID(), text: text.trim().slice(0, MAX_CHECKLIST_TEXT) }]);
 }
 
 export async function updateChecklistItem(

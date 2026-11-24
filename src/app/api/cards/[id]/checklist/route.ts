@@ -1,12 +1,13 @@
 import { ApiError, json, readBody, requireString, withAccess } from "@/lib/api";
-import { addChecklistItem, removeChecklistItem, updateChecklistItem } from "@/lib/repo";
+import { addChecklistItem, addChecklistItems, removeChecklistItem, updateChecklistItem } from "@/lib/repo";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-/** Adiciona um item à checklist da tarefa. */
+/** Adiciona um item ou um lote atômico à checklist da tarefa. */
 export const POST = withAccess("boards", async (user, req: Request, ctx: Ctx) => {
   const { id } = await ctx.params;
   const body = await readBody(req);
+  if (body.items !== undefined) return json(await addChecklistItems(user.id, id, body.items), { status: 201 });
   return json(await addChecklistItem(user.id, id, requireString(body.text, "text")), { status: 201 });
 });
 

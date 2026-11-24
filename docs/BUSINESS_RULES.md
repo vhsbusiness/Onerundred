@@ -262,3 +262,10 @@ O administrador libera a emissão por usuário. A criação exige a senha atual.
 - O snapshot `AiInsight.content.activitySummary` é produzido pelo servidor e exibido na análise. Análises anteriores permanecem consultáveis; Atualizar gera uma análise com os registros atuais. Histórico de sono/lazer/trabalho fica limitado ao dia escolhido, sem usar dias posteriores na retrospectiva.
 - Planos A–G reutilizam as chaves existentes de WorkoutPlan.weekday: [1,2,3,4,5,6,0]. Nenhum exercício é removido ou transferido. A sessão seleciona explicitamente um treino e pode realizá-lo em qualquer data; `WorkoutLog.planSlot` opcional identifica a divisão no histórico. Registros antigos ficam sem divisão presumida. Importação continua com prévia editável e identifica letras A–G.
 - Sessão em andamento mantém a cópia dos exercícios, seleção e checklist ao recarregar. Trocar divisão com progresso exige confirmação e reinicia somente o rascunho; durante o cronômetro ativo a seleção fica bloqueada até pausar. Só exercícios marcados são salvos.
+
+## Inclusão de checklist por vírgulas — 24/11/2026
+
+- No campo de adicionar itens, cada vírgula envia o texto anterior; o trecho ainda incompleto permanece para continuar digitando. Colar nomes separados por vírgula envia também o último nome, mesmo sem vírgula final. Espaços nas extremidades e segmentos vazios são ignorados; nomes iguais continuam sendo itens distintos.
+- Enter e Adicionar continuam funcionando. Editar um item existente preserva vírgulas como texto e não o divide.
+- O POST do checklist aceita `items: [{id, text}]` para salvar um lote em transação, mantendo a opção legada `text`. Mantém o limite de 50 itens por tarefa e 200 caracteres por item. Um lote que excede o limite é rejeitado inteiro; não trunca a colagem. IDs estáveis permitem repetir uma tentativa sem duplicar itens já gravados.
+- A digitação continua disponível enquanto salva; envios são ordenados. Falhas mantêm os itens pendentes visíveis, com tentar novamente/editar. Adicionar não conclui itens nem inicia cronômetros.

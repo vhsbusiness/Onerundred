@@ -2,6 +2,7 @@
 
 import { askConfirm, notify } from "@/components/ui/ConfirmProvider";
 import { Archive, Bell, Check, Copy, ImagePlus, ListChecks, Pause, Play, Plus, Repeat, RotateCcw, Trash2, X } from "lucide-react";
+import { ChecklistAdd } from "./ChecklistAdd";
 import { TaskLabels } from "./TaskLabels";
 import { DescriptionEditor } from "@/components/ui/DescriptionEditor";
 import { TimeField } from "@/components/ui/TimeField";
@@ -114,8 +115,6 @@ export function CardModal({
   const now = useNow(running);
   const imgRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const [newItem, setNewItem] = useState("");
-  const [addingItem, setAddingItem] = useState(false);
   // Lembretes desta tarefa
   const [reminders, setReminders] = useState<ReminderDTO[] | null>(null);
   const [remOpen, setRemOpen] = useState(false);
@@ -232,19 +231,6 @@ export function CardModal({
   async function removeImage(imageId: string) {
     await http.del(`/api/cards/${card!.id}/imagens`, { imageId });
     onChanged();
-  }
-
-  async function addItem() {
-    const text = newItem.trim();
-    if (!text || addingItem) return;
-    setAddingItem(true);
-    try {
-      await http.post(`/api/cards/${card!.id}/checklist`, { text });
-      setNewItem("");
-      onChanged();
-    } finally {
-      setAddingItem(false);
-    }
   }
 
   async function toggleItem(itemId: string, done: boolean) {
@@ -416,23 +402,7 @@ export function CardModal({
                 </li>
               ))}
             </ul>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                addItem();
-              }}
-              className="mt-1.5 flex gap-2"
-            >
-              <input
-                value={newItem}
-                onChange={(e) => setNewItem(e.target.value)}
-                placeholder="Adicionar item…"
-                className="input h-9 py-1 text-sm"
-              />
-              <button type="submit" disabled={!newItem.trim() || addingItem} className="btn h-9 shrink-0 px-3 text-xs">
-                <Plus size={13} /> Adicionar
-              </button>
-            </form>
+            <ChecklistAdd key={card.id} cardId={card.id} onChanged={onChanged} />
           </div>
 
           <div>
