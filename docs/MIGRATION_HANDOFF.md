@@ -244,3 +244,16 @@ Campo de inclusão cria um item por vírgula e aceita colagem em lote incluindo 
 Cinco testes de backend/parser em SQLite temporário cobrem ordem, vazios, limites sem gravação parcial, isolamento e retries. Tipos, lint e build passaram. Conferência de navegador usa contas descartáveis e Chrome em 375/1440 px: digitação durante rede lenta, colagem real, Enter, falha simulada, resposta perdida/retry, edição e recarga. QA local em `/private/tmp/onerundred-checklist.0cd5tc6x`.
 
 Sem push/deploy. O commit anterior de análise diária/treinos (`22a28d1`) também permanecia local no início desta etapa; seu schema e migrations deverão acompanhar a próxima publicação autorizada.
+
+
+## Metas financeiras com duração, cálculo e lembretes — 25/11/2026, local
+
+Financeiro → Metas para guardar → Nova meta. Frequência diária/semanal/mensal, duração em dias/semanas/meses e data inicial. O usuário escolhe valor por contribuição ou total final; a prévia mostra prazo, quantidade de contribuições e divisão em centavos. Períodos ancorados no início, incluindo o último incompleto. Cada período registra total guardado, inclusive zero; cumprimento é calculado pela comparação com o previsto. Correção substitui o registro, histórico persiste, períodos futuros ficam bloqueados. Pessoal/Empresa e contas de usuários isolados. Não movimenta contas bancárias.
+
+Lembrete configurado por meta (horário/opção na criação), sem IA: `evaluateUser` verifica o interruptor geral e aparelhos, depois chama `sendSavingsReminders`. Um aviso no fim de cada período ainda sem registro, com deduplicação por chave única, recuperação após indisponibilidade e nova tentativa em caso de falha. Atalho para Perfil → Notificações. O envio real ao aparelho depende da permissão/inscrição e não foi disparado nesta etapa; regras e entrega simulada foram testadas.
+
+Migration aditiva `20261125210607_financial_savings_goal` nas duas pastas adiciona SavingsGoal/SavingsCheckin. Upgrade SQLite temporário preservou conta e saldo anteriores. PostgreSQL gerado por diff, ainda não aplicado a produção.
+
+Validação: 7 testes de cálculo/backend/lembretes, 6 regressões de análise/treinos, TypeScript, ESLint, build. Chrome 1440/375 e WebKit 375: 3 frequências, 2 modos de cálculo, rascunho após falha, valores parcial/zero/cumprido, edição, histórico, recarga, isolamento Pessoal/Empresa e ausência de rolagem horizontal. QA `/private/tmp/onerundred-saving-sw3npr9k`, contas/banco descartáveis. Sem push/deploy desta etapa.
+
+Publicação anterior confirmada: `0fe5894`, Railway `23cd88c6-002a-4f4b-af11-2889823da2b0` SUCCESS em 24/11; migration de treinos aplicada, login HTTP 200 e chunk do checklist com hash idêntico ao testado.

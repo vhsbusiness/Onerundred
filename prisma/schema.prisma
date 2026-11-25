@@ -31,6 +31,7 @@ model User {
   apiKeys PersonalApiKey[]
   financeAccounts FinanceAccount[]
   financeBudgets FinanceBudget[]
+  savingsGoals SavingsGoal[]
   diets        DietProject[]
   projects     Project[]
   leisureLogs  LeisureLog[]
@@ -661,4 +662,30 @@ model PersonalApiKey {
   createdAt DateTime @default(now())
   user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId])
+}
+
+model SavingsGoal {
+  id String @id @default(cuid())
+  userId String
+  space String
+  name String
+  frequency String
+  mode String
+  amountCents Int
+  startDay String
+  endDay String
+  reminderTime String?
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checkins SavingsCheckin[]
+  @@index([userId, space])
+}
+
+model SavingsCheckin {
+  goalId String
+  periodStart String
+  cents Int
+  updatedAt DateTime @updatedAt
+  goal SavingsGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  @@id([goalId, periodStart])
 }

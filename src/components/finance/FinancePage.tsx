@@ -22,6 +22,7 @@ import { keyToDate } from "@/lib/time";
 import type { FinanceOverview } from "@/lib/finance";
 import { categoryLabel, kindNames, money, spaceNames, type FinanceSpace } from "@/lib/finance-format";
 import { StatementImport } from "./StatementImport";
+import { SavingsGoals } from "./SavingsGoals";
 import { FinanceForm, type FinanceFormState } from "./FinanceForm";
 
 export function FinancePage({
@@ -153,6 +154,7 @@ export function FinancePage({
           </div>
         ))}
       </div>
+      <SavingsGoals goals={overview.savings} space={space} today={today} />
       <section className="card space-y-4 p-4 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">Lançamentos</h2>

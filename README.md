@@ -252,3 +252,8 @@ A Análise do dia considera tarefas concluídas, sessões de trabalho, treinos e
 Os planos de musculação usam Treino A até G. Os exercícios existentes são preservados na ordem anterior (segunda → A, terça → B, …, domingo → G). Em Registrar treino, escolha a divisão, inicie o cronômetro e marque os exercícios realizados. A data é independente da divisão. O histórico guarda o treino escolhido e uma cópia dos exercícios marcados; alterar o plano não muda os registros anteriores.
 
 No checklist da tarefa, digite uma vírgula para criar o item e continuar no próximo. Colar `Primeiro, Segundo, Terceiro` cria os três de uma vez. Enter e Adicionar continuam disponíveis; espaços e itens vazios são ignorados. Até 50 itens por tarefa, com 200 caracteres por item.
+
+
+### Metas para guardar
+
+Em **Financeiro → Metas para guardar → Nova meta**, escolha frequência diária, semanal ou mensal e duração do projeto. Informe o valor de cada contribuição para calcular o total, ou o total desejado para calcular as contribuições. Registre quanto guardou em cada período, inclusive quando não guardou nada. Progresso e histórico são próprios de Pessoal/Empresa. O lembrete opcional usa as notificações ativadas em Perfil, no horário escolhido. Os registros não alteram os saldos bancários.

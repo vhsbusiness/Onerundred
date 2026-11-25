@@ -1,3 +1,4 @@
+import { sendSavingsReminders } from "./savings";
 import { boardAccess } from "./repo";
 import { pushAgent, pushEndpoint, samePushDevice, validatePushSubscription } from "./push-security";
 import { totalWorkedMs } from "./work-breaks";
@@ -387,6 +388,8 @@ export async function evaluateUser(userId: string, now = new Date()): Promise<st
     }
   }
 
+  const savingsSent = await sendSavingsReminders(userId, now, message => sendToUser(userId, message));
+  for (let i = 0; i < savingsSent; i++) sent.push("savingsGoal");
   return sent;
 }
 

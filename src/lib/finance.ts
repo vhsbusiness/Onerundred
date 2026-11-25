@@ -1,3 +1,4 @@
+import { listSavings, writeSavings } from "./savings";
 import { prisma } from "./db";
 import { ApiError } from "./errors";
 import { parseMoney, validMonth, type FinanceSpace } from "./finance-format";
@@ -44,7 +45,7 @@ export async function financeOverview(userId: string, space: FinanceSpace, month
   for (const row of transfers)
     if (row.destinationId)
       balances.set(row.destinationId, (balances.get(row.destinationId) ?? 0) + (row._sum?.cents ?? 0));
-  return { accounts: accounts.map((a) => ({ ...a, balance: balances.get(a.id)! })), entries, budgets };
+  return { accounts: accounts.map((a) => ({ ...a, balance: balances.get(a.id)! })), entries, budgets, savings: await listSavings(userId, space) };
 }
 export type FinanceOverview = Awaited<ReturnType<typeof financeOverview>>;
 type Body = Record<string, unknown>;
@@ -64,6 +65,7 @@ export async function writeFinance(
   method: string,
   body: Body,
 ) {
+  if (resource === "metas" || resource === "registros-meta") return writeSavings(userId, space, resource, method, body);
   const owner = { userId, space };
   const id = method === "POST" ? undefined : shortText(body.id, "identificador");
   if (resource === "contas" && method !== "DELETE") {

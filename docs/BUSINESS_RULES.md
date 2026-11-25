@@ -269,3 +269,14 @@ O administrador libera a emissão por usuário. A criação exige a senha atual.
 - Enter e Adicionar continuam funcionando. Editar um item existente preserva vírgulas como texto e não o divide.
 - O POST do checklist aceita `items: [{id, text}]` para salvar um lote em transação, mantendo a opção legada `text`. Mantém o limite de 50 itens por tarefa e 200 caracteres por item. Um lote que excede o limite é rejeitado inteiro; não trunca a colagem. IDs estáveis permitem repetir uma tentativa sem duplicar itens já gravados.
 - A digitação continua disponível enquanto salva; envios são ordenados. Falhas mantêm os itens pendentes visíveis, com tentar novamente/editar. Adicionar não conclui itens nem inicia cronômetros.
+
+
+## Metas financeiras com prazo — 25/11/2026
+
+- Em Financeiro, cada conta mantém metas próprias de Pessoal e Empresa. Cada meta tem nome, início, término e frequência diária, semanal ou mensal. Não depende de cadastrar uma conta bancária.
+- O usuário escolhe valor por período (total = valor × quantidade de períodos) ou total desejado (dividido exatamente em centavos). Centavos restantes são distribuídos nos primeiros períodos. A duração aceita de 1 a 3.660 dias; cada período precisa ter pelo menos um centavo.
+- Períodos se ancoram no início: dias, blocos de sete dias ou meses civis pelo aniversário mensal, ajustado ao último dia disponível. O último período incompleto também tem uma contribuição. A prévia mostra quantidade, intervalo de valores, data final e total.
+- Registrar informa o total guardado por período, incluindo zero para “Não guardei”. A meta do período é cumprida quando guardado ≥ previsto. Ausência de registro não é considerada zero. Editar substitui o valor anterior; não soma duas vezes. Períodos futuros não aceitam registro. Registros passados podem ser corrigidos.
+- O progresso total soma os registros da meta; não debita contas nem cria despesas/transferências. Prazo e valores do plano ficam definidos na criação; excluir uma meta remove apenas seu histórico de economia.
+- Lembrete opcional por meta (padrão ligado às 20h) no fim de cada período, no horário de Brasília. Usa o agendador e os aparelhos já inscritos em Web Push, respeitando o interruptor geral de notificações. Sem permissão/aparelho não há push; a interface oferece atalho para ativação. Período registrado é ignorado. Há um envio por meta/período, com chave única; falhas de entrega liberam nova tentativa. Após indisponibilidade, avisa o período pendente mais recente e mantém os demais visíveis no histórico.
+- A API financeira existente inclui `savings` na leitura. `POST /api/financeiro/{space}/metas` cria, `DELETE` exclui por id, e `POST .../registros-meta` salva/substitui por `id`, `periodStart`, `amount`. As permissões existentes de API Pessoal/Empresa valem para essas operações.
