@@ -10,7 +10,7 @@ import { TimeField } from "@/components/ui/TimeField";
 import { askConfirm, notify } from "@/components/ui/ConfirmProvider";
 import { http } from "@/lib/client";
 import { decimal, money, parseMoney, spaceNames, type FinanceSpace } from "@/lib/finance-format";
-import { frequencies, frequencyUnits, savingsEnd, savingsPlan, type SavingsFrequency } from "@/lib/savings-plan";
+import { checkSavingsEdit, frequencies, frequencyUnits, savingsDefinition, savingsDuration, savingsEnd, savingsPlan, type SavingsFrequency } from "@/lib/savings-plan";
 import type { SavingsGoalView } from "@/lib/savings";
 
 const shortDay = (value: string) => value.split("-").reverse().join("/");
@@ -19,8 +19,9 @@ const periodLabel = (p: { start: string; end: string }) => p.start === p.end ? s
 export function SavingsGoals({ goals, space, today }: { goals: SavingsGoalView[]; space: FinanceSpace; today: string }) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<SavingsGoalView | null>(null);
   const [recording, setRecording] = useState<{ goal: SavingsGoalView; start: string } | null>(null);
-  const refresh = () => { setCreating(false); setRecording(null); router.refresh(); };
+  const refresh = () => { setCreating(false); setEditing(null); setRecording(null); router.refresh(); };
   async function remove(goal: SavingsGoalView) {
     if (!await askConfirm({ title: "Excluir meta financeira?", message: `A meta “${goal.name}” e seus registros serão excluídos. Os saldos das contas permanecem iguais.`, confirmLabel: "Excluir", danger: true })) return;
     try { await http.del(`/api/financeiro/${space}/metas`, { id: goal.id }); router.refresh(); }
@@ -41,7 +42,8 @@ export function SavingsGoals({ goals, space, today }: { goals: SavingsGoalView[]
         return <article id={`meta-${goal.id}`} key={goal.id} className="min-w-0 scroll-mt-6 rounded-2xl border border-line bg-fill p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0"><h3 className="break-words font-semibold">{goal.name}</h3><p className="text-xs text-ink-2">{frequencies[goal.frequency as SavingsFrequency]} · {goal.periods.length} períodos · {goal.days} dias</p></div>
-            <button className="btn btn-ghost h-8 w-8 shrink-0 p-0" aria-label={`Excluir meta ${goal.name}`} onClick={() => void remove(goal)}><Trash2 size={14} /></button>
+            <div className="flex shrink-0 gap-1"><button className="btn btn-ghost h-8 w-8 p-0" title="Editar meta" aria-label={`Editar meta ${goal.name}`} onClick={() => setEditing(goal)}><Pencil size={14} /></button>
+            <button className="btn btn-ghost h-8 w-8 shrink-0 p-0" aria-label={`Excluir meta ${goal.name}`} onClick={() => void remove(goal)}><Trash2 size={14} /></button></div>
           </div>
           <p className="mt-3 text-xl font-semibold tabular-nums">{money(goal.savedCents)} <span className="text-sm font-normal text-ink-2">de {money(goal.totalCents)}</span></p>
           <div role="progressbar" aria-label={`Progresso de ${goal.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, Math.round(goal.savedCents / goal.totalCents * 100))} className="my-2 h-2 overflow-hidden rounded-full bg-fill-3"><div className="h-full rounded-full bg-green transition-[width] duration-300 motion-reduce:transition-none" style={{ width: `${Math.min(100, goal.savedCents / goal.totalCents * 100)}%` }} /></div>
@@ -69,47 +71,62 @@ export function SavingsGoals({ goals, space, today }: { goals: SavingsGoalView[]
     </div>
     <p className="text-xs text-ink-3">Os registros acompanham sua reserva e não alteram os saldos das contas. Para receber os lembretes, <Link href="/perfil#notificacoes" className="underline underline-offset-2">ative as notificações no seu aparelho</Link>.</p>
     {creating && <SavingsForm space={space} today={today} onClose={() => setCreating(false)} onSaved={refresh} />}
+    {editing && <SavingsForm key={editing.id} goal={editing} space={space} today={today} onClose={() => setEditing(null)} onSaved={refresh} />}
     {recording && <SavingsRecord key={recording.goal.id + recording.start} {...recording} space={space} onClose={() => setRecording(null)} onSaved={refresh} />}
   </section>;
 }
 
-function SavingsForm({ space, today, onClose, onSaved }: { space: FinanceSpace; today: string; onClose: () => void; onSaved: () => void }) {
-  const [frequency, setFrequency] = useState<SavingsFrequency>("monthly");
-  const [mode, setMode] = useState("period");
-  const [amount, setAmount] = useState("");
-  const [start, setStart] = useState(today);
-  const [duration, setDuration] = useState("3");
-  const [unit, setUnit] = useState("months");
-  const [reminder, setReminder] = useState(true);
-  const [time, setTime] = useState("20:00");
+function SavingsForm({ goal, space, today, onClose, onSaved }: { goal?: SavingsGoalView; space: FinanceSpace; today: string; onClose: () => void; onSaved: () => void }) {
+  const router = useRouter();
+  const initialDuration = goal ? savingsDuration(goal.startDay, goal.endDay) : { value: 3, unit: "months" };
+  const [frequency, setFrequency] = useState<SavingsFrequency>((goal?.frequency as SavingsFrequency) ?? "monthly");
+  const [mode, setMode] = useState(goal?.mode ?? "period");
+  const [amount, setAmount] = useState(goal ? decimal(goal.amountCents) : "");
+  const [start, setStart] = useState(goal?.startDay ?? today);
+  const [duration, setDuration] = useState(String(initialDuration.value));
+  const [unit, setUnit] = useState(initialDuration.unit);
+  const [reminder, setReminder] = useState(goal ? goal.reminderTime !== null : true);
+  const [time, setTime] = useState(goal?.reminderTime ?? "20:00");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   let end = "", plan: ReturnType<typeof savingsPlan> | null = null, previewError = "";
   try {
     end = savingsEnd(start, Number(duration), unit);
-    if (amount) plan = savingsPlan({ frequency, mode, amountCents: parseMoney(amount) ?? 0, startDay: start, endDay: end });
+    if (amount) {
+      const next = { frequency, mode, amountCents: parseMoney(amount) ?? 0, startDay: start, endDay: end };
+      const candidate = savingsPlan(next);
+      if (goal) checkSavingsEdit(goal, next, goal.periods.filter(p => p.savedCents !== null).map(p => p.start));
+      plan = candidate;
+    }
   } catch (e) { previewError = e instanceof Error ? e.message : "Confira os valores."; }
   async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault(); if (!plan || busy) return;
     const name = new FormData(e.currentTarget).get("name");
     setBusy(true); setError("");
-    try { await http.post(`/api/financeiro/${space}/metas`, { name, frequency, mode, amount, startDay: start, endDay: end, reminderTime: reminder ? time : null }); onSaved(); }
-    catch (e) { setError(e instanceof Error ? e.message : "Não foi possível salvar."); }
+    try {
+      const body = { name, frequency, mode, amount, startDay: start, endDay: end, reminderTime: reminder ? time : null,
+        ...(goal ? { id: goal.id, original: savingsDefinition(goal) } : {}) };
+      if (goal) await http.patch(`/api/financeiro/${space}/metas`, body);
+      else await http.post(`/api/financeiro/${space}/metas`, body);
+      onSaved();
+    }
+    catch (e) { setError(e instanceof Error ? e.message : "Não foi possível salvar."); if (goal) router.refresh(); }
     finally { setBusy(false); }
   }
-  return <Modal open onClose={() => { if (!busy) onClose(); }} title={<><h2 className="text-lg font-semibold">Nova meta financeira</h2><p className="text-xs text-ink-2">{spaceNames[space]}</p></>}>
+  return <Modal open onClose={() => { if (!busy) onClose(); }} title={<><h2 className="text-lg font-semibold">{goal ? "Editar meta financeira" : "Nova meta financeira"}</h2><p className="text-xs text-ink-2">{spaceNames[space]}</p></>}>
     <form className="space-y-4 text-sm" onSubmit={save}>
-      <label className="block">Nome da meta<input name="name" className="input mt-1" required maxLength={80} placeholder="Ex.: Reserva para viagem" /></label>
+      <label className="block">Nome da meta<input name="name" className="input mt-1" required maxLength={80} defaultValue={goal?.name} placeholder="Ex.: Reserva para viagem" /></label>
       <div className="grid gap-3 sm:grid-cols-2"><label>Frequência<select aria-label="Frequência" className="input mt-1" value={frequency} onChange={e => setFrequency(e.target.value as SavingsFrequency)}>{Object.entries(frequencies).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><div>Data de início<DateField value={start} onChange={setStart} ariaLabel="Início da meta" className="mt-1" /></div></div>
       <div><p>Duração do projeto</p><div className="mt-1 flex gap-2"><input className="input min-w-0" type="number" min={1} max={3660} required aria-label="Duração do projeto" value={duration} onChange={e => setDuration(e.target.value)} /><select className="input" aria-label="Unidade da duração" value={unit} onChange={e => setUnit(e.target.value)}><option value="days">dias</option><option value="weeks">semanas</option><option value="months">meses</option></select></div>{end && <p className="mt-1 text-xs text-ink-2">Termina em {shortDay(end)}</p>}</div>
       <label className="block">Como quer definir a meta?<select aria-label="Como quer definir a meta?" className="input mt-1" value={mode} onChange={e => setMode(e.target.value)}><option value="period">Valor por {frequencyUnits[frequency]}</option><option value="total">Valor total que quero guardar</option></select></label>
       <label className="block">{mode === "total" ? "Valor total (R$)" : `Valor por ${frequencyUnits[frequency]} (R$)`}<input className="input mt-1" inputMode="decimal" required value={amount} onChange={e => setAmount(e.target.value)} placeholder="0,00" /></label>
       {plan && <div aria-live="polite" className="rounded-xl border border-line bg-fill p-3"><p className="font-semibold">Total previsto: {money(plan.totalCents)}</p><p className="mt-1 text-ink-2">{plan.periods.length} contribuições · {plan.days} dias</p><p className="text-ink-2">{money(plan.periods.at(-1)!.targetCents)}{plan.periods[0].targetCents !== plan.periods.at(-1)!.targetCents ? ` a ${money(plan.periods[0].targetCents)}` : ""} por {frequencyUnits[frequency]}</p><p className="mt-1 text-xs text-ink-3">Os períodos começam na data de início. O último período, mesmo mais curto, conta como uma contribuição.</p></div>}
+      {goal && goal.periods.some(p => p.savedCents !== null) && <p className="text-xs text-ink-2">Os valores guardados serão mantidos. Os valores previstos e o cumprimento serão recalculados; as datas de períodos já registrados devem permanecer iguais.</p>}
       {previewError && <p role="alert" className="text-red">{previewError}</p>}
       <label className="flex items-center gap-2"><input type="checkbox" checked={reminder} onChange={e => setReminder(e.target.checked)} /> Lembrar de registrar no fim de cada período</label>
       {reminder && <div>Horário do lembrete<TimeField className="mt-1" value={time} onChange={setTime} ariaLabel="Horário do lembrete financeiro" /><p className="mt-1 text-xs text-ink-3">Receba no aparelho com notificações ativadas. Horário de Brasília.</p></div>}
       {error && <p role="alert" className="text-red">{error}</p>}
-      <button disabled={busy || !plan} className="btn btn-primary">{busy ? "Salvando…" : "Criar meta"}</button>
+      <button disabled={busy || !plan} className="btn btn-primary">{busy ? "Salvando…" : goal ? "Salvar alterações" : "Criar meta"}</button>
     </form>
   </Modal>;
 }

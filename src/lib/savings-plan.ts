@@ -34,3 +34,29 @@ export function savingsPlan(input: SavingsPlanInput) {
   periods.forEach((period, index) => { period.targetCents = base + (index < extra ? 1 : 0); });
   return { periods, totalCents, days };
 }
+
+
+export type SavingsDefinition = SavingsPlanInput & { name: string; reminderTime: string | null };
+export function savingsDefinition(goal: SavingsDefinition): SavingsDefinition {
+  return { name: goal.name, frequency: goal.frequency, mode: goal.mode, amountCents: goal.amountCents,
+    startDay: goal.startDay, endDay: goal.endDay, reminderTime: goal.reminderTime };
+}
+
+/** Reconstruct the duration without changing the saved end date when opening the editor. */
+export function savingsDuration(start: string, end: string) {
+  for (let months = 1; months <= 121; months++) {
+    const candidate = savingsEnd(start, months, "months");
+    if (candidate === end) return { value: months, unit: "months" };
+    if (candidate > end) break;
+  }
+  const days = differenceInCalendarDays(date(end), date(start)) + 1;
+  return days % 7 === 0 ? { value: days / 7, unit: "weeks" } : { value: days, unit: "days" };
+}
+
+export function checkSavingsEdit(previous: SavingsPlanInput, next: SavingsPlanInput, recordedStarts: string[]) {
+  if (!recordedStarts.length) return;
+  const oldPeriods = new Map(savingsPlan(previous).periods.map(p => [p.start, p.end]));
+  const newPeriods = new Map(savingsPlan(next).periods.map(p => [p.start, p.end]));
+  if (recordedStarts.some(start => !newPeriods.has(start) || newPeriods.get(start) !== oldPeriods.get(start)))
+    throw new ApiError(400, "Este ajuste mudaria ou removeria um período já registrado. Preserve suas datas; os valores e o lembrete podem ser alterados.");
+}

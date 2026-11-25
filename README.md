@@ -257,3 +257,5 @@ No checklist da tarefa, digite uma vírgula para criar o item e continuar no pr�
 ### Metas para guardar
 
 Em **Financeiro → Metas para guardar → Nova meta**, escolha frequência diária, semanal ou mensal e duração do projeto. Informe o valor de cada contribuição para calcular o total, ou o total desejado para calcular as contribuições. Registre quanto guardou em cada período, inclusive quando não guardou nada. Progresso e histórico são próprios de Pessoal/Empresa. O lembrete opcional usa as notificações ativadas em Perfil, no horário escolhido. Os registros não alteram os saldos bancários.
+
+O **lápis ao lado do nome da meta financeira** permite editar seus dados. O formulário abre preenchido, recalcula a prévia e preserva os valores guardados. Para preservar o histórico, datas de períodos já registrados não podem ser removidas ou alteradas.

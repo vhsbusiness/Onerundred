@@ -37,7 +37,7 @@ function load(file) {
 }
 
 const { prisma } = load(path.join(root, 'src/lib/db.ts'));
-const { savingsPlan, savingsEnd } = load(path.join(root, 'src/lib/savings-plan.ts'));
+const { savingsPlan, savingsEnd, savingsDuration, savingsDefinition } = load(path.join(root, 'src/lib/savings-plan.ts'));
 const { writeSavings, listSavings, sendSavingsReminders } = load(path.join(root, 'src/lib/savings.ts'));
 const { financeOverview } = load(path.join(root, 'src/lib/finance.ts'));
 const { todayKey } = load(path.join(root, 'src/lib/time.ts'));
@@ -98,5 +98,47 @@ test('failed pushes retry, missed schedules catch up, and monthly/final reminder
  assert.equal(await sendSavingsReminders(u,new Date('2024-04-29T20:00:00-03:00'),async()=>1),1);
  assert.equal(await sendSavingsReminders(u,new Date('2024-05-30T20:00:00-03:00'),async()=>1),0);
  const disabled=await user();await goal(disabled,'personal',{reminderTime:null});assert.equal(await sendSavingsReminders(disabled,new Date('2026-01-02T21:00:00-03:00'),async()=>1),0);
+});
+
+const edit=(userId, goal, more={}, space='personal')=>writeSavings(userId,space,'metas','PATCH',{
+ id:goal.id,original:savingsDefinition(goal),name:goal.name,frequency:goal.frequency,mode:goal.mode,
+ amount:(goal.amountCents/100).toFixed(2),startDay:goal.startDay,endDay:goal.endDay,reminderTime:goal.reminderTime,...more,
+});
+test('editing an unrecorded goal changes all fields without creating another goal',async()=>{
+ const u=await user(),g=await goal(u);await edit(u,g,{name:'Viagem',frequency:'weekly',mode:'total',amount:'100',startDay:'2026-02-01',endDay:'2026-02-21',reminderTime:'19:30'});
+ const goals=await listSavings(u,'personal');assert.equal(goals.length,1);const saved=goals[0];assert.equal(saved.id,g.id);assert.equal(saved.name,'Viagem');assert.equal(saved.periods.length,3);assert.equal(saved.totalCents,10000);assert.equal(saved.reminderTime,'19:30');
+ await edit(u,saved,{reminderTime:null});assert.equal((await listSavings(u,'personal'))[0].reminderTime,null);
+});
+test('editing values and unrecorded deadline preserves saved and zero records and recalculates the preview',async()=>{
+ const u=await user(),g=await goal(u);await record(u,g.id,'2026-01-01','12');await record(u,g.id,'2026-01-02','0');
+ await edit(u,g,{amount:'20',endDay:'2026-01-04'});let saved=(await listSavings(u,'personal'))[0];assert.equal(saved.savedCents,1200);assert.equal(saved.totalCents,8000);assert.deepEqual(saved.periods.map(p=>p.savedCents),[1200,0,null,null]);
+ await edit(u,saved,{endDay:'2026-01-02'});saved=(await listSavings(u,'personal'))[0];assert.equal(saved.periods.length,2);assert.equal(saved.savedCents,1200);assert.equal(saved.totalCents,4000);
+});
+test('editing cannot remove or change dates of a recorded period, including zero records',async()=>{
+ const u=await user(),g=await goal(u);await record(u,g.id,'2026-01-02','0');
+ for(const more of [{frequency:'weekly'},{startDay:'2026-01-03'},{endDay:'2026-01-01'}]) await assert.rejects(edit(u,g,more),e=>e.status===400);
+ const saved=(await listSavings(u,'personal'))[0];assert.equal(saved.endDay,g.endDay);assert.equal(saved.periods[1].savedCents,0);
+});
+test('edits respect account/space isolation, reject outdated drafts, and accept identical retries',async()=>{
+ const u=await user(),v=await user(),g=await goal(u);
+ await assert.rejects(edit(v,g,{name:'Wrong'}),e=>e.status===404);await assert.rejects(edit(u,g,{name:'Wrong'},'business'),e=>e.status===404);
+ await edit(u,g,{name:'Atual'});await edit(u,g,{name:'Atual'});await assert.rejects(edit(u,g,{amount:'50'}),e=>e.status===409);
+ assert.equal((await listSavings(u,'personal'))[0].name,'Atual');assert.equal((await listSavings(u,'personal'))[0].amountCents,1000);
+});
+test('edited reminders use the new time or are disabled, while unchanged period logs keep deduplication',async()=>{
+ const u=await user(),g=await goal(u);await edit(u,g,{reminderTime:'21:00'});let sends=0;const send=async()=>{sends++;return 1;};
+ assert.equal(await sendSavingsReminders(u,new Date('2026-01-01T20:30:00-03:00'),send),0);assert.equal(await sendSavingsReminders(u,new Date('2026-01-01T21:00:00-03:00'),send),1);
+ let saved=(await listSavings(u,'personal'))[0];await edit(u,saved,{name:'Novo nome'});assert.equal(await sendSavingsReminders(u,new Date('2026-01-01T21:10:00-03:00'),send),0);
+ saved=(await listSavings(u,'personal'))[0];await edit(u,saved,{reminderTime:null});assert.equal(await sendSavingsReminders(u,new Date('2026-01-02T22:00:00-03:00'),send),0);assert.equal(sends,1);
+});
+test('changed unrecorded period boundaries can notify again at their new ending',async()=>{
+ const u=await user(),g=await goal(u);const send=async()=>1;
+ assert.equal(await sendSavingsReminders(u,new Date('2026-01-01T20:00:00-03:00'),send),1);
+ await edit(u,g,{frequency:'weekly',endDay:'2026-01-07'});assert.equal(await sendSavingsReminders(u,new Date('2026-01-01T20:01:00-03:00'),send),0);assert.equal(await sendSavingsReminders(u,new Date('2026-01-07T20:00:00-03:00'),send),1);
+});
+test('opening the editor round-trips end dates across clamped months, leap days, weeks and days',()=>{
+ for(const [start,n,unit] of [['2024-01-31',1,'months'],['2024-01-31',3,'months'],['2026-11-25',3,'months'],['2026-01-01',2,'weeks'],['2026-01-01',5,'days'],['2026-01-01',3660,'days']]){
+  const end=savingsEnd(start,n,unit),inferred=savingsDuration(start,end);assert.equal(savingsEnd(start,inferred.value,inferred.unit),end);
+ }
 });
 after(async()=>{await prisma.$disconnect();fs.rmSync(dir,{recursive:true,force:true});});

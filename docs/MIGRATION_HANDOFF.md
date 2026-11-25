@@ -257,3 +257,14 @@ Migration aditiva `20261125210607_financial_savings_goal` nas duas pastas adicio
 Validação: 7 testes de cálculo/backend/lembretes, 6 regressões de análise/treinos, TypeScript, ESLint, build. Chrome 1440/375 e WebKit 375: 3 frequências, 2 modos de cálculo, rascunho após falha, valores parcial/zero/cumprido, edição, histórico, recarga, isolamento Pessoal/Empresa e ausência de rolagem horizontal. QA `/private/tmp/onerundred-saving-sw3npr9k`, contas/banco descartáveis. Sem push/deploy desta etapa.
 
 Publicação anterior confirmada: `0fe5894`, Railway `23cd88c6-002a-4f4b-af11-2889823da2b0` SUCCESS em 24/11; migration de treinos aplicada, login HTTP 200 e chunk do checklist com hash idêntico ao testado.
+
+
+## Edição de metas financeiras — 25/11/2026, local
+
+Lápis ao lado do nome da meta abre o formulário preenchido para editar nome, frequência, início, duração, modo de cálculo, valor e lembrete. Abrir/salvar sem mudar nada preserva exatamente o término, inclusive em meses com quantidade diferente de dias. Prévia e progresso são recalculados; os valores guardados e registros zero são mantidos. Datas dos períodos que já possuem registro não podem ser alteradas/removidas; validação aparece na prévia e também na API. Datas de períodos sem registro continuam editáveis.
+
+PATCH utiliza uma cópia da definição original para rejeitar sobreposição de edições em outras abas. Resposta perdida admite reenvio idêntico sem duplicar metas. Edição e check-ins usam transação serializável. Em erro, o rascunho permanece aberto; os dados do cartão são atualizados em segundo plano para que reabrir carregue a versão atual. Avisos de períodos mantidos não são repetidos; períodos alterados ajustam a deduplicação. Sem migration.
+
+Validação: 14 testes financeiros (7 novos de edição), TypeScript, ESLint e build. Chrome 1440/375 e WebKit 375: formulário preenchido, duração sem mudanças, edição completa, falha/retry, valores/histórico preservados, bloqueio de mudança das datas registradas, alteração/desativação do lembrete, conflito entre abas com reabertura atualizada e persistência após recarga. Contas e banco temporários, QA `/private/tmp/onerundred-saving-edit-n51rc9zy`. Sem push/deploy desta edição.
+
+Última publicação confirmada: `6a94f66`, Railway `ece757fa-8bd5-4539-aa7d-e966034fe794` SUCCESS; migration das metas aplicada, aplicativo iniciado e chunk público idêntico ao build testado em 25/11/2026.
